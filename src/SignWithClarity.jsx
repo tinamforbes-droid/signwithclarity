@@ -241,7 +241,7 @@ const STYLES = `
     font-weight: 500;
   }
 
-  /* PROVINCE SELECT */
+  /* LOCATION SELECTORS */
   .province-row {
     display: flex;
     align-items: center;
@@ -481,27 +481,45 @@ const STYLES = `
   }
 `;
 
-const PROVINCES = [
+const CANADIAN_PROVINCES = [
   "Alberta", "British Columbia", "Manitoba", "New Brunswick",
   "Newfoundland and Labrador", "Nova Scotia", "Ontario",
   "Prince Edward Island", "Quebec", "Saskatchewan",
   "Northwest Territories", "Nunavut", "Yukon"
 ];
 
-// NOTE: The system prompt that used to live here now lives server-side in
-// netlify/functions/decode.js — it's no longer needed in the browser bundle,
-// and keeping it server-side is also slightly better for not tipping your hand
-// to anyone poking around your site's code.
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+  "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+  "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+  "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+  "New Hampshire", "New Jersey", "New Mexico", "New York",
+  "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
+  "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+  "West Virginia", "Wisconsin", "Wyoming"
+];
 
 export default function SignWithClarity() {
   const [tab, setTab] = useState("paste");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
-  const [province, setProvince] = useState("Alberta");
+  const [country, setCountry] = useState("Canada");
+  const [region, setRegion] = useState("Alberta");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState("");
   const fileRef = useRef();
+
+  // When country changes, reset region to first option for that country
+  useEffect(() => {
+    if (country === "Canada") {
+      setRegion("Alberta");
+    } else {
+      setRegion("Alabama");
+    }
+  }, [country]);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -564,7 +582,8 @@ export default function SignWithClarity() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          province,
+          country,
+          region,
           docText: docText.slice(0, 4000)
         })
       });
@@ -587,6 +606,9 @@ export default function SignWithClarity() {
     setLoading(false);
   };
 
+  const regionOptions = country === "Canada" ? CANADIAN_PROVINCES : US_STATES;
+  const regionLabel = country === "Canada" ? "Your province:" : "Your state:";
+
   return (
     <>
       <style>{STYLES}</style>
@@ -597,7 +619,7 @@ export default function SignWithClarity() {
             <span className="logo-name">Sign With Clarity</span>
             <span className="logo-tagline">Understand before you sign</span>
           </div>
-          <span className="header-badge">🇨🇦 Canadian</span>
+          <span className="header-badge">🇨🇦🇺🇸 CA & US</span>
         </header>
 
         {/* HERO */}
@@ -608,7 +630,7 @@ export default function SignWithClarity() {
           <div className="hero-trust">
             <span className="trust-item"><span className="trust-dot"></span>Not legal advice</span>
             <span className="trust-item"><span className="trust-dot"></span>Plain language</span>
-            <span className="trust-item"><span className="trust-dot"></span>All provinces</span>
+            <span className="trust-item"><span className="trust-dot"></span>All provinces & states</span>
           </div>
         </div>
 
@@ -651,10 +673,19 @@ export default function SignWithClarity() {
                   </div>
                 )}
 
+                {/* COUNTRY + REGION SELECTORS */}
                 <div className="province-row">
-                  <span className="province-label">Your province:</span>
-                  <select className="province-select" value={province} onChange={e => setProvince(e.target.value)}>
-                    {PROVINCES.map(p => <option key={p}>{p}</option>)}
+                  <span className="province-label">Country:</span>
+                  <select className="province-select" value={country} onChange={e => setCountry(e.target.value)}>
+                    <option value="Canada">🇨🇦 Canada</option>
+                    <option value="United States">🇺🇸 United States</option>
+                  </select>
+                </div>
+
+                <div className="province-row">
+                  <span className="province-label">{regionLabel}</span>
+                  <select className="province-select" value={region} onChange={e => setRegion(e.target.value)}>
+                    {regionOptions.map(r => <option key={r}>{r}</option>)}
                   </select>
                 </div>
 
@@ -663,7 +694,7 @@ export default function SignWithClarity() {
                 <button className="decode-btn" onClick={decode} disabled={!docText.trim()}>
                   ✨ Decode My Document
                 </button>
-                <span className="decode-btn-sub">Free • Private • Canadian</span>
+                <span className="decode-btn-sub">Free • Private • Canada & US</span>
               </div>
             </div>
           )}
@@ -737,8 +768,8 @@ export default function SignWithClarity() {
               <p className="how-sub">Three steps to understanding your document</p>
               <div className="how-steps">
                 {[
-                  { n: "1", title: "Paste or upload", desc: "Copy text from your insurance document or upload a .txt or .pdf file." },
-                  { n: "2", title: "Select your province", desc: "We tailor the explanation to your provincial insurance rules." },
+                  { n: "1", title: "Paste or upload", desc: "Copy text from your insurance document or upload a text file." },
+                  { n: "2", title: "Select your location", desc: "We tailor the explanation to your province or state's insurance rules." },
                   { n: "3", title: "Read plain English", desc: "Get a clear summary, red flags, questions to ask, and key terms defined." }
                 ].map(s => (
                   <div className="how-step" key={s.n}>
@@ -756,7 +787,7 @@ export default function SignWithClarity() {
 
         <footer className="footer">
           <p className="footer-name">Sign With Clarity</p>
-          <p className="footer-text">signwithclarity.ca • Helping Canadians understand what they sign • Not legal advice</p>
+          <p className="footer-text">signwithclarity.ca • Helping Canadians and Americans understand what they sign • Not legal advice</p>
         </footer>
       </div>
     </>
