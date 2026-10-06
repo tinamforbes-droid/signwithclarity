@@ -1,0 +1,13 @@
+/* Minimal baseline. SignWithClarity.jsx ships its own full stylesheet
+   (fonts, reset, layout) inline via a <style> tag, so this file is
+   intentionally tiny — just enough to keep the page flush to the viewport. */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  min-height: 100vh;
+}

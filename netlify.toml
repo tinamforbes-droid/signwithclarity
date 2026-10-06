@@ -1,0 +1,15 @@
+# netlify.toml
+#
+# If you DON'T already have a netlify.toml in your repo, just put this file
+# in the root of your "signwithclarity" repo, next to package.json.
+#
+# If you ALREADY have a netlify.toml (some project templates create one
+# automatically), don't replace it — just add the [functions] block below
+# into your existing file, keeping your existing [build] settings as they are.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
