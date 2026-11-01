@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
 import { longDocumentNote, planDocument, tooLongMessage } from "../shared/limits.js";
 
@@ -270,6 +270,80 @@ const STYLES = `
   }
   .province-select:focus { border-color: var(--gold); }
 
+  .region-block { margin-top: 14px; }
+  .region-block .province-label {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .region-input-wrap { position: relative; }
+  .region-input {
+    width: 100%;
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 8px;
+    padding: 8px 32px 8px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--cream);
+    outline: none;
+  }
+  .region-input::placeholder { color: #b0a898; }
+  .region-input:focus { border-color: var(--gold); }
+  .region-input.needs-choice {
+    border-color: var(--gold);
+    background: rgba(201,169,110,0.14);
+  }
+  .region-chevron {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--text-light);
+    border-bottom: 1.5px solid var(--text-light);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+  .region-list {
+    list-style: none;
+    margin-top: 6px;
+    padding: 4px;
+    max-height: 196px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--white);
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(26,39,68,0.08);
+  }
+  .region-option {
+    padding: 9px 12px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .region-option.active {
+    background: rgba(201,169,110,0.2);
+    color: var(--navy);
+  }
+  .region-option.selected { font-weight: 500; }
+  .region-empty {
+    padding: 9px 12px;
+    font-size: 12px;
+    color: var(--text-light);
+  }
+  .region-hint {
+    margin-top: 10px;
+    background: rgba(201,169,110,0.1);
+    border: 1px solid var(--gold-light);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--navy);
+  }
+
   /* DECODE BUTTON */
   .decode-btn {
     width: 100%;
@@ -512,9 +586,9 @@ const CANADIAN_PROVINCES = [
 
 const US_STATES = [
   "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
-  "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
-  "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
-  "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
   "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
   "New Hampshire", "New Jersey", "New Mexico", "New York",
   "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
@@ -549,12 +623,218 @@ function progressPercent(progress) {
   return Math.max(8, Math.round((done / progress.total) * 85));
 }
 
+const DC_ALIASES = [
+  "dc",
+  "d.c.",
+  "d.c",
+  "washington dc",
+  "washington d.c.",
+  "washington, d.c.",
+  "washington, dc",
+];
+
+function normalizeRegionQuery(query) {
+  return query.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function regionMatches(name, rawQuery) {
+  const q = normalizeRegionQuery(rawQuery);
+  if (!q) return true;
+  if (name.toLowerCase().includes(q)) return true;
+  if (name !== "District of Columbia" || q === "washington") return false;
+  return DC_ALIASES.some((alias) => alias === q || alias.startsWith(q) || q.startsWith(alias));
+}
+
+function filterRegions(options, query) {
+  const q = normalizeRegionQuery(query);
+  if (!q) return options;
+  return options.filter((name) => regionMatches(name, q));
+}
+
+function regionHintFor(country) {
+  return country === "Canada"
+    ? "Choose your province or territory to continue. Type to search, or pick from the list."
+    : "Choose your state or D.C. to continue. Type to search, or pick from the list.";
+}
+
+function committedRegion(options, rawQuery) {
+  const q = normalizeRegionQuery(rawQuery);
+  if (!q) return "";
+  const exact = options.find((name) => name.toLowerCase() === q);
+  if (exact) return exact;
+  if (options.includes("District of Columbia") && DC_ALIASES.includes(q)) {
+    return "District of Columbia";
+  }
+  return "";
+}
+
+function RegionCombobox({ id, options, value, onChange, hint, placeholder, listLabel }) {
+  const listId = `${useId()}-list`;
+  const [query, setQuery] = useState(value || "");
+  const [open, setOpen] = useState(false);
+  const [browsing, setBrowsing] = useState(true);
+  const [active, setActive] = useState(-1);
+  const boxRef = useRef(null);
+  const inputRef = useRef(null);
+  const wasInvalid = useRef(false);
+  const closeTimer = useRef(null);
+  const invalid = Boolean(hint);
+
+  const showAll = browsing && normalizeRegionQuery(query) === normalizeRegionQuery(value || "");
+  const visible = showAll ? options : filterRegions(options, query);
+  const safeActive = active >= 0 && active < visible.length ? active : -1;
+
+  useEffect(() => {
+    if (!open || safeActive < 0) return;
+    document.getElementById(`${listId}-opt-${safeActive}`)?.scrollIntoView({ block: "nearest" });
+  }, [open, safeActive, listId]);
+
+  useEffect(() => {
+    function onDocPointerDown(event) {
+      if (boxRef.current && !boxRef.current.contains(event.target)) {
+        clearTimeout(closeTimer.current);
+        setOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", onDocPointerDown);
+      clearTimeout(closeTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (invalid && !wasInvalid.current) {
+      inputRef.current?.focus();
+    }
+    wasInvalid.current = invalid;
+  }, [invalid]);
+
+  function choose(name) {
+    clearTimeout(closeTimer.current);
+    setQuery(name);
+    setBrowsing(true);
+    setOpen(false);
+    onChange(name);
+  }
+
+  function onInput(event) {
+    const next = event.target.value;
+    const chosen = committedRegion(options, next);
+    setBrowsing(false);
+    setQuery(next);
+    setOpen(true);
+    if (!normalizeRegionQuery(next)) {
+      setActive(-1);
+    } else {
+      const matches = filterRegions(options, next);
+      setActive(matches.length ? 0 : -1);
+    }
+    onChange(chosen);
+  }
+
+  function onBlur() {
+    const chosen = committedRegion(options, query);
+    if (chosen) setQuery(chosen);
+    // Close after the option's pointerdown so a tap can still register.
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpen(false), 180);
+  }
+
+  function onKeyDown(event) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      if (visible.length === 0) return;
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setActive((current) => {
+        const index = current >= 0 && current < visible.length ? current : -1;
+        if (index < 0) return direction === 1 ? 0 : visible.length - 1;
+        return (index + direction + visible.length) % visible.length;
+      });
+      return;
+    }
+    if (event.key === "Enter" && open && safeActive >= 0) {
+      event.preventDefault();
+      choose(visible[safeActive]);
+      return;
+    }
+    if (event.key === "Escape" && open) {
+      event.preventDefault();
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div className="region-field" ref={boxRef}>
+      <div className="region-input-wrap">
+        <input
+          ref={inputRef}
+          id={id}
+          className={`region-input${invalid ? " needs-choice" : ""}`}
+          type="text"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
+          aria-activedescendant={open && safeActive >= 0 ? `${listId}-opt-${safeActive}` : undefined}
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? "region-hint" : undefined}
+          placeholder={placeholder}
+          value={query}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          onChange={onInput}
+          onBlur={onBlur}
+          onFocus={() => {
+            setBrowsing(true);
+            setOpen(true);
+            setActive(value ? options.findIndex((name) => name === value) : -1);
+          }}
+          onKeyDown={onKeyDown}
+        />
+        <span className="region-chevron" aria-hidden="true"></span>
+      </div>
+      {hint && (
+        <p className="region-hint" id="region-hint" role="status">{hint}</p>
+      )}
+      {open && (
+        <ul className="region-list" id={listId} role="listbox" aria-label={listLabel}>
+          {visible.length === 0 ? (
+            <li className="region-empty">No matches. Try another spelling.</li>
+          ) : (
+            visible.map((name, index) => (
+              <li
+                key={name}
+                id={`${listId}-opt-${index}`}
+                role="option"
+                aria-selected={name === value}
+                className={`region-option${index === safeActive ? " active" : ""}${name === value ? " selected" : ""}`}
+                onMouseEnter={() => setActive(index)}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  choose(name);
+                }}
+              >
+                {name}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function SignWithClarity() {
   const [tab, setTab] = useState("paste");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
   const [country, setCountry] = useState("Canada");
-  const [region, setRegion] = useState("Alberta");
+  const [region, setRegion] = useState("");
+  const [regionHint, setRegionHint] = useState("");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(null);
   const [partsRead, setPartsRead] = useState(1);
@@ -563,15 +843,6 @@ export default function SignWithClarity() {
   const fileRef = useRef();
   const plan = useMemo(() => (docText.trim() ? planDocument(docText) : null), [docText]);
   const tooLong = Boolean(plan && !plan.ok && plan.reason === "too_long");
-
-  // When country changes, reset region to first option for that country
-  useEffect(() => {
-    if (country === "Canada") {
-      setRegion("Alberta");
-    } else {
-      setRegion("Alabama");
-    }
-  }, [country]);
 
   // Dev-only samples for local checks. Vite removes this block from production builds.
   useEffect(() => {
@@ -641,11 +912,21 @@ export default function SignWithClarity() {
     if (file) handleFile(file);
   };
 
+  const regionOptions = country === "Canada" ? CANADIAN_PROVINCES : US_STATES;
+  const regionLabel = country === "Canada" ? "Your province or territory:" : "Your state:";
+  const regionListLabel = country === "Canada" ? "Provinces and territories" : "States";
+
   const decode = async () => {
     if (!docText.trim()) {
       setError("Please paste your document text or upload a file first.");
       return;
     }
+    if (!regionOptions.includes(region)) {
+      setError("");
+      setRegionHint(regionHintFor(country));
+      return;
+    }
+    setRegionHint("");
     if (tooLong) return;
 
     setError("");
@@ -673,9 +954,6 @@ export default function SignWithClarity() {
       setProgress(null);
     }
   };
-
-  const regionOptions = country === "Canada" ? CANADIAN_PROVINCES : US_STATES;
-  const regionLabel = country === "Canada" ? "Your province:" : "Your state:";
 
   return (
     <>
@@ -744,17 +1022,35 @@ export default function SignWithClarity() {
                 {/* COUNTRY + REGION SELECTORS */}
                 <div className="province-row">
                   <span className="province-label">Country:</span>
-                  <select className="province-select" value={country} onChange={e => setCountry(e.target.value)}>
+                  <select
+                    className="province-select"
+                    value={country}
+                    onChange={(e) => {
+                      setCountry(e.target.value);
+                      setRegion("");
+                      setRegionHint("");
+                    }}
+                  >
                     <option value="Canada">🇨🇦 Canada</option>
                     <option value="United States">🇺🇸 United States</option>
                   </select>
                 </div>
 
-                <div className="province-row">
-                  <span className="province-label">{regionLabel}</span>
-                  <select className="province-select" value={region} onChange={e => setRegion(e.target.value)}>
-                    {regionOptions.map(r => <option key={r}>{r}</option>)}
-                  </select>
+                <div className="region-block">
+                  <label className="province-label" htmlFor="region-input">{regionLabel}</label>
+                  <RegionCombobox
+                    key={country}
+                    id="region-input"
+                    options={regionOptions}
+                    value={region}
+                    hint={regionHint}
+                    placeholder="Type or choose"
+                    listLabel={regionListLabel}
+                    onChange={(next) => {
+                      setRegion(next);
+                      if (next) setRegionHint("");
+                    }}
+                  />
                 </div>
 
                 {plan?.ok && plan.chunks.length > 1 && (
