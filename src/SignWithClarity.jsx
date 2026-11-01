@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
+import { longDocumentNote, planDocument, tooLongMessage } from "../shared/limits.js";
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -328,7 +330,27 @@ const STYLES = `
     color: var(--navy);
     margin-bottom: 8px;
   }
-  .loading-sub { font-size: 13px; color: var(--text-light); }
+  .loading-sub { font-size: 13px; color: var(--text-light); line-height: 1.5; }
+  .progress-track {
+    margin: 18px auto 0;
+    max-width: 220px;
+    height: 4px;
+    background: var(--cream-dark);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+  .length-note {
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-light);
+  }
 
   /* RESULTS */
   .results { margin-top: 20px; }
@@ -501,6 +523,32 @@ const US_STATES = [
   "West Virginia", "Wisconsin", "Wyoming"
 ];
 
+function loadingCopy(progress) {
+  if (!progress || progress.total <= 1) {
+    return {
+      title: "Reading your document...",
+      sub: "We're translating the fine print into plain language for you.",
+    };
+  }
+  if (progress.phase === "combining") {
+    return {
+      title: "Putting it together...",
+      sub: "We've read the whole document. Now we're writing it in plain language.",
+    };
+  }
+  return {
+    title: "Reading your document...",
+    sub: `Part ${progress.current} of ${progress.total}. We'll keep going through the later pages, including exclusions.`,
+  };
+}
+
+function progressPercent(progress) {
+  if (!progress || progress.total <= 1) return 0;
+  if (progress.phase === "combining") return 92;
+  const done = Math.max(progress.current - 1, 0);
+  return Math.max(8, Math.round((done / progress.total) * 85));
+}
+
 export default function SignWithClarity() {
   const [tab, setTab] = useState("paste");
   const [docText, setDocText] = useState("");
@@ -508,9 +556,13 @@ export default function SignWithClarity() {
   const [country, setCountry] = useState("Canada");
   const [region, setRegion] = useState("Alberta");
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [partsRead, setPartsRead] = useState(1);
   const [results, setResults] = useState(null);
   const [error, setError] = useState("");
   const fileRef = useRef();
+  const plan = useMemo(() => (docText.trim() ? planDocument(docText) : null), [docText]);
+  const tooLong = Boolean(plan && !plan.ok && plan.reason === "too_long");
 
   // When country changes, reset region to first option for that country
   useEffect(() => {
@@ -520,6 +572,27 @@ export default function SignWithClarity() {
       setRegion("Alabama");
     }
   }, [country]);
+
+  // Dev-only samples for local checks. Vite removes this block from production builds.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    const sample = new URLSearchParams(window.location.search).get("sample");
+    if (sample !== "long" && sample !== "toolong" && sample !== "error") return undefined;
+    let cancelled = false;
+    const pages = sample === "toolong" ? 90 : 18;
+    fetch(`/__swc_sample?kind=${sample}&pages=${pages}`)
+      .then((response) => response.text())
+      .then((text) => {
+        if (cancelled || !text.trim()) return;
+        setDocText(text);
+        setTab("paste");
+        setError("");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -573,37 +646,32 @@ export default function SignWithClarity() {
       setError("Please paste your document text or upload a file first.");
       return;
     }
+    if (tooLong) return;
+
     setError("");
     setLoading(true);
     setResults(null);
+    setPartsRead(1);
 
     try {
-      const response = await fetch("/.netlify/functions/decode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          country,
-          region,
-          docText: docText.slice(0, 4000)
-        })
+      const outcome = await runDecode({
+        text: docText,
+        country,
+        region,
+        onProgress: setProgress,
+        request: (payload) => postDecode(payload),
       });
-
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
-
-      const text = data.text || "";
-
-      try {
-        const parsed = JSON.parse(text);
-        setResults(parsed);
-      } catch {
-        const clean = text.replace(/```json|```/g, "").trim();
-        setResults(JSON.parse(clean));
-      }
+      setResults(outcome.results);
+      setPartsRead(outcome.parts);
     } catch (err) {
-      setError("Something went wrong. Please try again in a moment.");
+      const message = err instanceof DecodeError
+        ? err.message
+        : "Something went wrong on our side. Please try again in a moment. Your document is still here.";
+      setError(message);
+    } finally {
+      setLoading(false);
+      setProgress(null);
     }
-    setLoading(false);
   };
 
   const regionOptions = country === "Canada" ? CANADIAN_PROVINCES : US_STATES;
@@ -653,7 +721,7 @@ export default function SignWithClarity() {
                     className="doc-textarea"
                     placeholder="Paste your insurance document text here... (policy wording, renewal notice, claim letter, etc.)"
                     value={docText}
-                    onChange={e => setDocText(e.target.value)}
+                    onChange={e => { setDocText(e.target.value); setError(""); }}
                   />
                 ) : (
                   <div
@@ -689,9 +757,15 @@ export default function SignWithClarity() {
                   </select>
                 </div>
 
-                {error && <div className="error-msg">⚠️ {error}</div>}
+                {plan?.ok && plan.chunks.length > 1 && (
+                  <p className="length-note">{longDocumentNote(plan)}</p>
+                )}
 
-                <button className="decode-btn" onClick={decode} disabled={!docText.trim()}>
+                {(tooLong || error) && (
+                  <div className="error-msg" role="alert">⚠️ {tooLong ? tooLongMessage(plan) : error}</div>
+                )}
+
+                <button className="decode-btn" onClick={decode} disabled={!docText.trim() || tooLong}>
                   ✨ Decode My Document
                 </button>
                 <span className="decode-btn-sub">Free • Private • Canada & US</span>
@@ -701,10 +775,15 @@ export default function SignWithClarity() {
 
           {/* LOADING */}
           {loading && (
-            <div className="loading-card">
+            <div className="loading-card" role="status" aria-live="polite" aria-busy="true">
               <div className="spinner"></div>
-              <h2 className="loading-title">Reading your document...</h2>
-              <p className="loading-sub">We're translating the fine print into plain language for you.</p>
+              <h2 className="loading-title">{loadingCopy(progress).title}</h2>
+              <p className="loading-sub">{loadingCopy(progress).sub}</p>
+              {progress?.total > 1 && (
+                <div className="progress-track" aria-hidden="true">
+                  <div className="progress-fill" style={{ width: `${progressPercent(progress)}%` }}></div>
+                </div>
+              )}
             </div>
           )}
 
@@ -714,6 +793,9 @@ export default function SignWithClarity() {
               <div className="results-header">
                 <h2 className="results-title">Your Document Decoded ✨</h2>
                 <p className="results-sub">Here's what your insurance document actually says</p>
+                {partsRead > 1 && (
+                  <p className="results-sub">We read the whole document, including the later pages, before writing this.</p>
+                )}
               </div>
 
               <div className="result-section section-summary">
