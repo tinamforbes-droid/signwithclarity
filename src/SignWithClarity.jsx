@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
 import { longDocumentNote, planDocument, tooLongMessage } from "../shared/limits.js";
+import LegalPage from "./LegalPage.jsx";
+import { STORAGE_NOTE } from "./legalCopy.js";
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -46,6 +48,8 @@ const STYLES = `
   .logo {
     display: flex;
     flex-direction: column;
+    text-decoration: none;
+    color: inherit;
   }
   .logo-name {
     font-family: 'Cormorant Garamond', serif;
@@ -565,6 +569,111 @@ const STYLES = `
     margin-bottom: 4px;
   }
   .footer-text { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.5px; }
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-top: 14px;
+  }
+  .footer-links a {
+    color: var(--gold-light);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    text-decoration: none;
+  }
+  .footer-links a:hover { text-decoration: underline; }
+  .logo:focus-visible,
+  .footer-links a:focus-visible,
+  .legal-back:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+
+  .storage-note {
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-light);
+  }
+
+  .legal-main {
+    flex: 1;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 16px 48px;
+  }
+  .legal-card {
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(26,39,68,0.12);
+    padding: 32px 26px 28px;
+  }
+  .legal-kicker {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .legal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 400;
+    color: var(--navy);
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  .legal-date {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 8px;
+  }
+  .legal-card h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--navy);
+    margin: 24px 0 8px;
+  }
+  .legal-card p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    margin-top: 10px;
+  }
+  .legal-card ul {
+    margin: 8px 0 0 1.15em;
+  }
+  .legal-card li {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    margin-top: 6px;
+  }
+  .legal-placeholder {
+    background: rgba(201,169,110,0.28);
+    border: 1px dashed var(--gold);
+    border-radius: 4px;
+    padding: 0 4px;
+    font-weight: 500;
+    color: var(--navy);
+    white-space: nowrap;
+  }
+  .legal-back {
+    display: inline-block;
+    margin-top: 28px;
+    color: var(--navy);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .legal-back:hover { text-decoration: underline; }
+  @media (max-width: 640px) {
+    .legal-card { padding: 24px 18px 22px; }
+    .legal-title { font-size: 32px; }
+  }
 
   .error-msg {
     background: #fdf2f2;
@@ -655,6 +764,46 @@ function regionHintFor(country) {
   return country === "Canada"
     ? "Choose your province or territory to continue. Type to search, or pick from the list."
     : "Choose your state or D.C. to continue. Type to search, or pick from the list.";
+}
+
+function pageFromPath(pathname) {
+  const path = String(pathname || "/").replace(/\/+$/, "") || "/";
+  if (path === "/privacy") return "privacy";
+  if (path === "/terms") return "terms";
+  return "home";
+}
+
+const PAGE_TITLES = {
+  home: "Sign With Clarity – Understand before you sign",
+  privacy: "Privacy Policy – Sign With Clarity",
+  terms: "Terms of Use – Sign With Clarity",
+};
+
+function useSitePage() {
+  const [page, setPage] = useState(() => pageFromPath(window.location.pathname));
+
+  useEffect(() => {
+    const sync = () => setPage(pageFromPath(window.location.pathname));
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
+
+  useEffect(() => {
+    document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
+  }, [page]);
+
+  function openPage(event, path) {
+    if (event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, "", path);
+    }
+    setPage(pageFromPath(path));
+    window.scrollTo(0, 0);
+  }
+
+  return { page, openPage };
 }
 
 function committedRegion(options, rawQuery) {
@@ -829,6 +978,7 @@ function RegionCombobox({ id, options, value, onChange, hint, placeholder, listL
 }
 
 export default function SignWithClarity() {
+  const { page, openPage } = useSitePage();
   const [tab, setTab] = useState("paste");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -961,13 +1111,15 @@ export default function SignWithClarity() {
       <div className="app">
         {/* HEADER */}
         <header className="header">
-          <div className="logo">
+          <a className="logo" href="/" onClick={(event) => openPage(event, "/")}>
             <span className="logo-name">Sign With Clarity</span>
             <span className="logo-tagline">Understand before you sign</span>
-          </div>
+          </a>
           <span className="header-badge">🇨🇦🇺🇸 CA & US</span>
         </header>
 
+        {page === "home" ? (
+        <>
         {/* HERO */}
         <div className="hero">
           <p className="hero-eyebrow">Insurance Document Decoder</p>
@@ -1018,6 +1170,8 @@ export default function SignWithClarity() {
                     <input ref={fileRef} type="file" accept=".txt,.pdf" style={{display:"none"}} onChange={e => handleFile(e.target.files[0])} />
                   </div>
                 )}
+
+                <p className="storage-note">{STORAGE_NOTE}</p>
 
                 {/* COUNTRY + REGION SELECTORS */}
                 <div className="province-row">
@@ -1162,10 +1316,18 @@ export default function SignWithClarity() {
             </div>
           )}
         </main>
+        </>
+        ) : (
+          <LegalPage kind={page} onNavigate={openPage} />
+        )}
 
         <footer className="footer">
           <p className="footer-name">Sign With Clarity</p>
           <p className="footer-text">signwithclarity.ca • Helping Canadians and Americans understand what they sign • Not legal advice</p>
+          <nav className="footer-links" aria-label="Legal">
+            <a href="/privacy" onClick={(event) => openPage(event, "/privacy")}>Privacy Policy</a>
+            <a href="/terms" onClick={(event) => openPage(event, "/terms")}>Terms of Use</a>
+          </nav>
         </footer>
       </div>
     </>

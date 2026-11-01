@@ -13,3 +13,11 @@
 
 [functions]
   directory = "netlify/functions"
+
+# Privacy Policy and Terms of Use are routes in the same app.
+# Netlify serves existing files first, then this rewrite, so the
+# decode function and built assets are left alone.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
