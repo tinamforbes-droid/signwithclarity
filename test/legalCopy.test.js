@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  CONTACT_EMAIL_PLACEHOLDER,
+  CONTACT_EMAIL,
   EFFECTIVE_DATE,
-  OWNER_NAME_PLACEHOLDER,
+  OWNER_LEGAL_NAME,
   STORAGE_NOTE,
   documentPlainText,
   privacyPolicy,
@@ -15,14 +15,16 @@ import {
 const privacy = documentPlainText(privacyPolicy);
 const terms = documentPlainText(termsOfUse);
 
-test("both pages name the effective date and leave the owner placeholders", () => {
+test("both pages name the operator, the contact email, and the effective date", () => {
   for (const text of [privacy, terms]) {
     assert.match(text, new RegExp(EFFECTIVE_DATE));
-    assert.match(text, /\[OWNER LEGAL NAME\]/);
-    assert.match(text, /\[CONTACT EMAIL\]/);
-    assert.equal(text.includes(OWNER_NAME_PLACEHOLDER), true);
-    assert.equal(text.includes(CONTACT_EMAIL_PLACEHOLDER), true);
+    assert.equal(text.includes(OWNER_LEGAL_NAME), true);
+    assert.equal(text.includes(CONTACT_EMAIL), true);
+    assert.equal(text.includes("[OWNER LEGAL NAME]"), false);
+    assert.equal(text.includes("[CONTACT EMAIL]"), false);
   }
+  assert.equal(OWNER_LEGAL_NAME, "Tina Forbes, operating as Quiet Clarity Within");
+  assert.equal(CONTACT_EMAIL, "hello@quietclaritywithin.com");
   assert.equal(EFFECTIVE_DATE, "November 1, 2026");
 });
 
@@ -49,9 +51,9 @@ test("the privacy policy describes only the collection the code performs", () =>
   assert.equal(privacy.includes("we encrypt"), false);
 });
 
-test("placeholders split out of the surrounding sentence", () => {
-  const parts = splitLegalText(`Run by ${OWNER_NAME_PLACEHOLDER}. Write to ${CONTACT_EMAIL_PLACEHOLDER}.`);
-  assert.deepEqual(parts, ["Run by ", OWNER_NAME_PLACEHOLDER, ". Write to ", CONTACT_EMAIL_PLACEHOLDER, "."]);
+test("the contact email splits out so the page can link it", () => {
+  const parts = splitLegalText(`Write to ${CONTACT_EMAIL} about a question.`);
+  assert.deepEqual(parts, ["Write to ", CONTACT_EMAIL, " about a question."]);
 });
 
 test("the terms limit the site to education and say the model can be wrong", () => {

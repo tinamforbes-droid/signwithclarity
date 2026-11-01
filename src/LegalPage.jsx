@@ -1,7 +1,6 @@
 import {
-  CONTACT_EMAIL_PLACEHOLDER,
+  CONTACT_EMAIL,
   EFFECTIVE_DATE,
-  OWNER_NAME_PLACEHOLDER,
   privacyPolicy,
   splitLegalText,
   termsOfUse,
@@ -10,14 +9,11 @@ import {
 function LegalText({ text, id }) {
   const parts = splitLegalText(text);
   return parts.map((part, index) => {
-    if (part !== OWNER_NAME_PLACEHOLDER && part !== CONTACT_EMAIL_PLACEHOLDER) {
-      return part;
-    }
-    const label = part === OWNER_NAME_PLACEHOLDER ? "Owner legal name placeholder" : "Contact email placeholder";
+    if (part !== CONTACT_EMAIL) return part;
     return (
-      <span className="legal-placeholder" key={`${id}-${index}`} title={label}>
-        {part}
-      </span>
+      <a className="legal-mail" key={`${id}-${index}`} href={`mailto:${CONTACT_EMAIL}`}>
+        {CONTACT_EMAIL}
+      </a>
     );
   });
 }

@@ -585,7 +585,8 @@ const STYLES = `
   .footer-links a:hover { text-decoration: underline; }
   .logo:focus-visible,
   .footer-links a:focus-visible,
-  .legal-back:focus-visible {
+  .legal-back:focus-visible,
+  .legal-mail:focus-visible {
     outline: 2px solid var(--gold);
     outline-offset: 3px;
   }
@@ -652,15 +653,13 @@ const STYLES = `
     color: var(--text);
     margin-top: 6px;
   }
-  .legal-placeholder {
-    background: rgba(201,169,110,0.28);
-    border: 1px dashed var(--gold);
-    border-radius: 4px;
-    padding: 0 4px;
-    font-weight: 500;
+  .legal-mail {
     color: var(--navy);
-    white-space: nowrap;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
+  .legal-mail:hover { color: var(--navy-light); }
   .legal-back {
     display: inline-block;
     margin-top: 28px;

@@ -1,21 +1,17 @@
 // Privacy Policy and Terms of Use for Sign With Clarity.
 //
-// Describe only what the code does. Replace the two placeholders before
-// publishing, and have a lawyer review both pages before relying on them.
-//
-// Placeholders:
-//   [OWNER LEGAL NAME]
-//   [CONTACT EMAIL]
+// Describe only what the code does. A lawyer should review both pages
+// before they are relied on.
 
 export const EFFECTIVE_DATE = "November 1, 2026";
-export const OWNER_NAME_PLACEHOLDER = "[OWNER LEGAL NAME]";
-export const CONTACT_EMAIL_PLACEHOLDER = "[CONTACT EMAIL]";
+export const OWNER_LEGAL_NAME = "Tina Forbes, operating as Quiet Clarity Within";
+export const CONTACT_EMAIL = "hello@quietclaritywithin.com";
 
 export const STORAGE_NOTE =
   "Documents aren't stored. The text stays in this browser until you leave or start over.";
 
-const name = OWNER_NAME_PLACEHOLDER;
-const email = CONTACT_EMAIL_PLACEHOLDER;
+const name = OWNER_LEGAL_NAME;
+const email = CONTACT_EMAIL;
 
 export const privacyPolicy = {
   title: "Privacy Policy",
@@ -373,13 +369,13 @@ export const termsOfUse = {
   ],
 };
 
-const PLACEHOLDER_MARK = new RegExp(
-  `(${OWNER_NAME_PLACEHOLDER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|${CONTACT_EMAIL_PLACEHOLDER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+const EMAIL_MARK = new RegExp(
+  `(${CONTACT_EMAIL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
   "g",
 );
 
 export function splitLegalText(text) {
-  return String(text).split(PLACEHOLDER_MARK);
+  return String(text).split(EMAIL_MARK);
 }
 
 export function documentPlainText(doc) {
