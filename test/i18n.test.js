@@ -67,9 +67,9 @@ test("every short string exists in French and Spanish, with the same placeholder
     assert.deepEqual((MESSAGES.es[key].match(/\{[a-z]+\}/g) || []).sort(), placeholders, key);
   }
 
-  assert.equal(t("en", "decodeButton"), "Decode My Document");
-  assert.match(t("fr", "decodeButton"), /Décoder/);
-  assert.match(t("es", "decodeButton"), /Descifrar/);
+  assert.equal(t("en", "decodeButton"), "Explain my document");
+  assert.equal(t("fr", "decodeButton"), "Expliquer mon document");
+  assert.equal(t("es", "decodeButton"), "Explicar mi documento");
   assert.notEqual(t("fr", "sectionSummary"), t("en", "sectionSummary"));
   assert.notEqual(t("es", "sectionFlags"), t("en", "sectionFlags"));
   assert.equal(t("en", "errorBusy"), "We're a little busy right now. Please wait a moment and try again.");

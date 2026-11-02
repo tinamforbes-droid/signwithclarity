@@ -57,7 +57,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The name of a file you choose is shown on the page. The file name stays in the browser. It is not included in the decode request.",
+          text: "The name of a file you choose is shown on the page. The file name stays in the browser. It is not included in the explanation request.",
         },
         {
           type: "p",
@@ -74,7 +74,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "When you choose Decode My Document, the browser sends a request to this site's Netlify function at /.netlify/functions/decode. The request includes the document text, the country you chose, the province, territory, or state you chose, and the language you chose.",
+          text: "When you choose Explain my document, the browser sends a request to this site's Netlify function at /.netlify/functions/decode. The request includes the document text, the country you chose, the province, territory, or state you chose, and the language you chose.",
         },
         {
           type: "p",
@@ -99,7 +99,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The page holds the text and the explanation in memory while you are using it. If you choose Decode Another Document, the page clears the text and the file name. Closing the page clears them as well. The language choice can stay in localStorage on this device. The document does not.",
+          text: "The page holds the text and the explanation in memory while you are using it. If you choose Explain another document, the page clears the text and the file name. Closing the page clears them as well. The language choice can stay in localStorage on this device. The document does not.",
         },
         {
           type: "p",
@@ -137,7 +137,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The site and the decode function are hosted by Netlify. The decode request goes to Netlify because that is where the function runs. The function code does not save the body of the request.",
+          text: "The site and the function that writes the explanation are hosted by Netlify. The explanation request goes to Netlify because that is where the function at /.netlify/functions/decode runs. The function code does not save the body of the request.",
         },
         {
           type: "p",
@@ -307,7 +307,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: "Only submit text you are allowed to share. Documents aren't stored. The text stays in this browser until you leave or start over. This device remembers only the language you chose. When you ask for an explanation, the text is sent to the decode function described in the privacy policy.",
+          text: "Only submit text you are allowed to share. Documents aren't stored. The text stays in this browser until you leave or start over. This device remembers only the language you chose. When you ask for an explanation, the text is sent to the function described in the privacy policy.",
         },
         {
           type: "p",
@@ -320,7 +320,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: "Use the site to understand a document you are allowed to share. Do not try to disrupt the site or the decode function, and do not use the site to harm someone else.",
+          text: "Use the site to understand a document you are allowed to share. Do not try to disrupt the site or the explanation function, and do not use the site to harm someone else.",
         },
       ],
     },

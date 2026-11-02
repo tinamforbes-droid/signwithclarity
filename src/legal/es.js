@@ -44,7 +44,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El nombre de un archivo que usted elige se muestra en la página. El nombre del archivo se queda en el navegador. No se incluye en la solicitud de descifrado.",
+          text: "El nombre de un archivo que usted elige se muestra en la página. El nombre del archivo se queda en el navegador. No se incluye en la solicitud de explicación.",
         },
         {
           type: "p",
@@ -61,7 +61,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Cuando elige Descifrar mi documento, el navegador envía una solicitud a la función de Netlify de este sitio, en /.netlify/functions/decode. La solicitud incluye el texto del documento, el país que eligió, la provincia, el territorio o el estado que eligió, y el idioma que eligió.",
+          text: "Cuando elige Explicar mi documento, el navegador envía una solicitud a la función de Netlify de este sitio, en /.netlify/functions/decode. La solicitud incluye el texto del documento, el país que eligió, la provincia, el territorio o el estado que eligió, y el idioma que eligió.",
         },
         {
           type: "p",
@@ -86,7 +86,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "La página conserva el texto y la explicación en la memoria mientras usted la usa. Si elige Descifrar otro documento, la página borra el texto y el nombre del archivo. Cerrar la página también los borra. La elección de idioma puede quedarse en localStorage en este dispositivo. El documento, no.",
+          text: "La página conserva el texto y la explicación en la memoria mientras usted la usa. Si elige Explicar otro documento, la página borra el texto y el nombre del archivo. Cerrar la página también los borra. La elección de idioma puede quedarse en localStorage en este dispositivo. El documento, no.",
         },
         {
           type: "p",
@@ -124,7 +124,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El sitio y la función de descifrado están alojados en Netlify. La solicitud de descifrado va a Netlify porque allí se ejecuta la función. El código de la función no guarda el cuerpo de la solicitud.",
+          text: "El sitio y la función que escribe la explicación están alojados en Netlify. La solicitud de explicación va a Netlify porque allí se ejecuta la función en /.netlify/functions/decode. El código de la función no guarda el cuerpo de la solicitud.",
         },
         {
           type: "p",
@@ -294,7 +294,7 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: "Envíe solo texto que tenga permiso de compartir. Los documentos no se guardan. El texto permanece en este navegador hasta que usted se vaya o empiece de nuevo. Este dispositivo recuerda solo el idioma que usted eligió. Cuando pide una explicación, el texto se envía a la función de descifrado descrita en la política de privacidad.",
+          text: "Envíe solo texto que tenga permiso de compartir. Los documentos no se guardan. El texto permanece en este navegador hasta que usted se vaya o empiece de nuevo. Este dispositivo recuerda solo el idioma que usted eligió. Cuando pide una explicación, el texto se envía a la función descrita en la política de privacidad.",
         },
         {
           type: "p",
@@ -307,7 +307,7 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: "Use el sitio para entender un documento que tiene permiso de compartir. No intente interrumpir el sitio ni la función de descifrado, y no use el sitio para hacer daño a otra persona.",
+          text: "Use el sitio para entender un documento que tiene permiso de compartir. No intente interrumpir el sitio ni la función de explicación, y no use el sitio para hacer daño a otra persona.",
         },
       ],
     },

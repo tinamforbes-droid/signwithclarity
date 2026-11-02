@@ -44,7 +44,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le nom d'un fichier que vous choisissez s'affiche sur la page. Le nom du fichier reste dans le navigateur. Il n'est pas inclus dans la demande de décodage.",
+          text: "Le nom d'un fichier que vous choisissez s'affiche sur la page. Le nom du fichier reste dans le navigateur. Il n'est pas inclus dans la demande d'explication.",
         },
         {
           type: "p",
@@ -61,7 +61,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Quand vous choisissez Décoder mon document, le navigateur envoie une demande à la fonction Netlify de ce site, à /.netlify/functions/decode. La demande comprend le texte du document, le pays que vous avez choisi, la province, le territoire ou l'État que vous avez choisi, et la langue que vous avez choisie.",
+          text: "Quand vous choisissez Expliquer mon document, le navigateur envoie une demande à la fonction Netlify de ce site, à /.netlify/functions/decode. La demande comprend le texte du document, le pays que vous avez choisi, la province, le territoire ou l'État que vous avez choisi, et la langue que vous avez choisie.",
         },
         {
           type: "p",
@@ -86,7 +86,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "La page garde le texte et l'explication en mémoire pendant que vous l'utilisez. Si vous choisissez Décoder un autre document, la page efface le texte et le nom du fichier. Fermer la page les efface aussi. Le choix de langue peut rester dans localStorage sur cet appareil. Le document, non.",
+          text: "La page garde le texte et l'explication en mémoire pendant que vous l'utilisez. Si vous choisissez Expliquer un autre document, la page efface le texte et le nom du fichier. Fermer la page les efface aussi. Le choix de langue peut rester dans localStorage sur cet appareil. Le document, non.",
         },
         {
           type: "p",
@@ -124,7 +124,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le site et la fonction de décodage sont hébergés par Netlify. La demande de décodage va chez Netlify parce que c'est là que la fonction s'exécute. Le code de la fonction ne sauvegarde pas le corps de la demande.",
+          text: "Le site et la fonction qui écrit l'explication sont hébergés par Netlify. La demande d'explication va chez Netlify parce que c'est là que la fonction à /.netlify/functions/decode s'exécute. Le code de la fonction ne sauvegarde pas le corps de la demande.",
         },
         {
           type: "p",
@@ -294,7 +294,7 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: "N'envoyez que du texte que vous avez le droit de partager. Les documents ne sont pas conservés. Le texte reste dans ce navigateur jusqu'à ce que vous partiez ou recommenciez. Cet appareil se souvient seulement de la langue que vous avez choisie. Quand vous demandez une explication, le texte est envoyé à la fonction de décodage décrite dans la politique de confidentialité.",
+          text: "N'envoyez que du texte que vous avez le droit de partager. Les documents ne sont pas conservés. Le texte reste dans ce navigateur jusqu'à ce que vous partiez ou recommenciez. Cet appareil se souvient seulement de la langue que vous avez choisie. Quand vous demandez une explication, le texte est envoyé à la fonction décrite dans la politique de confidentialité.",
         },
         {
           type: "p",
@@ -307,7 +307,7 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: "Utilisez le site pour comprendre un document que vous avez le droit de partager. N'essayez pas de perturber le site ou la fonction de décodage, et n'utilisez pas le site pour nuire à quelqu'un d'autre.",
+          text: "Utilisez le site pour comprendre un document que vous avez le droit de partager. N'essayez pas de perturber le site ou la fonction d'explication, et n'utilisez pas le site pour nuire à quelqu'un d'autre.",
         },
       ],
     },
