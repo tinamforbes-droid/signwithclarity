@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sign With Clarity – Understand before you sign</title>
+    <script>
+      // Match the language switcher before React paints. Kept in step with shared/messages.js.
+      (function () {
+        try {
+          var saved = localStorage.getItem("swc-lang");
+          var lang = saved === "fr" || saved === "es" || saved === "en" ? saved : "";
+          if (!lang) {
+            var tags = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
+            for (var i = 0; i < tags.length; i++) {
+              var base = String(tags[i] || "").toLowerCase().split("-")[0];
+              if (base === "fr" || base === "es" || base === "en") { lang = base; break; }
+            }
+          }
+          document.documentElement.lang = lang === "fr" ? "fr-CA" : lang === "es" ? "es-419" : "en";
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

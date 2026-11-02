@@ -1,9 +1,9 @@
+import { t } from "../shared/messages.js";
 import {
   CONTACT_EMAIL,
-  EFFECTIVE_DATE,
-  privacyPolicy,
+  effectiveDateLine,
+  legalDocument,
   splitLegalText,
-  termsOfUse,
 } from "./legalCopy.js";
 
 function LegalText({ text, id }) {
@@ -18,15 +18,15 @@ function LegalText({ text, id }) {
   });
 }
 
-export default function LegalPage({ kind, onNavigate }) {
-  const doc = kind === "terms" ? termsOfUse : privacyPolicy;
+export default function LegalPage({ kind, lang = "en", onNavigate }) {
+  const doc = legalDocument(kind, lang);
 
   return (
     <main className="legal-main">
       <article className="legal-card">
         <p className="legal-kicker">Sign With Clarity</p>
         <h1 className="legal-title">{doc.title}</h1>
-        <p className="legal-date">Effective date: {EFFECTIVE_DATE}</p>
+        <p className="legal-date">{effectiveDateLine(lang)}</p>
         {doc.sections.map((section) => (
           <section key={section.heading}>
             <h2>{section.heading}</h2>
@@ -51,7 +51,7 @@ export default function LegalPage({ kind, onNavigate }) {
           </section>
         ))}
         <a className="legal-back" href="/" onClick={(event) => onNavigate(event, "/")}>
-          ← Back to the decoder
+          {t(lang, "backToDecoder")}
         </a>
       </article>
     </main>

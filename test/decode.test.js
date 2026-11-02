@@ -416,6 +416,102 @@ test("synthesize asks for the same four sections and keeps the later notes", asy
   assert.equal(request.max_tokens, 1200);
 });
 
+test("the chosen language is sent with a short document and with every part of a long one", async () => {
+  const shortCalls = [];
+  await runDecode({
+    text: "A one-page notice about hail.",
+    country: "Canada",
+    region: "Quebec",
+    language: "fr",
+    request: async (payload) => {
+      shortCalls.push(payload);
+      return sectionsFrom("note");
+    },
+    sleep,
+  });
+  assert.equal(shortCalls.length, 1);
+  assert.equal(shortCalls[0].language, "fr");
+  assert.equal(shortCalls[0].mode, "single");
+
+  const policy = buildSamplePolicy({ pages: 18 });
+  const calls = [];
+  await runDecode({
+    text: policy,
+    country: "Canada",
+    region: "Quebec",
+    language: "es",
+    request: async (payload) => {
+      calls.push(payload);
+      if (payload.mode === "extract" || payload.mode === "reduce") {
+        return JSON.stringify({ flags: "• nota", coverage: "parte", facts: "", questions: "", terms: "" });
+      }
+      return sectionsFrom("nota");
+    },
+    sleep,
+  });
+  assert.ok(calls.length > 2);
+  assert.ok(calls.every((call) => call.language === "es"));
+  assert.ok(calls.some((call) => call.mode === "extract"));
+  assert.ok(calls.some((call) => call.mode === "synthesize"));
+});
+
+test("French and Spanish requests keep the four sections and ask for that language", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const anthropic = mockAnthropic(async () => ({
+    status: 200,
+    body: { content: [{ text: sectionsFrom("• Une note.") }] },
+  }));
+  t.after(() => anthropic.restore());
+
+  const french = await handler({
+    httpMethod: "POST",
+    body: JSON.stringify({
+      docText: "Une police d'assurance contre la grêle.",
+      country: "Canada",
+      region: "Quebec",
+      language: "fr",
+    }),
+  });
+  assert.equal(french.statusCode, 200);
+  const frenchRequest = anthropic.calls[0].body;
+  for (const key of ["summary", "flags", "questions", "terms"]) {
+    assert.match(frenchRequest.system, new RegExp(`"${key}"`));
+  }
+  assert.match(frenchRequest.system, /Canadian French/);
+  assert.equal(frenchRequest.system.includes("plain, simple English"), false);
+  assert.match(frenchRequest.messages[0].content, /Canadian French/);
+  assert.match(frenchRequest.messages[0].content, /Quebec/);
+
+  const spanish = await handler({
+    httpMethod: "POST",
+    body: JSON.stringify({
+      mode: "synthesize",
+      notes: `Part 1.\n\n${END_EXCLUSION}`,
+      country: "Canada",
+      region: "British Columbia",
+      language: "es",
+    }),
+  });
+  assert.equal(spanish.statusCode, 200);
+  const spanishRequest = anthropic.calls[1].body;
+  for (const key of ["summary", "flags", "questions", "terms"]) {
+    assert.match(spanishRequest.system, new RegExp(`"${key}"`));
+  }
+  assert.match(spanishRequest.system, /Latin American Spanish/);
+  assert.match(spanishRequest.messages[0].content, /Latin American Spanish/);
+  assert.match(spanishRequest.messages[0].content, /Later parts were not skipped/);
+  assert.equal(spanishRequest.messages[0].content.includes(END_EXCLUSION), true);
+
+  const missing = await handler({
+    httpMethod: "POST",
+    body: JSON.stringify({ docText: "   ", language: "fr" }),
+  });
+  assert.equal(missing.statusCode, 400);
+  const message = JSON.parse(missing.body).error;
+  assert.match(message, /texte du document/);
+  assert.equal(message.includes("some document text"), false);
+});
+
 test("missing text, a missing key, and a non-POST are plain errors", async () => {
   const previousKey = process.env.ANTHROPIC_API_KEY;
   delete process.env.ANTHROPIC_API_KEY;

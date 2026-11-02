@@ -7,8 +7,11 @@ import {
   OWNER_LEGAL_NAME,
   STORAGE_NOTE,
   documentPlainText,
+  effectiveDateLine,
+  legalDocument,
   privacyPolicy,
   splitLegalText,
+  storageNote,
   termsOfUse,
 } from "../src/legalCopy.js";
 
@@ -25,7 +28,7 @@ test("both pages name the operator, the contact email, and the effective date", 
   }
   assert.equal(OWNER_LEGAL_NAME, "Tina Forbes, operating as Quiet Clarity Within");
   assert.equal(CONTACT_EMAIL, "hello@quietclaritywithin.com");
-  assert.equal(EFFECTIVE_DATE, "November 1, 2026");
+  assert.equal(EFFECTIVE_DATE, "November 2, 2026");
 });
 
 test("the privacy policy describes only the collection the code performs", () => {
@@ -41,7 +44,9 @@ test("the privacy policy describes only the collection the code performs", () =>
   assert.match(privacy, /claude-sonnet-4-6/);
   assert.match(privacy, /ANTHROPIC_API_KEY/);
   assert.match(privacy, /does not set cookies/);
-  assert.match(privacy, /localStorage/);
+  assert.match(privacy, /localStorage only to remember the language/);
+  assert.equal(privacy.includes("does not use localStorage"), false);
+  assert.match(privacy, /does not store your document in localStorage/);
   assert.match(privacy, /analytics/);
   assert.match(privacy, /HTTP status code/);
   assert.match(privacy, /do not sell personal information/i);
@@ -54,6 +59,43 @@ test("the privacy policy describes only the collection the code performs", () =>
 test("the contact email splits out so the page can link it", () => {
   const parts = splitLegalText(`Write to ${CONTACT_EMAIL} about a question.`);
   assert.deepEqual(parts, ["Write to ", CONTACT_EMAIL, " about a question."]);
+});
+
+function sectionShape(doc) {
+  return doc.sections.map((section) => section.blocks.map((block) => block.type).join(","));
+}
+
+test("French and Spanish legal pages match the English shape and describe the language choice", () => {
+  for (const lang of ["fr", "es"]) {
+    const privacyDoc = legalDocument("privacy", lang);
+    const termsDoc = legalDocument("terms", lang);
+    assert.deepEqual(sectionShape(privacyDoc), sectionShape(privacyPolicy));
+    assert.deepEqual(sectionShape(termsDoc), sectionShape(termsOfUse));
+    const privacyText = documentPlainText(privacyDoc);
+    const termsText = documentPlainText(termsDoc);
+    assert.equal(privacyText.includes(OWNER_LEGAL_NAME), true);
+    assert.equal(privacyText.includes(CONTACT_EMAIL), true);
+    assert.equal(termsText.includes(CONTACT_EMAIL), true);
+    assert.match(privacyText, /localStorage/);
+    assert.match(privacyText, /PIPEDA/);
+    assert.match(privacyText, /PIPA/);
+    assert.match(privacyText, /pdf\.js/);
+    assert.match(privacyText, /\/\.netlify\/functions\/decode/);
+    assert.match(privacyText, /claude-sonnet-4-6/);
+    assert.match(privacyText, /ANTHROPIC_API_KEY/);
+    assert.equal(privacyText.includes("does not use localStorage"), false);
+    assert.equal(termsText.includes(storageNote(lang)), true);
+    assert.equal(privacyText.includes(STORAGE_NOTE), false);
+  }
+
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /seulement pour retenir la langue/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /solo para recordar el idioma/);
+  assert.equal(effectiveDateLine("en"), "Effective date: November 2, 2026");
+  assert.match(effectiveDateLine("fr"), /2 novembre 2026/);
+  assert.match(effectiveDateLine("es"), /2 de noviembre de 2026/);
+  assert.match(storageNote("fr"), /ne sont pas conservés/);
+  assert.match(storageNote("es"), /no se guardan/);
+  assert.equal(storageNote("en"), STORAGE_NOTE);
 });
 
 test("the terms limit the site to education and say the model can be wrong", () => {

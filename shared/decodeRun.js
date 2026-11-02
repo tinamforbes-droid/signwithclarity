@@ -4,6 +4,7 @@ import {
   planDocument,
   tooLongMessage,
 } from "./limits.js";
+import { asLanguage, t } from "./messages.js";
 
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -16,28 +17,28 @@ export class DecodeError extends Error {
   }
 }
 
-function asDecodeError(err) {
+function asDecodeError(err, language) {
   if (err instanceof DecodeError) return err;
   return new DecodeError(
-    "Something went wrong on our side. Please try again in a moment. Your document is still here.",
+    t(language, "errorGeneric"),
     { retryable: true, code: "unknown" }
   );
 }
 
-async function withRetry(fn, { sleep, part, total }) {
+async function withRetry(fn, { sleep, part, total, language }) {
   let last;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      last = asDecodeError(err);
+      last = asDecodeError(err, language);
       if (!last.retryable || attempt === 1) break;
       await sleep(1200);
     }
   }
   if (part && last.retryable) {
     throw new DecodeError(
-      `We couldn't finish part ${part} of ${total}, so we stopped. Nothing after that was skipped on purpose — this reading isn't complete. Please try again in a moment.`,
+      t(language, "errorPartFailed", { part, total }),
       { code: "part_failed" }
     );
   }
@@ -77,12 +78,12 @@ export function normalizeSections(parsed) {
   return out;
 }
 
-function modelSections(text) {
+function modelSections(text, language) {
   try {
     return normalizeSections(parseModelJson(text));
   } catch {
     throw new DecodeError(
-      "We read your document, but the answer didn't come back in a form we could show. Please try again.",
+      t(language, "errorBadJson"),
       { retryable: true, code: "bad_json" }
     );
   }
@@ -110,21 +111,22 @@ export function groupNotes(notes, maxChars) {
   return groups;
 }
 
-export function plainServerMessage(error, status) {
+export function plainServerMessage(error, status, language = "en") {
   if (typeof error === "string") {
     const trimmed = error.trim();
     if (trimmed && trimmed.length <= 400 && !trimmed.includes("<") && !trimmed.includes("{")) {
       return trimmed;
     }
   }
-  if (status === 429) return "We're a little busy right now. Please wait a moment and try again.";
+  if (status === 429) return t(language, "errorBusy");
   if (status === 504 || status === 502 || status === 503) {
-    return "This part took too long to read. Please try again in a moment.";
+    return t(language, "errorPartTimeout");
   }
-  return "Something went wrong on our side. Please try again in a moment. Your document is still here.";
+  return t(language, "errorGeneric");
 }
 
 export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000 } = {}) {
+  const language = asLanguage(payload?.language) || "en";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let response;
@@ -138,12 +140,12 @@ export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000
   } catch (err) {
     if (err?.name === "AbortError") {
       throw new DecodeError(
-        "This is taking longer than expected. Please try again in a moment.",
+        t(language, "errorTimeout"),
         { retryable: true, code: "timeout" }
       );
     }
     throw new DecodeError(
-      "We couldn't reach the decoder just now. Please check your connection and try again.",
+      t(language, "errorNetwork"),
       { retryable: true, code: "network" }
     );
   } finally {
@@ -159,8 +161,8 @@ export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000
       const retryable = [429, 502, 503, 504].includes(response.status);
       throw new DecodeError(
         retryable
-          ? "This part took too long to read. Please try again in a moment."
-          : "We got an unexpected reply from the decoder. Please try again in a moment.",
+          ? t(language, "errorPartTimeout")
+          : t(language, "errorBadResponse"),
         { retryable, code: "bad_response" }
       );
     }
@@ -168,7 +170,7 @@ export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000
 
   if (!response.ok || data.error) {
     const retryable = [429, 502, 503, 504].includes(response.status);
-    throw new DecodeError(plainServerMessage(data.error, response.status), {
+    throw new DecodeError(plainServerMessage(data.error, response.status, language), {
       retryable,
       code: "server",
     });
@@ -180,30 +182,32 @@ export async function runDecode({
   text,
   country,
   region,
+  language = "en",
   onProgress,
   request,
   sleep = defaultSleep,
 }) {
+  const lang = asLanguage(language) || "en";
   const plan = planDocument(text);
   if (!plan.ok) {
     if (plan.reason === "empty") {
-      throw new DecodeError("Please paste your document text or upload a file first.", { code: "empty" });
+      throw new DecodeError(t(lang, "errorEmpty"), { code: "empty" });
     }
-    throw new DecodeError(tooLongMessage(plan), { code: "too_long" });
+    throw new DecodeError(tooLongMessage(plan, lang), { code: "too_long" });
   }
 
   const total = plan.chunks.length;
+  const where = { country, region, language: lang };
 
   if (total === 1) {
     onProgress?.({ phase: "reading", current: 1, total: 1 });
     const results = await withRetry(
       async () => modelSections(await request({
         mode: "single",
-        country,
-        region,
+        ...where,
         docText: plan.chunks[0],
-      })),
-      { sleep }
+      }), lang),
+      { sleep, language: lang }
     );
     return { results, parts: 1 };
   }
@@ -215,13 +219,12 @@ export async function runDecode({
     const noteText = await withRetry(
       () => request({
         mode: "extract",
-        country,
-        region,
+        ...where,
         docText: plan.chunks[i],
         chunkIndex: current,
         chunkCount: total,
       }),
-      { sleep, part: current, total }
+      { sleep, part: current, total, language: lang }
     );
     notes.push(`Part ${current} of ${total}:\n${noteText}`);
   }
@@ -236,11 +239,10 @@ export async function runDecode({
       const reduced = await withRetry(
         () => request({
           mode: "reduce",
-          country,
-          region,
+          ...where,
           notes: group.join("\n\n"),
         }),
-        { sleep }
+        { sleep, language: lang }
       );
       next.push(reduced);
     }
@@ -250,7 +252,7 @@ export async function runDecode({
   const notesText = joinNotes(pending);
   if (notesText.length > MAX_SERVER_NOTES) {
     throw new DecodeError(
-      "We read the whole document, but it was too much to combine into one explanation. Please split it into two smaller parts and try each one.",
+      t(lang, "errorCombine"),
       { code: "too_long" }
     );
   }
@@ -259,11 +261,10 @@ export async function runDecode({
   const results = await withRetry(
     async () => modelSections(await request({
       mode: "synthesize",
-      country,
-      region,
+      ...where,
       notes: notesText,
-    })),
-    { sleep }
+    }), lang),
+    { sleep, language: lang }
   );
   return { results, parts: total };
 }

@@ -1,11 +1,18 @@
 // Privacy Policy and Terms of Use for Sign With Clarity.
 //
 // Describe only what the code does. A lawyer should review both pages
-// before they are relied on.
+// before they are relied on. The French and Spanish pages should be
+// reviewed by a person as well.
 
-export const EFFECTIVE_DATE = "November 1, 2026";
-export const OWNER_LEGAL_NAME = "Tina Forbes, operating as Quiet Clarity Within";
-export const CONTACT_EMAIL = "hello@quietclaritywithin.com";
+import { privacyPolicyFr, termsOfUseFr } from "./legal/fr.js";
+import { privacyPolicyEs, termsOfUseEs } from "./legal/es.js";
+import {
+  CONTACT_EMAIL,
+  EFFECTIVE_DATE,
+  OWNER_LEGAL_NAME,
+} from "./legalMeta.js";
+
+export { CONTACT_EMAIL, EFFECTIVE_DATE, OWNER_LEGAL_NAME };
 
 export const STORAGE_NOTE =
   "Documents aren't stored. The text stays in this browser until you leave or start over.";
@@ -46,7 +53,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "You also choose a country, Canada or the United States, and a province, territory, or state. The page sends that choice with the document text.",
+          text: "You also choose a country, Canada or the United States, and a province, territory, or state. You can choose the language of the page and of the explanation: English, French, or Spanish. The page sends the country, the province, territory, or state, and that language with the document text.",
         },
         {
           type: "p",
@@ -67,7 +74,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "When you choose Decode My Document, the browser sends a request to this site's Netlify function at /.netlify/functions/decode. The request includes the document text, the country you chose, and the province, territory, or state you chose.",
+          text: "When you choose Decode My Document, the browser sends a request to this site's Netlify function at /.netlify/functions/decode. The request includes the document text, the country you chose, the province, territory, or state you chose, and the language you chose.",
         },
         {
           type: "p",
@@ -75,7 +82,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The function passes that text, together with your country and your province or state, to Anthropic's API at https://api.anthropic.com/v1/messages. The model named in the server code is claude-sonnet-4-6. The request also includes instructions that tell the model how to explain an insurance document. Anthropic returns the explanation. The function sends that reply back to your browser, and the page shows it.",
+          text: "The function passes that text, together with your country, your province or state, and the language you chose, to Anthropic's API at https://api.anthropic.com/v1/messages. The model named in the server code is claude-sonnet-4-6. The request also includes instructions that tell the model how to explain an insurance document in that language. Anthropic returns the explanation. The function sends that reply back to your browser, and the page shows it.",
         },
         {
           type: "p",
@@ -92,7 +99,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The page holds the text and the explanation in memory while you are using it. If you choose Decode Another Document, the page clears the text and the file name. Closing the page clears them as well.",
+          text: "The page holds the text and the explanation in memory while you are using it. If you choose Decode Another Document, the page clears the text and the file name. Closing the page clears them as well. The language choice can stay in localStorage on this device. The document does not.",
         },
         {
           type: "p",
@@ -134,7 +141,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The code does not include an analytics tool, an advertising pixel, or another tracker. It does not set cookies. It does not use localStorage or sessionStorage. We do not control whether Google or Cloudflare sets a cookie when your browser loads a font or the pdf.js file from them.",
+          text: "The code does not include an analytics tool, an advertising pixel, or another tracker. It does not set cookies. It uses localStorage only to remember the language you chose: English, French, or Spanish. It does not store your document in localStorage. It does not use sessionStorage. We do not control whether Google or Cloudflare sets a cookie when your browser loads a font or the pdf.js file from them.",
         },
       ],
     },
@@ -177,7 +184,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "We do not keep the document, the notes, the location, or the explanation after the function has replied. Your browser keeps them only until you leave the page or clear them.",
+          text: "We do not keep the document, the notes, the location, or the explanation after the function has replied. Your browser keeps them only until you leave the page or clear them. The language choice can stay in localStorage on this device until you change it or clear it.",
         },
       ],
     },
@@ -203,7 +210,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation.",
+          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation.",
         },
         {
           type: "p",
@@ -300,7 +307,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: "Only submit text you are allowed to share. Documents aren't stored. The text stays in this browser until you leave or start over. When you ask for an explanation, the text is sent to the decode function described in the privacy policy.",
+          text: "Only submit text you are allowed to share. Documents aren't stored. The text stays in this browser until you leave or start over. This device remembers only the language you chose. When you ask for an explanation, the text is sent to the decode function described in the privacy policy.",
         },
         {
           type: "p",
@@ -388,4 +395,26 @@ export function documentPlainText(doc) {
     }
   }
   return parts.join("\n");
+}
+
+const STORAGE_NOTES = {
+  en: STORAGE_NOTE,
+  fr: "Les documents ne sont pas conservés. Le texte reste dans ce navigateur jusqu'à ce que vous partiez ou recommenciez.",
+  es: "Los documentos no se guardan. El texto permanece en este navegador hasta que usted se vaya o empiece de nuevo.",
+};
+
+export function storageNote(lang) {
+  return STORAGE_NOTES[lang] || STORAGE_NOTES.en;
+}
+
+export function legalDocument(kind, lang) {
+  if (lang === "fr") return kind === "terms" ? termsOfUseFr : privacyPolicyFr;
+  if (lang === "es") return kind === "terms" ? termsOfUseEs : privacyPolicyEs;
+  return kind === "terms" ? termsOfUse : privacyPolicy;
+}
+
+export function effectiveDateLine(lang) {
+  if (lang === "fr") return "Date d'entrée en vigueur : 2 novembre 2026";
+  if (lang === "es") return "Fecha de entrada en vigor: 2 de noviembre de 2026";
+  return `Effective date: ${EFFECTIVE_DATE}`;
 }
