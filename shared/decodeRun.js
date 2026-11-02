@@ -189,6 +189,7 @@ export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000
   if (!response.ok || data.error) {
     const code = typeof data.code === "string" && data.code.length <= 40 ? data.code : "server";
     const retryable = code !== "monthly_limit"
+      && code !== "fair_use"
       && code !== "explanation_closed"
       && [429, 502, 503, 504].includes(response.status);
     throw new DecodeError(plainServerMessage(data.error, response.status, language), {

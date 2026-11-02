@@ -28,7 +28,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: `Sign With Clarity is a free website at signwithclarity.ca. It explains insurance documents in plain language for people in Canada and the United States. It is run by ${name}.`,
+          text: `Sign With Clarity is a website at signwithclarity.ca. It explains insurance documents in plain language for people in Canada and the United States. Three explanations a month are free. Paid plans are described in the terms of use. It is run by ${name}.`,
         },
         {
           type: "p",
@@ -61,7 +61,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "You do not need an account. Sign-in is optional, and you can ask for an explanation without one. If you choose to sign in, the site asks for an email address and emails you a link. There is no password. The site does not ask for your name, your phone number, or payment details. An account is not marked as paid.",
+          text: "You do not need an account. Sign-in is optional, and you can ask for an explanation without one. If you choose to sign in, the site asks for an email address and emails you a link. There is no password. The site does not ask for your name or your phone number. Card numbers are typed on Stripe's page, not on this site. The paid flag stays false until the server sets it after Stripe confirms a payment.",
         },
       ],
     },
@@ -123,7 +123,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "We also keep a row in a Supabase table named accounts, so a later step can record whether the account has paid. The row holds the account id, the email address, a paid flag, and the times the row was created and updated. The paid flag stays false. The row does not hold your document, the notes, or the explanation. Row level security is on, so a signed-in browser session is not allowed to change the paid flag, and it is not allowed to read someone else's row. This page does not read or write that row. The secret key that can manage the table stays on the server, in a setting named SUPABASE_SECRET_KEY. It is not included in the page your browser loads. A new account gets a row when that table is in place. If you signed in before the table existed, the row is added when the table is set up.",
+          text: "We also keep a row in a Supabase table named accounts. The row holds the account id, the email address, a paid flag, the plan name (household, yearly, or none), how many Household Check explanations are left, how many Clarity Yearly explanations have been used in the current year, when that year ends, the Stripe customer id, the Stripe subscription id, the random ids of explanations already counted on a paid plan, and the times the row was created and updated. The paid flag stays false until the server sets it after Stripe confirms a payment. The row does not hold your document, the notes, the card number, or the explanation. Row level security is on, so a signed-in browser session is not allowed to change the paid flag or the plan, and it is not allowed to read someone else's row. The plans section reads your own row so it can show what you have left. The secret key that can manage the table stays on the server, in a setting named SUPABASE_SECRET_KEY. It is not included in the page your browser loads. A new account gets a row when that table is in place. If you signed in before the table existed, the row is added when the table is set up.",
         },
       ],
     },
@@ -141,6 +141,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "The function reads the IP address only to make the salted hash described above. It does not write the IP address into the usage record. It does not write the IP address into the server log. It does not write the sign-in token or the email address into the server log.",
+        },
+        {
+          type: "p",
+          text: "If a payment notice from Stripe cannot be recorded, the function writes the event id and the event type to the server log. It does not write the card number. It does not write the document.",
         },
       ],
     },
@@ -165,7 +169,11 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The code does not include an analytics tool, an advertising pixel, or another tracker. It does not set cookies. It uses localStorage to remember the language you chose: English, French, or Spanish. If you sign in, it also uses localStorage to keep the sign-in session on this device. It does not store your document in localStorage. It does not use sessionStorage. We do not control whether Google, Cloudflare, or Supabase sets a cookie when your browser contacts them.",
+          text: "If you buy a plan, the browser sends the plan name, the currency, and the sign-in token to this site's function at /.netlify/functions/checkout. The function checks the token, then asks Stripe to open Checkout with Managed Payments. Stripe is the seller and calculates tax. The function sends Stripe your account id, the price, and, if Checkout does not already know you, your email address. It does not send the document. The card number is entered on Stripe's page. Stripe tells our function at /.netlify/functions/stripe-webhook when a payment succeeds, when a yearly plan renews, and when a yearly plan ends. That notice is checked with a server setting named STRIPE_WEBHOOK_SECRET. The Stripe secret key is a server setting named STRIPE_SECRET_KEY. Neither is included in the page your browser loads. A yearly customer can open Stripe's customer portal from /.netlify/functions/portal to manage or cancel the plan. Stripe's privacy policy describes that service: https://stripe.com/privacy",
+        },
+        {
+          type: "p",
+          text: "The code does not include an analytics tool, an advertising pixel, or another tracker. It does not set cookies. It uses localStorage to remember the language you chose: English, French, or Spanish. If you sign in, it also uses localStorage to keep the sign-in session on this device. It does not store your document in localStorage. It does not use sessionStorage. We do not control whether Google, Cloudflare, Supabase, or Stripe sets a cookie when your browser contacts them.",
         },
       ],
     },
@@ -182,7 +190,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "If you sign in, we use the email address to send the sign-in link and to show which account is signed in on this device. We use the account id to give that account its own three free explanations each calendar month, instead of using the connection's count. We keep the paid flag so a later step can record whether the account has paid. The flag stays false. We do not use the email address for marketing, and we do not sell it.",
+          text: "If you sign in, we use the email address to send the sign-in link and to show which account is signed in on this device. We use the account id to give that account its own three free explanations each calendar month, instead of using the connection's count, and to attach a payment to that account. We keep the paid flag, the plan, the remaining Household Check explanations, the Clarity Yearly count, and the Stripe customer id so the server can allow the explanations that were paid for and open the customer portal. The paid flag stays false until Stripe confirms a payment. We do not use the email address for marketing, and we do not sell it. We do not store the card number.",
         },
         {
           type: "p",
@@ -213,6 +221,10 @@ export const privacyPolicy = {
           type: "p",
           text: "Supabase receives the email address and the sign-in session so it can send the link and confirm who is signed in. The request goes to https://ldhkqqhlztsaljccazti.supabase.co. Supabase may process that information outside your province and outside Canada. The document is not part of that request. Supabase's privacy policy describes that service: https://supabase.com/privacy",
         },
+        {
+          type: "p",
+          text: "Stripe receives the account id, the email address when Checkout needs it, and the card details you type on Stripe's page, so it can take payment and calculate tax. Stripe is the seller of record. The document is not part of that request. Stripe may process that information outside your province and outside Canada. Stripe's privacy policy is at https://stripe.com/privacy",
+        },
       ],
     },
     {
@@ -228,7 +240,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: `If you sign in, we keep the email address and the account row for as long as the account exists. The paid flag stays false, and it stays with that row. Signing out removes the session from localStorage on this device. It does not delete the account. You can ask us to delete the account by writing to ${email}. We do not keep the document with the account.`,
+          text: `If you sign in, we keep the email address and the account row for as long as the account exists. The row includes the paid flag, the plan, and the Stripe customer id. Signing out removes the session from localStorage on this device. It does not delete the account. You can ask us to delete the account by writing to ${email}. We do not keep the document or the card number with the account.`,
         },
       ],
     },
@@ -241,7 +253,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: `We do not keep a copy of your document, so we usually have nothing from the document to show you or correct. If you have not signed in, the usage record is not filed under your name or your email, so an email alone does not tell us which connection hash is yours. If you have signed in, we can find the account by the email address. That account includes the email and the paid flag. It does not include the document. If you write to ${email}, we will tell you what we hold and respond within the time those laws allow. We cannot pull a past document back from this site. We also cannot delete it from Anthropic for you, because we do not keep a record that would let us find that request.`,
+          text: `We do not keep a copy of your document, so we usually have nothing from the document to show you or correct. If you have not signed in, the usage record is not filed under your name or your email, so an email alone does not tell us which connection hash is yours. If you have signed in, we can find the account by the email address. That account includes the email, the paid flag, the plan, and the Stripe customer id. It does not include the document or the card number. If you write to ${email}, we will tell you what we hold and respond within the time those laws allow. We cannot pull a past document back from this site. We also cannot delete it from Anthropic for you, because we do not keep a record that would let us find that request.`,
         },
         {
           type: "p",
@@ -254,7 +266,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, the random explanation id, the salted hash of the connection's IP address, the monthly count, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation. If you sign in, it also includes the email address, the account id, the sign-in session kept on this device, and the paid flag, which stays false.",
+          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, the random explanation id, the salted hash of the connection's IP address, the monthly count, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation. If you sign in, it also includes the email address, the account id, the sign-in session kept on this device, and the paid flag, which stays false until Stripe confirms a payment. If you buy a plan, Stripe also handles the card details, as this policy describes.",
         },
         {
           type: "p",
@@ -300,7 +312,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: `These terms are between you and ${name} for your use of Sign With Clarity at signwithclarity.ca. The site is free. You can use it without an account. Sign-in by email is optional.`,
+          text: `These terms are between you and ${name} for your use of Sign With Clarity at signwithclarity.ca. You can ask for three explanations a month without paying. Sign-in by email is optional. Buying more explanations requires an account.`,
         },
         {
           type: "p",
@@ -360,6 +372,15 @@ export const termsOfUse = {
       ],
     },
     {
+      heading: "Paid explanations",
+      blocks: [
+        {
+          type: "p",
+          text: "Three explanations each calendar month are free. Household Check is a one-time purchase of four explanations, at the price shown for Canada or the United States. Clarity Yearly is a yearly subscription at the price shown. It includes up to 100 explanations in that year. Stripe is the seller and adds tax at checkout. A yearly plan renews each year until you cancel it in Stripe's customer portal. After you cancel, you can keep using it until the year you already paid for ends. Household Check is not a subscription. Paying does not change what an explanation is: it is still not insurance, legal, or financial advice.",
+        },
+      ],
+    },
+    {
       heading: "Using the site",
       blocks: [
         {
@@ -373,7 +394,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: "The site is provided as it is, free of charge. An explanation may be incomplete or wrong. The site may be slow or unavailable. We do not promise that an explanation is accurate, current, or suitable for a decision you need to make.",
+          text: "The site is provided as it is. An explanation may be incomplete or wrong. The site may be slow or unavailable. We do not promise that an explanation is accurate, current, or suitable for a decision you need to make.",
         },
       ],
     },

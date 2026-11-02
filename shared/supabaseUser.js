@@ -1,4 +1,4 @@
-import { isAccessToken, isUserId, supabaseProjectUrl } from "./session.js";
+import { isAccessToken, isUserId, normalizeEmail, supabaseProjectUrl } from "./session.js";
 
 function secretKey(env) {
   return String(env?.SUPABASE_SECRET_KEY || "").trim();
@@ -38,5 +38,6 @@ export async function verifySupabaseUser({ token, env, fetchImpl = fetch } = {})
 
   const id = String(data?.id || data?.user?.id || "").trim();
   if (!isUserId(id)) return null;
-  return { id: id.toLowerCase() };
+  const email = normalizeEmail(data?.email || data?.user?.email || "");
+  return { id: id.toLowerCase(), email };
 }

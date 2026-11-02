@@ -49,11 +49,22 @@ export function usageSnapshot(record, resetsOn) {
   };
 }
 
-/** Calm line for the page. Empty when this visitor is not on the free limit. */
+/** Calm line for the page. Empty when this visitor is not on a counted plan. */
 export function usageStatusMessage(lang, usage) {
   if (!usage?.limited) return "";
+  if (usage.plan === "household") {
+    const count = usage.remaining ?? 0;
+    if (count <= 0) return "";
+    if (count === 1) return t(lang, "householdRemainingOne");
+    return t(lang, "householdRemaining", { count });
+  }
   const date = formatResetDate(usage.resetsOn, lang);
   if (!date) return "";
+  if (usage.plan === "yearly") {
+    if ((usage.remaining ?? 0) <= 0) return t(lang, "fairUseReached", { date });
+    if (usage.remaining === 1) return t(lang, "yearlyRemainingOne", { date });
+    return t(lang, "yearlyRemaining", { count: usage.remaining, date });
+  }
   if ((usage.remaining ?? 0) <= 0) return t(lang, "freeLimitReached", { date });
   if (usage.remaining === 1) return t(lang, "freeRemainingOne", { date });
   return t(lang, "freeRemaining", { count: usage.remaining, date });

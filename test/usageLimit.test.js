@@ -104,8 +104,8 @@ test("the free allowance is three explanations, and the reset date is the next U
   assert.match(usageStatusMessage("en", usage), /December/);
   assert.match(usageStatusMessage("fr", { ...usage, remaining: 1 }), /1 explication gratuite/);
   assert.match(usageStatusMessage("es", { ...usage, remaining: 0 }), /3 explicaciones gratuitas/);
-  assert.match(usageStatusMessage("es", { ...usage, remaining: 0 }), /opciones de pago/);
-  assert.match(usageStatusMessage("fr", { ...usage, remaining: 0 }), /options payantes/);
+  assert.match(usageStatusMessage("es", { ...usage, remaining: 0 }), /explicaciones de pago/);
+  assert.match(usageStatusMessage("fr", { ...usage, remaining: 0 }), /explications payantes/);
   assert.equal(usageStatusMessage("en", { limited: false }), "");
 });
 
@@ -170,7 +170,7 @@ test("three explanations are allowed, the fourth is refused, and the document is
   const body = JSON.parse(blocked.body);
   assert.equal(body.code, "monthly_limit");
   assert.match(body.error, /3 explications gratuites/);
-  assert.match(body.error, /options payantes/);
+  assert.match(body.error, /explications payantes/);
   assert.match(body.error, /décembre/);
   assert.equal(body.usage.remaining, 0);
   assert.equal(anthropic.calls.length, 3);
@@ -178,7 +178,7 @@ test("three explanations are allowed, the fourth is refused, and the document is
   const spanish = await handler(eventFor({ language: "es" }), contextFor(store, { now }));
   assert.equal(spanish.statusCode, 402);
   assert.match(JSON.parse(spanish.body).error, /explicaciones gratuitas/);
-  assert.match(JSON.parse(spanish.body).error, /opciones de pago/);
+  assert.match(JSON.parse(spanish.body).error, /explicaciones de pago/);
 
   const dumped = JSON.stringify(store.snapshot());
   assert.equal(dumped.includes(MARKER), false);
@@ -404,7 +404,7 @@ test("the browser treats the monthly limit as final and keeps one explanation id
         ok: false,
         status: 402,
         text: async () => JSON.stringify({
-          error: "You've used your 3 free explanations this month. They reset on December 1, 2026. Paid options are coming soon.",
+          error: "You've used your 3 free explanations this month. They reset on December 1, 2026. Paid explanations are listed on this page.",
           code: "monthly_limit",
           usage,
         }),
@@ -415,7 +415,7 @@ test("the browser treats the monthly limit as final and keeps one explanation id
       assert.equal(err.retryable, false);
       assert.equal(err.code, "monthly_limit");
       assert.equal(err.usage.remaining, 0);
-      assert.match(err.message, /Paid options are coming soon/);
+      assert.match(err.message, /Paid explanations are listed on this page/);
       return true;
     },
   );

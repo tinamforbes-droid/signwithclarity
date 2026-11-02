@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { isPlausibleEmail, magicLinkRequest } from "../shared/session.js";
 import { t } from "../shared/messages.js";
+import { loadOwnPlan } from "./accountRow.js";
 import { authConfigured, getAuthClient } from "./authClient.js";
 
 function sessionEmail(session) {
@@ -15,6 +16,7 @@ export default function AccountBar({ lang }) {
   const [pendingEmail, setPendingEmail] = useState("");
   const [signedInEmail, setSignedInEmail] = useState("");
   const [errorKey, setErrorKey] = useState("");
+  const [planHint, setPlanHint] = useState("");
 
   useEffect(() => {
     const client = getAuthClient();
@@ -45,6 +47,7 @@ export default function AccountBar({ lang }) {
       }
       if (event === "SIGNED_OUT") {
         setSignedInEmail("");
+        setPlanHint("");
         setPhase("signedOut");
       }
     });
@@ -54,6 +57,35 @@ export default function AccountBar({ lang }) {
       data.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (phase !== "signedIn") return undefined;
+    let active = true;
+    const refresh = () => {
+      loadOwnPlan().then((row) => {
+        if (!active) return;
+        const account = row?.account;
+        if (account?.plan === "yearly" && account.paid) {
+          setPlanHint(t(lang, "signedInYearly"));
+          return;
+        }
+        const credits = account?.plan === "household" && account.paid ? account.credits_remaining : 0;
+        if (credits > 0) {
+          setPlanHint(t(lang, "signedInHousehold", { count: credits }));
+          return;
+        }
+        setPlanHint("");
+      }).catch(() => {
+        if (active) setPlanHint("");
+      });
+    };
+    refresh();
+    window.addEventListener("swc-account-refresh", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("swc-account-refresh", refresh);
+    };
+  }, [phase, lang]);
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -155,7 +187,7 @@ export default function AccountBar({ lang }) {
             <button className="account-btn" type="button" onClick={onSignOut}>
               {t(lang, "signOutButton")}
             </button>
-            <p className="account-hint">{t(lang, "signedInCount")}</p>
+            <p className="account-hint">{phase === "signedIn" ? (planHint || t(lang, "signedInCount")) : ""}</p>
           </div>
         )}
 

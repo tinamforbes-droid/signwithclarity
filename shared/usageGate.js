@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 
-import { hasUnlimitedAccess } from "./access.js";
+import { hasUnlimitedAccess, settlePaidUse } from "./access.js";
 import { asLanguage, t } from "./messages.js";
 import { bearerToken, isUserId } from "./session.js";
 import { verifySupabaseUser } from "./supabaseUser.js";
@@ -243,6 +243,8 @@ export async function enforceUsageLimit({
   now = new Date(),
   hasUnlimitedAccess: accessOverride,
   verifySession,
+  accountStore,
+  fetchImpl,
   language = "en",
 }) {
   const lang = asLanguage(language) || "en";
@@ -252,6 +254,21 @@ export async function enforceUsageLimit({
   if (unlimited) {
     return { allowed: true, usage: { limited: false }, release: null };
   }
+
+  const explanationId = cleanExplanationId(payload?.explanationId) || randomUUID();
+  if (user) {
+    const paid = await settlePaidUse({
+      user,
+      env,
+      explanationId,
+      now,
+      language: lang,
+      accountStore,
+      fetchImpl,
+    });
+    if (paid) return paid;
+  }
+
   if (!store) {
     return { allowed: true, usage: null, release: null };
   }
@@ -259,7 +276,6 @@ export async function enforceUsageLimit({
   const key = usageStorageKey(usageSubject(user, headers), usageSalt(env));
   const resetsOn = resetsOnIso(now);
   const month = monthKey(now);
-  const explanationId = cleanExplanationId(payload?.explanationId) || randomUUID();
 
   let outcome;
   try {

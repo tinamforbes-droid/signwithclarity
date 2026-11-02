@@ -19,6 +19,7 @@ import {
 } from "../shared/regions.js";
 import { usageStatusMessage } from "../shared/usageCopy.js";
 import AccountBar from "./AccountBar.jsx";
+import Pricing from "./Pricing.jsx";
 import { currentAccessToken } from "./authClient.js";
 import LegalPage from "./LegalPage.jsx";
 import { storageNote } from "./legalCopy.js";
@@ -839,6 +840,118 @@ const STYLES = `
     color: var(--text-light);
     text-align: center;
   }
+  .usage-note a,
+  .header-link {
+    color: var(--gold-light);
+    text-decoration: none;
+  }
+  .usage-note a { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+  .header-link { font-size: 12px; letter-spacing: 0.3px; }
+  .header-link:hover { text-decoration: underline; }
+
+  .pricing {
+    width: 100%;
+    max-width: 960px;
+    margin: 8px auto 12px;
+    padding: 8px 20px 4px;
+  }
+  .pricing-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--navy);
+    text-align: center;
+  }
+  .pricing-lead,
+  .pricing-tax,
+  .pricing-note {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 8px;
+  }
+  .pricing-note { color: var(--navy); }
+  .pricing-error {
+    margin: 12px auto 0;
+    max-width: 560px;
+    background: #fdf2f2;
+    border: 1px solid #f5c6c6;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--red-flag);
+    text-align: center;
+  }
+  .currency-switch { display: flex; justify-content: center; margin-top: 14px; }
+  .currency-switch div {
+    display: flex;
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    padding: 2px;
+    background: var(--white);
+  }
+  .currency-switch button {
+    border: none;
+    background: transparent;
+    color: var(--navy);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .currency-switch button[aria-pressed="true"] {
+    background: var(--navy);
+    color: var(--gold-light);
+  }
+  .currency-switch button:focus-visible,
+  .plan-btn:focus-visible,
+  .header-link:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 18px;
+  }
+  .plan-card {
+    background: var(--white);
+    border: 1px solid var(--gold-light);
+    border-radius: 16px;
+    padding: 18px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .plan-name { font-size: 15px; color: var(--navy); font-weight: 500; }
+  .plan-price {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .plan-interval { font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-light); }
+  .plan-detail { font-size: 14px; line-height: 1.5; color: var(--text); flex: 1; }
+  .plan-current { font-size: 13px; line-height: 1.4; color: var(--text-light); }
+  .plan-btn {
+    border: 1px solid var(--navy);
+    background: var(--white);
+    color: var(--navy);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .plan-btn:hover { background: var(--cream-dark); }
+  .plan-btn:disabled { opacity: 0.65; cursor: default; }
+  @media (max-width: 800px) {
+    .pricing-grid { grid-template-columns: 1fr; }
+  }
 `;
 
 function progressPercent(progress) {
@@ -1079,7 +1192,9 @@ export default function SignWithClarity() {
   const plan = useMemo(() => (docText.trim() ? planDocument(docText) : null), [docText]);
   const tooLong = Boolean(plan && !plan.ok && plan.reason === "too_long");
   const error = errorKey ? t(lang, errorKey) : errorText;
-  const atLimit = errorCode === "monthly_limit" || (usage?.limited && usage.remaining <= 0);
+  const atLimit = errorCode === "monthly_limit"
+    || errorCode === "fair_use"
+    || (usage?.limited && usage.plan !== "household" && (usage.remaining ?? 0) <= 0);
   const usageMessage = usageStatusMessage(lang, atLimit && usage ? { ...usage, remaining: 0 } : usage);
   const regionHint = needsRegion
     ? t(lang, country === "Canada" ? "regionHintCanada" : "regionHintUS")
@@ -1094,10 +1209,18 @@ export default function SignWithClarity() {
     storeLanguage(window.localStorage, next);
   }
 
+  function openPricing(event) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    openPage(event, "/");
+    window.setTimeout(() => {
+      document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 40);
+  }
+
   function clearError() {
     setErrorKey("");
     setErrorText("");
-    setErrorCode((code) => (code === "monthly_limit" ? code : ""));
+    setErrorCode((code) => (code === "monthly_limit" || code === "fair_use" ? code : ""));
   }
 
   // Dev-only samples for local checks. Vite removes this block from production builds.
@@ -1211,7 +1334,7 @@ export default function SignWithClarity() {
       setPartsRead(outcome.parts);
     } catch (err) {
       if (err instanceof DecodeError && err.usage) setUsage(err.usage);
-      if (err instanceof DecodeError && err.code === "monthly_limit") {
+      if (err instanceof DecodeError && (err.code === "monthly_limit" || err.code === "fair_use")) {
         setErrorCode("monthly_limit");
         setErrorKey("");
         setErrorText("");
@@ -1238,6 +1361,7 @@ export default function SignWithClarity() {
             <span className="logo-tagline">{t(lang, "tagline")}</span>
           </a>
           <div className="header-tools">
+            <a className="header-link" href="/#pricing" onClick={openPricing}>{t(lang, "pricingLink")}</a>
             <div className="lang-switch" role="group" aria-label={t(lang, "languageSwitcher")}>
               {LANGUAGE_CHOICES.map((choice) => (
                 <button
@@ -1355,7 +1479,12 @@ export default function SignWithClarity() {
                   <div className="error-msg" role="alert">⚠️ {tooLongMessage(plan, lang)}</div>
                 )}
                 {!tooLong && atLimit && usageMessage && (
-                  <div className="limit-msg" role="status">{usageMessage}</div>
+                  <div className="limit-msg" role="status">
+                    {usageMessage}
+                    {errorCode !== "fair_use" && (
+                      <p className="usage-note"><a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></p>
+                    )}
+                  </div>
                 )}
                 {!tooLong && !atLimit && error && (
                   <div className="error-msg" role="alert">⚠️ {error}</div>
@@ -1467,6 +1596,7 @@ export default function SignWithClarity() {
               </div>
             </div>
           )}
+          <Pricing lang={lang} country={country} />
         </main>
         </>
         ) : (
@@ -1477,6 +1607,7 @@ export default function SignWithClarity() {
           <p className="footer-name">Sign With Clarity</p>
           <p className="footer-text">{t(lang, "footerText")}</p>
           <nav className="footer-links" aria-label={t(lang, "footerNav")}>
+            <a href="/#pricing" onClick={openPricing}>{t(lang, "pricingLink")}</a>
             <a href="/privacy" onClick={(event) => openPage(event, "/privacy")}>{t(lang, "privacyLink")}</a>
             <a href="/terms" onClick={(event) => openPage(event, "/terms")}>{t(lang, "termsLink")}</a>
           </nav>
