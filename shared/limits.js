@@ -1,3 +1,5 @@
+import { t } from "./messages.js";
+
 // How much of a policy we will actually read.
 //
 // Each Netlify request does one model call. Synchronous functions stop at
@@ -130,17 +132,17 @@ export function planDocument(text) {
   };
 }
 
-export function longDocumentNote(plan) {
-  const pages = plan.pages === 1 ? "about a page" : `about ${plan.pages} pages`;
-  return `This looks like ${pages}. We'll read the whole document, one part at a time, including the sections at the end.`;
+export function longDocumentNote(plan, lang = "en") {
+  const pages = plan.pages === 1 ? t(lang, "aboutOnePage") : t(lang, "aboutPages", { count: plan.pages });
+  return t(lang, "longNote", { pages });
 }
 
-export function tooLongMessage(plan) {
-  const pages = plan?.pages ? `about ${plan.pages} pages` : "longer than we can read";
+export function tooLongMessage(plan, lang = "en") {
+  const pages = plan?.pages ? t(lang, "aboutPages", { count: plan.pages }) : t(lang, "longerThanWeCanRead");
   const maxPages = plan?.maxPages || maxReadablePages();
-  return `This document is too long for us to read all the way through. It looks like ${pages}, and we can carefully read about ${maxPages} pages at a time. Please split it into smaller parts — the declarations, the exclusions, and any endorsements are the pieces that matter most — and decode each one. We won't quietly use only the beginning.`;
+  return t(lang, "tooLong", { pages, maxPages });
 }
 
-export function pieceTooLongMessage() {
-  return "This part of the document is too long to read in one step, so we stopped. Please try again from the page and we'll read it in parts. We didn't use only the beginning.";
+export function pieceTooLongMessage(lang = "en") {
+  return t(lang, "pieceTooLong");
 }

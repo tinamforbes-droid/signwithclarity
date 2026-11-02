@@ -1,8 +1,24 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
 import { longDocumentNote, planDocument, tooLongMessage } from "../shared/limits.js";
+import {
+  LANGUAGE_CHOICES,
+  htmlLang,
+  loadingCopy,
+  pageTitle,
+  resolveLanguage,
+  storeLanguage,
+  t,
+} from "../shared/messages.js";
+import {
+  commitRegion,
+  filterRegionOptions,
+  foldRegion,
+  normalizeRegionQuery,
+  regionOptions,
+} from "../shared/regions.js";
 import LegalPage from "./LegalPage.jsx";
-import { STORAGE_NOTE } from "./legalCopy.js";
+import { storageNote } from "./legalCopy.js";
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -76,6 +92,42 @@ const STYLES = `
     border-radius: 20px;
     letter-spacing: 1px;
     text-transform: uppercase;
+  }
+  .header-tools {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .lang-switch {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(201,169,110,0.35);
+    border-radius: 999px;
+    padding: 2px;
+  }
+  .lang-switch button {
+    border: none;
+    background: transparent;
+    color: var(--gold-light);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .lang-switch button[aria-pressed="true"] {
+    background: var(--gold);
+    color: var(--navy);
+    font-weight: 500;
+  }
+  .lang-switch button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
   }
 
   /* HERO */
@@ -672,6 +724,9 @@ const STYLES = `
   @media (max-width: 640px) {
     .legal-card { padding: 24px 18px 22px; }
     .legal-title { font-size: 32px; }
+    .header { gap: 10px; }
+    .header-badge { font-size: 9px; }
+    .lang-switch button { padding: 5px 7px; }
   }
 
   .error-msg {
@@ -685,84 +740,11 @@ const STYLES = `
   }
 `;
 
-const CANADIAN_PROVINCES = [
-  "Alberta", "British Columbia", "Manitoba", "New Brunswick",
-  "Newfoundland and Labrador", "Nova Scotia", "Ontario",
-  "Prince Edward Island", "Quebec", "Saskatchewan",
-  "Northwest Territories", "Nunavut", "Yukon"
-];
-
-const US_STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
-  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
-  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
-  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
-  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
-  "New Hampshire", "New Jersey", "New Mexico", "New York",
-  "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
-  "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
-  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
-  "West Virginia", "Wisconsin", "Wyoming"
-];
-
-function loadingCopy(progress) {
-  if (!progress || progress.total <= 1) {
-    return {
-      title: "Reading your document...",
-      sub: "We're translating the fine print into plain language for you.",
-    };
-  }
-  if (progress.phase === "combining") {
-    return {
-      title: "Putting it together...",
-      sub: "We've read the whole document. Now we're writing it in plain language.",
-    };
-  }
-  return {
-    title: "Reading your document...",
-    sub: `Part ${progress.current} of ${progress.total}. We'll keep going through the later pages, including exclusions.`,
-  };
-}
-
 function progressPercent(progress) {
   if (!progress || progress.total <= 1) return 0;
   if (progress.phase === "combining") return 92;
   const done = Math.max(progress.current - 1, 0);
   return Math.max(8, Math.round((done / progress.total) * 85));
-}
-
-const DC_ALIASES = [
-  "dc",
-  "d.c.",
-  "d.c",
-  "washington dc",
-  "washington d.c.",
-  "washington, d.c.",
-  "washington, dc",
-];
-
-function normalizeRegionQuery(query) {
-  return query.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function regionMatches(name, rawQuery) {
-  const q = normalizeRegionQuery(rawQuery);
-  if (!q) return true;
-  if (name.toLowerCase().includes(q)) return true;
-  if (name !== "District of Columbia" || q === "washington") return false;
-  return DC_ALIASES.some((alias) => alias === q || alias.startsWith(q) || q.startsWith(alias));
-}
-
-function filterRegions(options, query) {
-  const q = normalizeRegionQuery(query);
-  if (!q) return options;
-  return options.filter((name) => regionMatches(name, q));
-}
-
-function regionHintFor(country) {
-  return country === "Canada"
-    ? "Choose your province or territory to continue. Type to search, or pick from the list."
-    : "Choose your state or D.C. to continue. Type to search, or pick from the list.";
 }
 
 function pageFromPath(pathname) {
@@ -772,13 +754,7 @@ function pageFromPath(pathname) {
   return "home";
 }
 
-const PAGE_TITLES = {
-  home: "Sign With Clarity – Understand before you sign",
-  privacy: "Privacy Policy – Sign With Clarity",
-  terms: "Terms of Use – Sign With Clarity",
-};
-
-function useSitePage() {
+function useSitePage(lang) {
   const [page, setPage] = useState(() => pageFromPath(window.location.pathname));
 
   useEffect(() => {
@@ -788,8 +764,8 @@ function useSitePage() {
   }, []);
 
   useEffect(() => {
-    document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
-  }, [page]);
+    document.title = pageTitle(lang, page);
+  }, [page, lang]);
 
   function openPage(event, path) {
     if (event.defaultPrevented || event.button !== 0) return;
@@ -805,20 +781,13 @@ function useSitePage() {
   return { page, openPage };
 }
 
-function committedRegion(options, rawQuery) {
-  const q = normalizeRegionQuery(rawQuery);
-  if (!q) return "";
-  const exact = options.find((name) => name.toLowerCase() === q);
-  if (exact) return exact;
-  if (options.includes("District of Columbia") && DC_ALIASES.includes(q)) {
-    return "District of Columbia";
-  }
-  return "";
+function labelFor(options, value) {
+  return options.find((option) => option.value === value)?.label || "";
 }
 
-function RegionCombobox({ id, options, value, onChange, hint, placeholder, listLabel }) {
+function RegionCombobox({ id, options, value, onChange, hint, placeholder, listLabel, emptyMessage }) {
   const listId = `${useId()}-list`;
-  const [query, setQuery] = useState(value || "");
+  const [query, setQuery] = useState(() => labelFor(options, value));
   const [open, setOpen] = useState(false);
   const [browsing, setBrowsing] = useState(true);
   const [active, setActive] = useState(-1);
@@ -828,8 +797,9 @@ function RegionCombobox({ id, options, value, onChange, hint, placeholder, listL
   const closeTimer = useRef(null);
   const invalid = Boolean(hint);
 
-  const showAll = browsing && normalizeRegionQuery(query) === normalizeRegionQuery(value || "");
-  const visible = showAll ? options : filterRegions(options, query);
+  const selectedLabel = labelFor(options, value);
+  const showAll = browsing && foldRegion(query) === foldRegion(selectedLabel);
+  const visible = showAll ? options : filterRegionOptions(options, query);
   const safeActive = active >= 0 && active < visible.length ? active : -1;
 
   useEffect(() => {
@@ -858,32 +828,32 @@ function RegionCombobox({ id, options, value, onChange, hint, placeholder, listL
     wasInvalid.current = invalid;
   }, [invalid]);
 
-  function choose(name) {
+  function choose(option) {
     clearTimeout(closeTimer.current);
-    setQuery(name);
+    setQuery(option.label);
     setBrowsing(true);
     setOpen(false);
-    onChange(name);
+    onChange(option.value);
   }
 
   function onInput(event) {
     const next = event.target.value;
-    const chosen = committedRegion(options, next);
+    const chosen = commitRegion(options, next);
     setBrowsing(false);
     setQuery(next);
     setOpen(true);
     if (!normalizeRegionQuery(next)) {
       setActive(-1);
     } else {
-      const matches = filterRegions(options, next);
+      const matches = filterRegionOptions(options, next);
       setActive(matches.length ? 0 : -1);
     }
     onChange(chosen);
   }
 
   function onBlur() {
-    const chosen = committedRegion(options, query);
-    if (chosen) setQuery(chosen);
+    const chosen = commitRegion(options, query);
+    if (chosen) setQuery(labelFor(options, chosen));
     // Close after the option's pointerdown so a tap can still register.
     clearTimeout(closeTimer.current);
     closeTimer.current = setTimeout(() => setOpen(false), 180);
@@ -939,7 +909,7 @@ function RegionCombobox({ id, options, value, onChange, hint, placeholder, listL
           onFocus={() => {
             setBrowsing(true);
             setOpen(true);
-            setActive(value ? options.findIndex((name) => name === value) : -1);
+            setActive(value ? options.findIndex((option) => option.value === value) : -1);
           }}
           onKeyDown={onKeyDown}
         />
@@ -951,22 +921,22 @@ function RegionCombobox({ id, options, value, onChange, hint, placeholder, listL
       {open && (
         <ul className="region-list" id={listId} role="listbox" aria-label={listLabel}>
           {visible.length === 0 ? (
-            <li className="region-empty">No matches. Try another spelling.</li>
+            <li className="region-empty">{emptyMessage}</li>
           ) : (
-            visible.map((name, index) => (
+            visible.map((option, index) => (
               <li
-                key={name}
+                key={option.value}
                 id={`${listId}-opt-${index}`}
                 role="option"
-                aria-selected={name === value}
-                className={`region-option${index === safeActive ? " active" : ""}${name === value ? " selected" : ""}`}
+                aria-selected={option.value === value}
+                className={`region-option${index === safeActive ? " active" : ""}${option.value === value ? " selected" : ""}`}
                 onMouseEnter={() => setActive(index)}
                 onPointerDown={(event) => {
                   event.preventDefault();
-                  choose(name);
+                  choose(option);
                 }}
               >
-                {name}
+                {option.label}
               </li>
             ))
           )}
@@ -976,22 +946,53 @@ function RegionCombobox({ id, options, value, onChange, hint, placeholder, listL
   );
 }
 
+function readInitialLanguage() {
+  try {
+    const tags = navigator.languages?.length ? navigator.languages : [navigator.language];
+    const initial = resolveLanguage({ storage: window.localStorage, tags });
+    document.documentElement.lang = htmlLang(initial);
+    return initial;
+  } catch {
+    return "en";
+  }
+}
+
 export default function SignWithClarity() {
-  const { page, openPage } = useSitePage();
+  const [lang, setLang] = useState(readInitialLanguage);
+  const { page, openPage } = useSitePage(lang);
   const [tab, setTab] = useState("paste");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
   const [country, setCountry] = useState("Canada");
   const [region, setRegion] = useState("");
-  const [regionHint, setRegionHint] = useState("");
+  const [needsRegion, setNeedsRegion] = useState(false);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(null);
   const [partsRead, setPartsRead] = useState(1);
   const [results, setResults] = useState(null);
-  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState("");
+  const [errorText, setErrorText] = useState("");
   const fileRef = useRef();
   const plan = useMemo(() => (docText.trim() ? planDocument(docText) : null), [docText]);
   const tooLong = Boolean(plan && !plan.ok && plan.reason === "too_long");
+  const error = errorKey ? t(lang, errorKey) : errorText;
+  const regionHint = needsRegion
+    ? t(lang, country === "Canada" ? "regionHintCanada" : "regionHintUS")
+    : "";
+
+  useEffect(() => {
+    document.documentElement.lang = htmlLang(lang);
+  }, [lang]);
+
+  function selectLanguage(next) {
+    setLang(next);
+    storeLanguage(window.localStorage, next);
+  }
+
+  function clearError() {
+    setErrorKey("");
+    setErrorText("");
+  }
 
   // Dev-only samples for local checks. Vite removes this block from production builds.
   useEffect(() => {
@@ -1006,7 +1007,8 @@ export default function SignWithClarity() {
         if (cancelled || !text.trim()) return;
         setDocText(text);
         setTab("paste");
-        setError("");
+        setErrorKey("");
+        setErrorText("");
       })
       .catch(() => {});
     return () => {
@@ -1027,7 +1029,7 @@ export default function SignWithClarity() {
   const handleFile = async (file) => {
     if (!file) return;
     setFileName(file.name);
-    setError("");
+    clearError();
 
     if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
       try {
@@ -1043,10 +1045,12 @@ export default function SignWithClarity() {
         if (fullText.trim()) {
           setDocText(fullText);
         } else {
-          setError("This PDF appears to be scanned or image-based. Please copy and paste the text instead.");
+          setErrorKey("pdfScanned");
+          setErrorText("");
         }
-      } catch (err) {
-        setError("Couldn't read this PDF. Please try copying and pasting the text instead.");
+      } catch {
+        setErrorKey("pdfReadError");
+        setErrorText("");
       }
     } else {
       const reader = new FileReader();
@@ -1061,24 +1065,26 @@ export default function SignWithClarity() {
     if (file) handleFile(file);
   };
 
-  const regionOptions = country === "Canada" ? CANADIAN_PROVINCES : US_STATES;
-  const regionLabel = country === "Canada" ? "Your province or territory:" : "Your state:";
-  const regionListLabel = country === "Canada" ? "Provinces and territories" : "States";
+  const places = regionOptions(country, lang);
+  const regionLabel = t(lang, country === "Canada" ? "regionLabelCanada" : "regionLabelUS");
+  const regionListLabel = t(lang, country === "Canada" ? "regionListCanada" : "regionListUS");
+  const copy = loadingCopy(lang, progress);
 
   const decode = async () => {
     if (!docText.trim()) {
-      setError("Please paste your document text or upload a file first.");
+      setErrorKey("errorEmpty");
+      setErrorText("");
       return;
     }
-    if (!regionOptions.includes(region)) {
-      setError("");
-      setRegionHint(regionHintFor(country));
+    if (!places.some((option) => option.value === region)) {
+      clearError();
+      setNeedsRegion(true);
       return;
     }
-    setRegionHint("");
+    setNeedsRegion(false);
     if (tooLong) return;
 
-    setError("");
+    clearError();
     setLoading(true);
     setResults(null);
     setPartsRead(1);
@@ -1088,16 +1094,16 @@ export default function SignWithClarity() {
         text: docText,
         country,
         region,
+        language: lang,
         onProgress: setProgress,
         request: (payload) => postDecode(payload),
       });
       setResults(outcome.results);
       setPartsRead(outcome.parts);
     } catch (err) {
-      const message = err instanceof DecodeError
-        ? err.message
-        : "Something went wrong on our side. Please try again in a moment. Your document is still here.";
-      setError(message);
+      const message = err instanceof DecodeError ? err.message : t(lang, "errorGeneric");
+      setErrorKey("");
+      setErrorText(message);
     } finally {
       setLoading(false);
       setProgress(null);
@@ -1112,22 +1118,37 @@ export default function SignWithClarity() {
         <header className="header">
           <a className="logo" href="/" onClick={(event) => openPage(event, "/")}>
             <span className="logo-name">Sign With Clarity</span>
-            <span className="logo-tagline">Understand before you sign</span>
+            <span className="logo-tagline">{t(lang, "tagline")}</span>
           </a>
-          <span className="header-badge">🇨🇦🇺🇸 CA & US</span>
+          <div className="header-tools">
+            <div className="lang-switch" role="group" aria-label={t(lang, "languageSwitcher")}>
+              {LANGUAGE_CHOICES.map((choice) => (
+                <button
+                  key={choice.code}
+                  type="button"
+                  lang={choice.code}
+                  aria-pressed={lang === choice.code}
+                  onClick={() => selectLanguage(choice.code)}
+                >
+                  {choice.label}
+                </button>
+              ))}
+            </div>
+            <span className="header-badge">{t(lang, "badge")}</span>
+          </div>
         </header>
 
         {page === "home" ? (
         <>
         {/* HERO */}
         <div className="hero">
-          <p className="hero-eyebrow">Insurance Document Decoder</p>
-          <h1 className="hero-title">Your policy,<br /><em>in plain English</em></h1>
-          <p className="hero-sub">Paste or upload any insurance document and we'll tell you exactly what it means — no legal training required.</p>
+          <p className="hero-eyebrow">{t(lang, "heroEyebrow")}</p>
+          <h1 className="hero-title">{t(lang, "heroTitleLead")}<br /><em>{t(lang, "heroTitleEm")}</em></h1>
+          <p className="hero-sub">{t(lang, "heroSub")}</p>
           <div className="hero-trust">
-            <span className="trust-item"><span className="trust-dot"></span>Not legal advice</span>
-            <span className="trust-item"><span className="trust-dot"></span>Plain language</span>
-            <span className="trust-item"><span className="trust-dot"></span>All provinces & states</span>
+            <span className="trust-item"><span className="trust-dot"></span>{t(lang, "trustNotAdvice")}</span>
+            <span className="trust-item"><span className="trust-dot"></span>{t(lang, "trustPlain")}</span>
+            <span className="trust-item"><span className="trust-dot"></span>{t(lang, "trustPlaces")}</span>
           </div>
         </div>
 
@@ -1137,20 +1158,20 @@ export default function SignWithClarity() {
             <div className="upload-card">
               <div className="upload-card-header">
                 <span className="upload-card-header-icon">📄</span>
-                <span className="upload-card-title">Paste or upload your document</span>
+                <span className="upload-card-title">{t(lang, "uploadTitle")}</span>
               </div>
               <div className="upload-card-body">
                 <div className="tabs">
-                  <button className={`tab ${tab === "paste" ? "active" : ""}`} onClick={() => setTab("paste")}>✏️ Paste Text</button>
-                  <button className={`tab ${tab === "upload" ? "active" : ""}`} onClick={() => setTab("upload")}>📎 Upload File</button>
+                  <button type="button" className={`tab ${tab === "paste" ? "active" : ""}`} onClick={() => setTab("paste")}>✏️ {t(lang, "tabPaste")}</button>
+                  <button type="button" className={`tab ${tab === "upload" ? "active" : ""}`} onClick={() => setTab("upload")}>📎 {t(lang, "tabUpload")}</button>
                 </div>
 
                 {tab === "paste" ? (
                   <textarea
                     className="doc-textarea"
-                    placeholder="Paste your insurance document text here... (policy wording, renewal notice, claim letter, etc.)"
+                    placeholder={t(lang, "pastePlaceholder")}
                     value={docText}
-                    onChange={e => { setDocText(e.target.value); setError(""); }}
+                    onChange={e => { setDocText(e.target.value); clearError(); }}
                   />
                 ) : (
                   <div
@@ -1161,63 +1182,64 @@ export default function SignWithClarity() {
                   >
                     <div className="file-drop-icon">📁</div>
                     <p className="file-drop-text">
-                      <strong>Tap to choose a file</strong><br />
-                      or drag and drop here<br />
-                      <span style={{fontSize: "11px", marginTop: "4px", display: "block"}}>Supports .txt and .pdf text files</span>
+                      <strong>{t(lang, "fileChoose")}</strong><br />
+                      {t(lang, "fileDrop")}<br />
+                      <span style={{fontSize: "11px", marginTop: "4px", display: "block"}}>{t(lang, "fileTypes")}</span>
                     </p>
                     {fileName && <p className="file-name">✅ {fileName}</p>}
                     <input ref={fileRef} type="file" accept=".txt,.pdf" style={{display:"none"}} onChange={e => handleFile(e.target.files[0])} />
                   </div>
                 )}
 
-                <p className="storage-note">{STORAGE_NOTE}</p>
+                <p className="storage-note">{storageNote(lang)}</p>
 
                 {/* COUNTRY + REGION SELECTORS */}
                 <div className="province-row">
-                  <span className="province-label">Country:</span>
+                  <span className="province-label">{t(lang, "countryLabel")}</span>
                   <select
                     className="province-select"
                     value={country}
                     onChange={(e) => {
                       setCountry(e.target.value);
                       setRegion("");
-                      setRegionHint("");
+                      setNeedsRegion(false);
                     }}
                   >
-                    <option value="Canada">🇨🇦 Canada</option>
-                    <option value="United States">🇺🇸 United States</option>
+                    <option value="Canada">{t(lang, "countryCanada")}</option>
+                    <option value="United States">{t(lang, "countryUS")}</option>
                   </select>
                 </div>
 
                 <div className="region-block">
                   <label className="province-label" htmlFor="region-input">{regionLabel}</label>
                   <RegionCombobox
-                    key={country}
+                    key={`${country}-${lang}`}
                     id="region-input"
-                    options={regionOptions}
+                    options={places}
                     value={region}
                     hint={regionHint}
-                    placeholder="Type or choose"
+                    placeholder={t(lang, "regionPlaceholder")}
                     listLabel={regionListLabel}
+                    emptyMessage={t(lang, "regionEmpty")}
                     onChange={(next) => {
                       setRegion(next);
-                      if (next) setRegionHint("");
+                      if (next) setNeedsRegion(false);
                     }}
                   />
                 </div>
 
                 {plan?.ok && plan.chunks.length > 1 && (
-                  <p className="length-note">{longDocumentNote(plan)}</p>
+                  <p className="length-note">{longDocumentNote(plan, lang)}</p>
                 )}
 
                 {(tooLong || error) && (
-                  <div className="error-msg" role="alert">⚠️ {tooLong ? tooLongMessage(plan) : error}</div>
+                  <div className="error-msg" role="alert">⚠️ {tooLong ? tooLongMessage(plan, lang) : error}</div>
                 )}
 
                 <button className="decode-btn" onClick={decode} disabled={!docText.trim() || tooLong}>
-                  ✨ Decode My Document
+                  ✨ {t(lang, "decodeButton")}
                 </button>
-                <span className="decode-btn-sub">Free • Private • Canada & US</span>
+                <span className="decode-btn-sub">{t(lang, "decodeSub")}</span>
               </div>
             </div>
           )}
@@ -1226,8 +1248,8 @@ export default function SignWithClarity() {
           {loading && (
             <div className="loading-card" role="status" aria-live="polite" aria-busy="true">
               <div className="spinner"></div>
-              <h2 className="loading-title">{loadingCopy(progress).title}</h2>
-              <p className="loading-sub">{loadingCopy(progress).sub}</p>
+              <h2 className="loading-title">{copy.title}</h2>
+              <p className="loading-sub">{copy.sub}</p>
               {progress?.total > 1 && (
                 <div className="progress-track" aria-hidden="true">
                   <div className="progress-fill" style={{ width: `${progressPercent(progress)}%` }}></div>
@@ -1240,17 +1262,17 @@ export default function SignWithClarity() {
           {results && (
             <div className="results">
               <div className="results-header">
-                <h2 className="results-title">Your Document Decoded ✨</h2>
-                <p className="results-sub">Here's what your insurance document actually says</p>
+                <h2 className="results-title">{t(lang, "resultsTitle")}</h2>
+                <p className="results-sub">{t(lang, "resultsSub")}</p>
                 {partsRead > 1 && (
-                  <p className="results-sub">We read the whole document, including the later pages, before writing this.</p>
+                  <p className="results-sub">{t(lang, "resultsWhole")}</p>
                 )}
               </div>
 
               <div className="result-section section-summary">
                 <div className="result-section-header">
                   <span className="result-section-icon">📋</span>
-                  <span className="result-section-title">Plain Language Summary</span>
+                  <span className="result-section-title">{t(lang, "sectionSummary")}</span>
                 </div>
                 <div className="result-section-body">{results.summary}</div>
               </div>
@@ -1258,7 +1280,7 @@ export default function SignWithClarity() {
               <div className="result-section section-flags">
                 <div className="result-section-header">
                   <span className="result-section-icon">⚠️</span>
-                  <span className="result-section-title">Watch Out For</span>
+                  <span className="result-section-title">{t(lang, "sectionFlags")}</span>
                 </div>
                 <div className="result-section-body">{results.flags}</div>
               </div>
@@ -1266,7 +1288,7 @@ export default function SignWithClarity() {
               <div className="result-section section-questions">
                 <div className="result-section-header">
                   <span className="result-section-icon">❓</span>
-                  <span className="result-section-title">Questions To Ask Your Insurer</span>
+                  <span className="result-section-title">{t(lang, "sectionQuestions")}</span>
                 </div>
                 <div className="result-section-body">{results.questions}</div>
               </div>
@@ -1274,7 +1296,7 @@ export default function SignWithClarity() {
               <div className="result-section section-terms">
                 <div className="result-section-header">
                   <span className="result-section-icon">📖</span>
-                  <span className="result-section-title">Key Terms Explained</span>
+                  <span className="result-section-title">{t(lang, "sectionTerms")}</span>
                 </div>
                 <div className="result-section-body">{results.terms}</div>
               </div>
@@ -1282,12 +1304,12 @@ export default function SignWithClarity() {
               <div className="disclaimer">
                 <span className="disclaimer-icon">⚖️</span>
                 <p className="disclaimer-text">
-                  <strong>Not legal advice.</strong> Sign With Clarity helps you understand documents — it does not provide legal, financial, or insurance advice. For important decisions, always speak with a licensed professional.
+                  <strong>{t(lang, "disclaimerStrong")}</strong> {t(lang, "disclaimerRest")}
                 </p>
               </div>
 
               <button className="new-decode-btn" onClick={() => { setResults(null); setDocText(""); setFileName(""); }}>
-                ← Decode Another Document
+                {t(lang, "newDecode")}
               </button>
             </div>
           )}
@@ -1295,13 +1317,13 @@ export default function SignWithClarity() {
           {/* HOW IT WORKS */}
           {!results && !loading && (
             <div className="how-section">
-              <h2 className="how-title">How It Works</h2>
-              <p className="how-sub">Three steps to understanding your document</p>
+              <h2 className="how-title">{t(lang, "howTitle")}</h2>
+              <p className="how-sub">{t(lang, "howSub")}</p>
               <div className="how-steps">
                 {[
-                  { n: "1", title: "Paste or upload", desc: "Copy text from your insurance document or upload a text file." },
-                  { n: "2", title: "Select your location", desc: "We tailor the explanation to your province or state's insurance rules." },
-                  { n: "3", title: "Read plain English", desc: "Get a clear summary, red flags, questions to ask, and key terms defined." }
+                  { n: "1", title: t(lang, "step1Title"), desc: t(lang, "step1Desc") },
+                  { n: "2", title: t(lang, "step2Title"), desc: t(lang, "step2Desc") },
+                  { n: "3", title: t(lang, "step3Title"), desc: t(lang, "step3Desc") },
                 ].map(s => (
                   <div className="how-step" key={s.n}>
                     <div className="step-num">{s.n}</div>
@@ -1317,15 +1339,15 @@ export default function SignWithClarity() {
         </main>
         </>
         ) : (
-          <LegalPage kind={page} onNavigate={openPage} />
+          <LegalPage kind={page} lang={lang} onNavigate={openPage} />
         )}
 
         <footer className="footer">
           <p className="footer-name">Sign With Clarity</p>
-          <p className="footer-text">signwithclarity.ca • Helping Canadians and Americans understand what they sign • Not legal advice</p>
-          <nav className="footer-links" aria-label="Legal">
-            <a href="/privacy" onClick={(event) => openPage(event, "/privacy")}>Privacy Policy</a>
-            <a href="/terms" onClick={(event) => openPage(event, "/terms")}>Terms of Use</a>
+          <p className="footer-text">{t(lang, "footerText")}</p>
+          <nav className="footer-links" aria-label={t(lang, "footerNav")}>
+            <a href="/privacy" onClick={(event) => openPage(event, "/privacy")}>{t(lang, "privacyLink")}</a>
+            <a href="/terms" onClick={(event) => openPage(event, "/terms")}>{t(lang, "termsLink")}</a>
           </nav>
         </footer>
       </div>
