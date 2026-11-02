@@ -3,6 +3,8 @@ import { getStore } from "@netlify/blobs";
 
 import { hasUnlimitedAccess } from "./access.js";
 import { asLanguage, t } from "./messages.js";
+import { bearerToken, isUserId } from "./session.js";
+import { verifySupabaseUser } from "./supabaseUser.js";
 import {
   FREE_EXPLANATION_LIMIT,
   MAX_CALLS_PER_EXPLANATION,
@@ -194,9 +196,44 @@ async function releaseReservation(store, key, explanationId, month) {
 }
 
 /**
+ * Who the monthly count belongs to. A confirmed account id is hashed on
+ * its own. Otherwise the count stays on the connection, exactly as before.
+ * The email address is not part of the key.
+ */
+export function usageSubject(user, headers) {
+  const id = String(user?.id ?? "").trim().toLowerCase();
+  if (isUserId(id)) return `user:${id}`;
+  return clientIp(headers);
+}
+
+function confirmedUser(user) {
+  const id = String(user?.id ?? "").trim().toLowerCase();
+  if (!isUserId(id)) return null;
+  return { id };
+}
+
+/**
+ * A bearer token is checked with Supabase. A user id in the body is ignored.
+ * If the check cannot be finished, the person is treated as signed out, so
+ * a made-up token does not open a new count.
+ */
+async function resolveAccount(headers, env, verifySession) {
+  const token = bearerToken(headers);
+  if (!token) return null;
+  const verify = typeof verifySession === "function" ? verifySession : verifySupabaseUser;
+  try {
+    const user = await verify({ token, env, fetchImpl: globalThis.fetch });
+    return confirmedUser(user);
+  } catch {
+    console.error("session check failed");
+    return null;
+  }
+}
+
+/**
  * Count one free explanation, or refuse it before the model is called.
  * The stored record is a hash key plus a month, a count, and random ids.
- * It never includes the document, the notes, or the IP address.
+ * It never includes the document, the notes, the IP address, or the email.
  */
 export async function enforceUsageLimit({
   headers,
@@ -205,11 +242,13 @@ export async function enforceUsageLimit({
   env = process.env,
   now = new Date(),
   hasUnlimitedAccess: accessOverride,
+  verifySession,
   language = "en",
 }) {
   const lang = asLanguage(language) || "en";
+  const user = await resolveAccount(headers, env, verifySession);
   const access = typeof accessOverride === "function" ? accessOverride : hasUnlimitedAccess;
-  const unlimited = await access({ headers, payload, env });
+  const unlimited = await access({ headers, payload, env, user });
   if (unlimited) {
     return { allowed: true, usage: { limited: false }, release: null };
   }
@@ -217,7 +256,7 @@ export async function enforceUsageLimit({
     return { allowed: true, usage: null, release: null };
   }
 
-  const key = usageStorageKey(clientIp(headers), usageSalt(env));
+  const key = usageStorageKey(usageSubject(user, headers), usageSalt(env));
   const resetsOn = resetsOnIso(now);
   const month = monthKey(now);
   const explanationId = cleanExplanationId(payload?.explanationId) || randomUUID();

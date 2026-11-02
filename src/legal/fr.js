@@ -48,7 +48,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le site ne vous demande pas de créer un compte. Il ne demande pas votre nom, votre adresse courriel, votre numéro de téléphone ni vos renseignements de paiement.",
+          text: "Vous n'avez pas besoin d'un compte. La connexion est facultative, et vous pouvez demander une explication sans compte. Si vous choisissez de vous connecter, le site demande une adresse courriel et vous envoie un lien. Il n'y a pas de mot de passe. Le site ne demande pas votre nom, votre numéro de téléphone ni vos renseignements de paiement. Un compte n'est pas marqué comme payé.",
         },
       ],
     },
@@ -62,6 +62,10 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: "Quand vous choisissez Expliquer mon document, le navigateur envoie une demande à la fonction Netlify de ce site, à /.netlify/functions/decode. La demande comprend le texte du document, le pays que vous avez choisi, la province, le territoire ou l'État que vous avez choisi, la langue que vous avez choisie, et un identifiant aléatoire pour cette explication. La page crée cet identifiant au moment de la demande. Ce n'est pas votre nom, et il ne vient pas du document. Chaque partie d'un document plus long utilise le même identifiant, pour que les parties comptent comme une seule explication.",
+        },
+        {
+          type: "p",
+          text: "Si vous êtes connecté, le navigateur envoie aussi le jeton de connexion avec cette demande. La fonction vérifie le jeton auprès de Supabase avant de décider quel compte du mois utiliser. Le jeton n'est pas envoyé à Anthropic. Un nom, une adresse courriel ou un identifiant de compte ajouté à la demande du document est ignoré. La fonction utilise seulement l'identifiant de compte que Supabase confirme.",
         },
         {
           type: "p",
@@ -82,11 +86,11 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: "La fonction ne sauvegarde pas votre document, les notes, votre lieu ni l'explication dans une base de données ou un fichier. Il n'y a pas de compte auquel les rattacher.",
+          text: "La fonction ne sauvegarde pas votre document, les notes, votre lieu ni l'explication dans une base de données ou un fichier. Se connecter ne change pas cela. Le compte ne contient pas le document.",
         },
         {
           type: "p",
-          text: "La page garde le texte et l'explication en mémoire pendant que vous l'utilisez. Si vous choisissez Expliquer un autre document, la page efface le texte et le nom du fichier. Fermer la page les efface aussi. Le choix de langue peut rester dans localStorage sur cet appareil. Le document, non.",
+          text: "La page garde le texte et l'explication en mémoire pendant que vous l'utilisez. Si vous choisissez Expliquer un autre document, la page efface le texte et le nom du fichier. Fermer la page les efface aussi. Le choix de langue peut rester dans localStorage sur cet appareil, sous le nom swc-lang. Si vous vous connectez, la session de connexion peut rester dans localStorage sur cet appareil, sous des noms qui commencent par swc-auth. Cette session contient les jetons qui vous gardent connecté, et un code de courte durée pour terminer le lien reçu par courriel. Elle ne contient pas le document.",
         },
         {
           type: "p",
@@ -94,7 +98,19 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Pour compter les trois explications gratuites de chaque mois civil, la fonction lit l'adresse IP de la connexion et la transforme en un hachage salé. Un hachage salé est un code brouillé. Il est fait à partir de l'adresse IP, mélangée avec une valeur ajoutée appelée sel, pour que l'adresse ne soit pas conservée telle quelle. Nous conservons le code brouillé, pas l'adresse. Le même dossier conserve le mois civil, le nombre d'explications commencées ce mois-ci, un identifiant aléatoire pour chacune de ces explications, et le nombre de fois que le service a été appelé pour cette explication. Nous ne conservons pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication dans ce dossier. Le hachage et le compte ne sont pas envoyés à Anthropic. Les personnes qui utilisent la même connexion Internet partagent les trois explications gratuites, parce que le hachage représente la connexion, pas un nom. Cette limite n'est pas gardée dans le navigateur. Le site ne dépose pas de témoin (cookie) pour elle, et il ne la met pas dans localStorage. Vider le navigateur ne remet pas le compte à zéro.",
+          text: "Pour compter les trois explications gratuites de chaque mois civil, la fonction lit l'adresse IP de la connexion et la transforme en un hachage salé. Un hachage salé est un code brouillé. Il est fait à partir de l'adresse IP, mélangée avec une valeur ajoutée appelée sel, pour que l'adresse ne soit pas conservée telle quelle. Nous conservons le code brouillé, pas l'adresse. Le même dossier conserve le mois civil, le nombre d'explications commencées ce mois-ci, un identifiant aléatoire pour chacune de ces explications, et le nombre de fois que le service a été appelé pour cette explication. Nous ne conservons pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication dans ce dossier. Le hachage et le compte ne sont pas envoyés à Anthropic. Les personnes qui ne sont pas connectées, et qui utilisent la même connexion Internet, partagent les trois explications gratuites, parce que le hachage représente la connexion, pas un nom. Cette limite n'est pas gardée dans le navigateur. Le site ne dépose pas de témoin (cookie) pour elle, et il ne la met pas dans localStorage. Vider le navigateur ne remet pas le compte à zéro.",
+        },
+        {
+          type: "p",
+          text: "Si vous êtes connecté, ces trois explications gratuites sont comptées sur le compte, et non sur la connexion. La fonction vérifie le jeton de connexion auprès de Supabase et lit l'identifiant de compte que Supabase confirme. Elle conserve un hachage salé de cet identifiant, le mois civil, le nombre d'explications commencées, l'identifiant aléatoire de chaque explication, et le nombre de fois que le service a été appelé. Elle ne conserve pas l'adresse courriel dans ce dossier. Elle n'y conserve pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication. Le même compte a droit à trois explications, même depuis une autre connexion. Une autre personne connectée sur la même connexion a ses propres trois. Vider le navigateur ne remet pas ce compte à zéro.",
+        },
+        {
+          type: "p",
+          text: "Quand vous vous connectez, Supabase conserve le compte à https://ldhkqqhlztsaljccazti.supabase.co. Le compte contient votre adresse courriel, l'identifiant de compte que Supabase attribue, et les moments que Supabase note pour ce compte. Supabase envoie le courriel de connexion. Le site ne conserve pas de mot de passe, parce qu'il n'y en a pas. Ce compte ne contient pas votre document, les notes ni l'explication.",
+        },
+        {
+          type: "p",
+          text: "Nous gardons aussi une ligne dans une table Supabase nommée accounts, pour qu'une étape plus tard puisse noter si le compte a payé. La ligne contient l'identifiant de compte, l'adresse courriel, un indicateur payé, et les moments où la ligne a été créée et mise à jour. L'indicateur payé reste faux. La ligne ne contient pas votre document, les notes ni l'explication. La sécurité au niveau des lignes (row level security) est activée : une session dans le navigateur ne peut pas changer l'indicateur payé, et elle ne peut pas lire la ligne de quelqu'un d'autre. Cette page ne lit pas et n'écrit pas cette ligne. La clé secrète qui peut gérer la table reste sur le serveur, dans un réglage nommé SUPABASE_SECRET_KEY. Elle n'est pas incluse dans la page que votre navigateur charge. Un nouveau compte reçoit une ligne quand cette table est en place. Si vous vous êtes connecté avant que la table existe, la ligne est ajoutée au moment où la table est mise en place.",
         },
       ],
     },
@@ -111,7 +127,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "La fonction lit l'adresse IP seulement pour faire le hachage salé décrit plus haut. Elle n'écrit pas l'adresse IP dans le dossier d'utilisation. Elle n'écrit pas l'adresse IP dans le journal du serveur.",
+          text: "La fonction lit l'adresse IP seulement pour faire le hachage salé décrit plus haut. Elle n'écrit pas l'adresse IP dans le dossier d'utilisation. Elle n'écrit pas l'adresse IP dans le journal du serveur. Elle n'écrit pas le jeton de connexion ni l'adresse courriel dans le journal du serveur.",
         },
       ],
     },
@@ -132,7 +148,11 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le code ne comprend pas d'outil d'analyse, de pixel publicitaire ni d'autre traceur. Il ne dépose pas de témoins (cookies). Il utilise localStorage seulement pour retenir la langue que vous avez choisie : anglais, français ou espagnol. Il ne conserve pas votre document dans localStorage. Il n'utilise pas sessionStorage. Nous ne contrôlons pas si Google ou Cloudflare dépose un témoin quand votre navigateur charge une police de caractères ou le fichier pdf.js chez eux.",
+          text: "Si vous vous connectez, le navigateur contacte Supabase à https://ldhkqqhlztsaljccazti.supabase.co pour envoyer l'adresse courriel et pour recevoir la session de connexion. Cette demande ne comprend pas votre document. La fonction contacte aussi cette adresse, avec la clé secrète nommée SUPABASE_SECRET_KEY, pour vérifier que la session est réelle. Cette vérification envoie le jeton de connexion. Elle n'envoie pas le document, les notes ni l'explication.",
+        },
+        {
+          type: "p",
+          text: "Le code ne comprend pas d'outil d'analyse, de pixel publicitaire ni d'autre traceur. Il ne dépose pas de témoins (cookies). Il utilise localStorage pour retenir la langue que vous avez choisie : anglais, français ou espagnol. Si vous vous connectez, il utilise aussi localStorage pour garder la session de connexion sur cet appareil. Il ne conserve pas votre document dans localStorage. Il n'utilise pas sessionStorage. Nous ne contrôlons pas si Google, Cloudflare ou Supabase dépose un témoin quand votre navigateur les contacte.",
         },
       ],
     },
@@ -146,6 +166,10 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: "Nous utilisons le hachage salé et le compte du mois pour une seule fin : permettre trois explications gratuites par connexion à chaque mois civil, et vous dire quand elles recommencent. Nous n'utilisons pas le hachage pour trouver votre nom, et nous ne le rattachons pas au document.",
+        },
+        {
+          type: "p",
+          text: "Si vous vous connectez, nous utilisons l'adresse courriel pour envoyer le lien de connexion et pour montrer quel compte est connecté sur cet appareil. Nous utilisons l'identifiant de compte pour donner à ce compte ses trois explications gratuites à chaque mois civil, au lieu de les compter sur la connexion. Nous gardons l'indicateur payé pour qu'une étape plus tard puisse noter si le compte a payé. L'indicateur reste faux. Nous n'utilisons pas l'adresse courriel pour des messages publicitaires, et nous ne la vendons pas.",
         },
         {
           type: "p",
@@ -172,6 +196,10 @@ export const privacyPolicyFr = {
           type: "p",
           text: "Ce site n'envoie pas à Anthropic d'instruction sur la durée de conservation d'une demande d'API. Nous ne gardons pas notre propre copie, et le site n'a aucun moyen de retrouver ou d'effacer une ancienne demande chez Anthropic. La politique de confidentialité d'Anthropic décrit ce qu'Anthropic fait des entrées d'API : https://www.anthropic.com/legal/privacy",
         },
+        {
+          type: "p",
+          text: "Supabase reçoit l'adresse courriel et la session de connexion pour envoyer le lien et confirmer qui est connecté. La demande va à https://ldhkqqhlztsaljccazti.supabase.co. Supabase peut traiter ces renseignements à l'extérieur de votre province et à l'extérieur du Canada. Le document ne fait pas partie de cette demande. La politique de confidentialité de Supabase décrit ce service : https://supabase.com/privacy",
+        },
       ],
     },
     {
@@ -185,6 +213,10 @@ export const privacyPolicyFr = {
           type: "p",
           text: "Nous gardons ce dossier d'utilisation pour le mois civil en cours, selon le temps universel coordonné (UTC). Quand vous commencez une explication dans un nouveau mois, nous remplaçons le dossier par ce nouveau mois. Nous ne gardons pas les mois précédents. Si vous ne revenez pas, le hachage et le compte du dernier mois peuvent rester dans Netlify Blobs jusqu'à ce qu'une visite plus tard les remplace. Un dossier d'un mois passé ne change pas le compte du nouveau mois.",
         },
+        {
+          type: "p",
+          text: `Si vous vous connectez, nous conservons l'adresse courriel et la ligne du compte tant que le compte existe. L'indicateur payé reste faux, et il reste avec cette ligne. Se déconnecter retire la session de localStorage sur cet appareil. Cela n'efface pas le compte. Vous pouvez nous demander d'effacer le compte en écrivant à ${email}. Nous ne conservons pas le document avec le compte.`,
+        },
       ],
     },
     {
@@ -196,7 +228,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: `Comme nous ne gardons pas de copie du document, nous n'avons habituellement rien du document à vous montrer ou à corriger. Le dossier d'utilisation n'est pas classé sous votre nom ni votre courriel, alors un courriel seul ne nous dit pas quel hachage est le vôtre. Si vous écrivez à ${email}, nous vous dirons ce que nous détenons et nous répondrons dans le délai que ces lois permettent. Nous ne pouvons pas récupérer un ancien document à partir de ce site. Nous ne pouvons pas non plus l'effacer chez Anthropic pour vous, parce que nous ne gardons pas de dossier qui nous permettrait de trouver cette demande.`,
+          text: `Comme nous ne gardons pas de copie du document, nous n'avons habituellement rien du document à vous montrer ou à corriger. Si vous ne vous êtes pas connecté, le dossier d'utilisation n'est pas classé sous votre nom ni votre courriel, alors un courriel seul ne nous dit pas quel hachage de connexion est le vôtre. Si vous vous êtes connecté, nous pouvons trouver le compte par l'adresse courriel. Ce compte comprend le courriel et l'indicateur payé. Il ne comprend pas le document. Si vous écrivez à ${email}, nous vous dirons ce que nous détenons et nous répondrons dans le délai que ces lois permettent. Nous ne pouvons pas récupérer un ancien document à partir de ce site. Nous ne pouvons pas non plus l'effacer chez Anthropic pour vous, parce que nous ne gardons pas de dossier qui nous permettrait de trouver cette demande.`,
         },
         {
           type: "p",
@@ -209,7 +241,7 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, l'identifiant aléatoire de l'explication, le hachage salé de l'adresse IP de la connexion, le compte du mois, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication.",
+          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, l'identifiant aléatoire de l'explication, le hachage salé de l'adresse IP de la connexion, le compte du mois, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication. Si vous vous connectez, ils comprennent aussi l'adresse courriel, l'identifiant de compte, la session de connexion gardée sur cet appareil, et l'indicateur payé, qui reste faux.",
         },
         {
           type: "p",
@@ -255,7 +287,7 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: `Ces conditions sont entre vous et ${name} pour votre utilisation de Sign With Clarity à signwithclarity.ca. Le site est gratuit. Il n'y a pas de compte.`,
+          text: `Ces conditions sont entre vous et ${name} pour votre utilisation de Sign With Clarity à signwithclarity.ca. Le site est gratuit. Vous pouvez l'utiliser sans compte. La connexion par courriel est facultative.`,
         },
         {
           type: "p",

@@ -44,9 +44,18 @@ test("the privacy policy describes only the collection the code performs", () =>
   assert.match(privacy, /claude-sonnet-4-6/);
   assert.match(privacy, /ANTHROPIC_API_KEY/);
   assert.match(privacy, /does not set cookies/);
-  assert.match(privacy, /localStorage only to remember the language/);
+  assert.match(privacy, /localStorage to remember the language/);
   assert.equal(privacy.includes("does not use localStorage"), false);
   assert.match(privacy, /does not store your document in localStorage/);
+  assert.match(privacy, /Sign-in is optional/);
+  assert.match(privacy, /email address/);
+  assert.match(privacy, /ldhkqqhlztsaljccazti\.supabase\.co/);
+  assert.match(privacy, /row level security/i);
+  assert.match(privacy, /SUPABASE_SECRET_KEY/);
+  assert.match(privacy, /paid flag stays false/);
+  assert.match(privacy, /swc-auth/);
+  assert.match(privacy, /There is no password/);
+  assert.equal(privacy.includes("There is no account to attach"), false);
   assert.match(privacy, /salted hash/);
   assert.match(privacy, /calendar month/);
   assert.match(privacy, /Netlify Blobs/);
@@ -95,8 +104,16 @@ test("French and Spanish legal pages match the English shape and describe the la
     assert.equal(privacyText.includes(STORAGE_NOTE), false);
   }
 
-  assert.match(documentPlainText(legalDocument("privacy", "fr")), /seulement pour retenir la langue/);
-  assert.match(documentPlainText(legalDocument("privacy", "es")), /solo para recordar el idioma/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /pour retenir la langue/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /session de connexion/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /adresse courriel/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /SUPABASE_SECRET_KEY/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /indicateur payé/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /para recordar el idioma/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /sesión de acceso/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /correo electrónico/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /SUPABASE_SECRET_KEY/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /indicador de pago/);
   assert.match(documentPlainText(legalDocument("privacy", "fr")), /hachage salé/);
   assert.match(documentPlainText(legalDocument("privacy", "fr")), /mois civil/);
   assert.match(documentPlainText(legalDocument("privacy", "fr")), /ne remet pas le compte à zéro/);

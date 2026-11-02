@@ -5,6 +5,7 @@ import {
   tooLongMessage,
 } from "./limits.js";
 import { asLanguage, t } from "./messages.js";
+import { isAccessToken } from "./session.js";
 
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -130,15 +131,27 @@ function isUsage(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000, onUsage } = {}) {
+async function resolveAccessToken(accessToken) {
+  try {
+    const value = typeof accessToken === "function" ? await accessToken() : accessToken;
+    return isAccessToken(value) ? String(value).trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000, onUsage, accessToken } = {}) {
   const language = asLanguage(payload?.language) || "en";
+  const headers = { "Content-Type": "application/json" };
+  const token = await resolveAccessToken(accessToken);
+  if (token) headers.Authorization = `Bearer ${token}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let response;
   try {
     response = await fetchImpl("/.netlify/functions/decode", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
