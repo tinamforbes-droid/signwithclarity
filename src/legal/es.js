@@ -61,7 +61,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Cuando elige Explicar mi documento, el navegador envía una solicitud a la función de Netlify de este sitio, en /.netlify/functions/decode. La solicitud incluye el texto del documento, el país que eligió, la provincia, el territorio o el estado que eligió, y el idioma que eligió.",
+          text: "Cuando elige Explicar mi documento, el navegador envía una solicitud a la función de Netlify de este sitio, en /.netlify/functions/decode. La solicitud incluye el texto del documento, el país que eligió, la provincia, el territorio o el estado que eligió, el idioma que eligió y un identificador al azar para esa explicación. La página crea ese identificador cuando usted pide la explicación. No es su nombre y no sale del documento. Cada parte de un documento más largo usa el mismo identificador, para que las partes cuenten como una sola explicación.",
         },
         {
           type: "p",
@@ -92,6 +92,10 @@ export const privacyPolicyEs = {
           type: "p",
           text: "Los documentos no se guardan.",
         },
+        {
+          type: "p",
+          text: "Para contar las tres explicaciones gratuitas de cada mes calendario, la función lee la dirección IP de la conexión y la convierte en un hash con sal. Un hash con sal es un código revuelto. Se hace a partir de la dirección IP, mezclada con un valor extra llamado sal, para que la dirección no se guarde tal cual. Guardamos el código revuelto, no la dirección. El mismo registro guarda el mes calendario, la cantidad de explicaciones empezadas este mes, un identificador al azar para cada una de esas explicaciones y cuántas veces se llamó al servicio para esa explicación. No guardamos el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación en ese registro. El hash y la cuenta no se envían a Anthropic. Las personas que usan la misma conexión a internet comparten las tres explicaciones gratuitas, porque el hash representa la conexión, no un nombre. Este límite no se guarda en el navegador. El sitio no coloca una cookie para eso, y no lo pone en localStorage. Borrar los datos del navegador no vuelve a poner la cuenta en cero.",
+        },
       ],
     },
     {
@@ -107,7 +111,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El código de la función no lee ni guarda su dirección IP. Nada en el código del sitio la anota.",
+          text: "La función lee la dirección IP solo para crear el hash con sal descrito arriba. No escribe la dirección IP en el registro de uso. No escribe la dirección IP en el registro del servidor.",
         },
       ],
     },
@@ -124,7 +128,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El sitio y la función que escribe la explicación están alojados en Netlify. La solicitud de explicación va a Netlify porque allí se ejecuta la función en /.netlify/functions/decode. El código de la función no guarda el cuerpo de la solicitud.",
+          text: "El sitio y la función que escribe la explicación están alojados en Netlify. La solicitud de explicación va a Netlify porque allí se ejecuta la función en /.netlify/functions/decode. El código de la función no guarda el cuerpo de la solicitud. Sí guarda el registro de uso en Netlify Blobs, un espacio de almacenamiento incluido con el alojamiento de Netlify de este sitio. Ese registro es el hash con sal y las cuentas descritas arriba, no el documento.",
         },
         {
           type: "p",
@@ -138,6 +142,10 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: "Usamos el texto del documento y la ubicación que usted eligió para un solo fin: escribir la explicación en lenguaje claro que pidió, y mostrársela. El idioma sirve para escribir esa explicación en el idioma elegido.",
+        },
+        {
+          type: "p",
+          text: "Usamos el hash con sal y la cuenta del mes para un solo fin: permitir tres explicaciones gratuitas por conexión en cada mes calendario, y decirle cuándo se renuevan. No usamos el hash para encontrar su nombre, y no lo unimos al documento.",
         },
         {
           type: "p",
@@ -173,6 +181,10 @@ export const privacyPolicyEs = {
           type: "p",
           text: "No conservamos el documento, las notas, la ubicación ni la explicación después de que la función ha respondido. Su navegador los guarda solo hasta que usted sale de la página o los borra. La elección de idioma puede quedarse en localStorage hasta que usted la cambie o la borre.",
         },
+        {
+          type: "p",
+          text: "Guardamos ese registro de uso durante el mes calendario en curso, según el Tiempo Universal Coordinado (UTC). Cuando usted empieza una explicación en un mes nuevo, reemplazamos el registro con ese mes nuevo. No guardamos los meses anteriores. Si usted no vuelve, el hash y la cuenta del último mes pueden quedar en Netlify Blobs hasta que una visita posterior los reemplace. Un registro de un mes pasado no cambia la cuenta del mes nuevo.",
+        },
       ],
     },
     {
@@ -184,7 +196,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: `Como no guardamos una copia, por lo general no tenemos nada de su documento que mostrarle o corregir. Si escribe a ${email}, le diremos qué tenemos y responderemos dentro del plazo que esas leyes permiten. No podemos recuperar un documento anterior desde este sitio. Tampoco podemos borrarlo de Anthropic por usted, porque no guardamos un registro que nos permita encontrar esa solicitud.`,
+          text: `Como no guardamos una copia del documento, por lo general no tenemos nada del documento que mostrarle o corregir. El registro de uso no está archivado con su nombre ni con su correo, así que un correo solo no nos dice cuál hash es el suyo. Si escribe a ${email}, le diremos qué tenemos y responderemos dentro del plazo que esas leyes permiten. No podemos recuperar un documento anterior desde este sitio. Tampoco podemos borrarlo de Anthropic por usted, porque no guardamos un registro que nos permita encontrar esa solicitud.`,
         },
         {
           type: "p",
@@ -197,7 +209,7 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación.",
+          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige, el identificador al azar de la explicación, el hash con sal de la dirección IP de la conexión, la cuenta del mes y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación.",
         },
         {
           type: "p",

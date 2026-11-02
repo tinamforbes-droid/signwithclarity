@@ -9,11 +9,12 @@ import { asLanguage, t } from "./messages.js";
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class DecodeError extends Error {
-  constructor(message, { retryable = false, code = "" } = {}) {
+  constructor(message, { retryable = false, code = "", usage = null } = {}) {
     super(message);
     this.name = "DecodeError";
     this.retryable = retryable;
     this.code = code;
+    this.usage = usage;
   }
 }
 
@@ -125,7 +126,11 @@ export function plainServerMessage(error, status, language = "en") {
   return t(language, "errorGeneric");
 }
 
-export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000 } = {}) {
+function isUsage(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000, onUsage } = {}) {
   const language = asLanguage(payload?.language) || "en";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -169,13 +174,22 @@ export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000
   }
 
   if (!response.ok || data.error) {
-    const retryable = [429, 502, 503, 504].includes(response.status);
+    const code = typeof data.code === "string" && data.code.length <= 40 ? data.code : "server";
+    const retryable = code !== "monthly_limit"
+      && code !== "explanation_closed"
+      && [429, 502, 503, 504].includes(response.status);
     throw new DecodeError(plainServerMessage(data.error, response.status, language), {
       retryable,
-      code: "server",
+      code,
+      usage: isUsage(data.usage) ? data.usage : null,
     });
   }
+  if (isUsage(data.usage)) onUsage?.(data.usage);
   return data.text || "";
+}
+
+function createExplanationId() {
+  return globalThis.crypto.randomUUID();
 }
 
 export async function runDecode({
@@ -183,6 +197,7 @@ export async function runDecode({
   country,
   region,
   language = "en",
+  explanationId,
   onProgress,
   request,
   sleep = defaultSleep,
@@ -197,7 +212,12 @@ export async function runDecode({
   }
 
   const total = plan.chunks.length;
-  const where = { country, region, language: lang };
+  const where = {
+    country,
+    region,
+    language: lang,
+    explanationId: explanationId || createExplanationId(),
+  };
 
   if (total === 1) {
     onProgress?.({ phase: "reading", current: 1, total: 1 });

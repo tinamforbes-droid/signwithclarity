@@ -61,7 +61,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Quand vous choisissez Expliquer mon document, le navigateur envoie une demande à la fonction Netlify de ce site, à /.netlify/functions/decode. La demande comprend le texte du document, le pays que vous avez choisi, la province, le territoire ou l'État que vous avez choisi, et la langue que vous avez choisie.",
+          text: "Quand vous choisissez Expliquer mon document, le navigateur envoie une demande à la fonction Netlify de ce site, à /.netlify/functions/decode. La demande comprend le texte du document, le pays que vous avez choisi, la province, le territoire ou l'État que vous avez choisi, la langue que vous avez choisie, et un identifiant aléatoire pour cette explication. La page crée cet identifiant au moment de la demande. Ce n'est pas votre nom, et il ne vient pas du document. Chaque partie d'un document plus long utilise le même identifiant, pour que les parties comptent comme une seule explication.",
         },
         {
           type: "p",
@@ -92,6 +92,10 @@ export const privacyPolicyFr = {
           type: "p",
           text: "Les documents ne sont pas conservés.",
         },
+        {
+          type: "p",
+          text: "Pour compter les trois explications gratuites de chaque mois civil, la fonction lit l'adresse IP de la connexion et la transforme en un hachage salé. Un hachage salé est un code brouillé. Il est fait à partir de l'adresse IP, mélangée avec une valeur ajoutée appelée sel, pour que l'adresse ne soit pas conservée telle quelle. Nous conservons le code brouillé, pas l'adresse. Le même dossier conserve le mois civil, le nombre d'explications commencées ce mois-ci, un identifiant aléatoire pour chacune de ces explications, et le nombre de fois que le service a été appelé pour cette explication. Nous ne conservons pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication dans ce dossier. Le hachage et le compte ne sont pas envoyés à Anthropic. Les personnes qui utilisent la même connexion Internet partagent les trois explications gratuites, parce que le hachage représente la connexion, pas un nom. Cette limite n'est pas gardée dans le navigateur. Le site ne dépose pas de témoin (cookie) pour elle, et il ne la met pas dans localStorage. Vider le navigateur ne remet pas le compte à zéro.",
+        },
       ],
     },
     {
@@ -107,7 +111,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le code de la fonction ne lit pas et ne sauvegarde pas votre adresse IP. Rien dans le code du site ne l'écrit.",
+          text: "La fonction lit l'adresse IP seulement pour faire le hachage salé décrit plus haut. Elle n'écrit pas l'adresse IP dans le dossier d'utilisation. Elle n'écrit pas l'adresse IP dans le journal du serveur.",
         },
       ],
     },
@@ -124,7 +128,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le site et la fonction qui écrit l'explication sont hébergés par Netlify. La demande d'explication va chez Netlify parce que c'est là que la fonction à /.netlify/functions/decode s'exécute. Le code de la fonction ne sauvegarde pas le corps de la demande.",
+          text: "Le site et la fonction qui écrit l'explication sont hébergés par Netlify. La demande d'explication va chez Netlify parce que c'est là que la fonction à /.netlify/functions/decode s'exécute. Le code de la fonction ne sauvegarde pas le corps de la demande. Il sauvegarde le dossier d'utilisation dans Netlify Blobs, un espace de stockage inclus avec l'hébergement Netlify de ce site. Ce dossier contient le hachage salé et les comptes décrits plus haut, pas le document.",
         },
         {
           type: "p",
@@ -138,6 +142,10 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: "Nous utilisons le texte du document et le lieu que vous avez choisis pour une seule fin : écrire l'explication en langage clair que vous avez demandée, et vous la montrer. La langue sert à écrire cette explication dans la langue choisie.",
+        },
+        {
+          type: "p",
+          text: "Nous utilisons le hachage salé et le compte du mois pour une seule fin : permettre trois explications gratuites par connexion à chaque mois civil, et vous dire quand elles recommencent. Nous n'utilisons pas le hachage pour trouver votre nom, et nous ne le rattachons pas au document.",
         },
         {
           type: "p",
@@ -173,6 +181,10 @@ export const privacyPolicyFr = {
           type: "p",
           text: "Nous ne conservons pas le document, les notes, le lieu ni l'explication après la réponse de la fonction. Votre navigateur les garde seulement jusqu'à ce que vous quittiez la page ou les effaciez. Le choix de langue peut rester dans localStorage jusqu'à ce que vous le changiez ou l'effaciez.",
         },
+        {
+          type: "p",
+          text: "Nous gardons ce dossier d'utilisation pour le mois civil en cours, selon le temps universel coordonné (UTC). Quand vous commencez une explication dans un nouveau mois, nous remplaçons le dossier par ce nouveau mois. Nous ne gardons pas les mois précédents. Si vous ne revenez pas, le hachage et le compte du dernier mois peuvent rester dans Netlify Blobs jusqu'à ce qu'une visite plus tard les remplace. Un dossier d'un mois passé ne change pas le compte du nouveau mois.",
+        },
       ],
     },
     {
@@ -184,7 +196,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: `Comme nous ne gardons pas de copie, nous n'avons habituellement rien de votre document à vous montrer ou à corriger. Si vous écrivez à ${email}, nous vous dirons ce que nous détenons et nous répondrons dans le délai que ces lois permettent. Nous ne pouvons pas récupérer un ancien document à partir de ce site. Nous ne pouvons pas non plus l'effacer chez Anthropic pour vous, parce que nous ne gardons pas de dossier qui nous permettrait de trouver cette demande.`,
+          text: `Comme nous ne gardons pas de copie du document, nous n'avons habituellement rien du document à vous montrer ou à corriger. Le dossier d'utilisation n'est pas classé sous votre nom ni votre courriel, alors un courriel seul ne nous dit pas quel hachage est le vôtre. Si vous écrivez à ${email}, nous vous dirons ce que nous détenons et nous répondrons dans le délai que ces lois permettent. Nous ne pouvons pas récupérer un ancien document à partir de ce site. Nous ne pouvons pas non plus l'effacer chez Anthropic pour vous, parce que nous ne gardons pas de dossier qui nous permettrait de trouver cette demande.`,
         },
         {
           type: "p",
@@ -197,7 +209,7 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication.",
+          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, l'identifiant aléatoire de l'explication, le hachage salé de l'adresse IP de la connexion, le compte du mois, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication.",
         },
         {
           type: "p",
