@@ -61,7 +61,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The site does not ask you to create an account. It does not ask for your name, email address, phone number, or payment details.",
+          text: "You do not need an account. Sign-in is optional, and you can ask for an explanation without one. If you choose to sign in, the site asks for an email address and emails you a link. There is no password. The site does not ask for your name, your phone number, or payment details. An account is not marked as paid.",
         },
       ],
     },
@@ -75,6 +75,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "When you choose Explain my document, the browser sends a request to this site's Netlify function at /.netlify/functions/decode. The request includes the document text, the country you chose, the province, territory, or state you chose, the language you chose, and a random id for that explanation. The page creates that id when you ask for the explanation. It is not your name, and it does not come from the document. Each part of a longer document uses the same id, so the parts count as one explanation.",
+        },
+        {
+          type: "p",
+          text: "If you are signed in, the browser also sends the sign-in token with that request. The function checks the token with Supabase before it decides whose monthly count to use. The token is not sent to Anthropic. A name, an email address, or an account id typed into the document request is ignored. The function uses only the account id that Supabase confirms.",
         },
         {
           type: "p",
@@ -95,11 +99,11 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "The function does not save your document, the notes, your location, or the explanation in a database or a file. There is no account to attach them to.",
+          text: "The function does not save your document, the notes, your location, or the explanation in a database or a file. Signing in does not change that. The account does not hold the document.",
         },
         {
           type: "p",
-          text: "The page holds the text and the explanation in memory while you are using it. If you choose Explain another document, the page clears the text and the file name. Closing the page clears them as well. The language choice can stay in localStorage on this device. The document does not.",
+          text: "The page holds the text and the explanation in memory while you are using it. If you choose Explain another document, the page clears the text and the file name. Closing the page clears them as well. The language choice can stay in localStorage on this device, under the name swc-lang. If you sign in, the sign-in session can stay in localStorage on this device, under names that start with swc-auth. That session holds the tokens that keep you signed in, and a short-lived code used to finish the link from your email. It does not hold the document.",
         },
         {
           type: "p",
@@ -107,7 +111,19 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "To count the three free explanations in each calendar month, the function reads the IP address of the connection and turns it into a salted hash. A salted hash is a scrambled code. It is made from the IP address mixed with an extra value called a salt, so the address is not stored as itself. We store the scrambled code, not the address. The same record stores the calendar month, the number of explanations started this month, a random id for each of those explanations, and how many times the explainer was called for that explanation. We do not store the document, the notes, the file name, the place you chose, or the explanation in that record. The hash and the count are not sent to Anthropic. People using the same internet connection share the three free explanations, because the hash stands for the connection, not for a name. This limit is not kept in the browser. The site does not set a cookie for it, and it does not put it in localStorage. Clearing the browser does not start the count over.",
+          text: "To count the three free explanations in each calendar month, the function reads the IP address of the connection and turns it into a salted hash. A salted hash is a scrambled code. It is made from the IP address mixed with an extra value called a salt, so the address is not stored as itself. We store the scrambled code, not the address. The same record stores the calendar month, the number of explanations started this month, a random id for each of those explanations, and how many times the explainer was called for that explanation. We do not store the document, the notes, the file name, the place you chose, or the explanation in that record. The hash and the count are not sent to Anthropic. People who are not signed in, and who use the same internet connection, share the three free explanations, because the hash stands for the connection, not for a name. This limit is not kept in the browser. The site does not set a cookie for it, and it does not put it in localStorage. Clearing the browser does not start the count over.",
+        },
+        {
+          type: "p",
+          text: "If you are signed in, those three free explanations are counted on the account instead of on the connection. The function checks the sign-in token with Supabase and reads the account id Supabase confirms. It stores a salted hash of that account id, the calendar month, how many explanations were started, the random id for each explanation, and how many times the explainer was called. It does not store the email address in that record. It does not store the document, the notes, the file name, the place you chose, or the explanation there. The same account has one count of three, including from another connection. A different signed-in person on the same connection has their own three. Clearing the browser does not start this count over.",
+        },
+        {
+          type: "p",
+          text: "When you sign in, Supabase stores the account at https://ldhkqqhlztsaljccazti.supabase.co. The account holds your email address, the account id Supabase assigns, and the times Supabase records for that account. Supabase sends the sign-in email. The site does not store a password, because there is no password. This account does not hold your document, the notes, or the explanation.",
+        },
+        {
+          type: "p",
+          text: "We also keep a row in a Supabase table named accounts, so a later step can record whether the account has paid. The row holds the account id, the email address, a paid flag, and the times the row was created and updated. The paid flag stays false. The row does not hold your document, the notes, or the explanation. Row level security is on, so a signed-in browser session is not allowed to change the paid flag, and it is not allowed to read someone else's row. This page does not read or write that row. The secret key that can manage the table stays on the server, in a setting named SUPABASE_SECRET_KEY. It is not included in the page your browser loads. A new account gets a row when that table is in place. If you signed in before the table existed, the row is added when the table is set up.",
         },
       ],
     },
@@ -124,7 +140,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The function reads the IP address only to make the salted hash described above. It does not write the IP address into the usage record. It does not write the IP address into the server log.",
+          text: "The function reads the IP address only to make the salted hash described above. It does not write the IP address into the usage record. It does not write the IP address into the server log. It does not write the sign-in token or the email address into the server log.",
         },
       ],
     },
@@ -145,7 +161,11 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The code does not include an analytics tool, an advertising pixel, or another tracker. It does not set cookies. It uses localStorage only to remember the language you chose: English, French, or Spanish. It does not store your document in localStorage. It does not use sessionStorage. We do not control whether Google or Cloudflare sets a cookie when your browser loads a font or the pdf.js file from them.",
+          text: "If you sign in, the browser contacts Supabase at https://ldhkqqhlztsaljccazti.supabase.co to send the email address and to receive the sign-in session. That request does not include your document. The function also contacts that address, using the secret key named SUPABASE_SECRET_KEY, to check that the session is real. That check sends the sign-in token. It does not send the document, the notes, or the explanation.",
+        },
+        {
+          type: "p",
+          text: "The code does not include an analytics tool, an advertising pixel, or another tracker. It does not set cookies. It uses localStorage to remember the language you chose: English, French, or Spanish. If you sign in, it also uses localStorage to keep the sign-in session on this device. It does not store your document in localStorage. It does not use sessionStorage. We do not control whether Google, Cloudflare, or Supabase sets a cookie when your browser contacts them.",
         },
       ],
     },
@@ -159,6 +179,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "We use the salted hash and the monthly count for one purpose: to allow three free explanations on a connection each calendar month, and to tell you when they reset. We do not use the hash to find your name, and we do not attach it to the document.",
+        },
+        {
+          type: "p",
+          text: "If you sign in, we use the email address to send the sign-in link and to show which account is signed in on this device. We use the account id to give that account its own three free explanations each calendar month, instead of using the connection's count. We keep the paid flag so a later step can record whether the account has paid. The flag stays false. We do not use the email address for marketing, and we do not sell it.",
         },
         {
           type: "p",
@@ -185,6 +209,10 @@ export const privacyPolicy = {
           type: "p",
           text: "This site does not send Anthropic an instruction about how long to keep an API request. We do not keep our own copy, and the site has no way to look up or delete a past request at Anthropic. Anthropic's privacy policy describes what Anthropic does with API inputs: https://www.anthropic.com/legal/privacy",
         },
+        {
+          type: "p",
+          text: "Supabase receives the email address and the sign-in session so it can send the link and confirm who is signed in. The request goes to https://ldhkqqhlztsaljccazti.supabase.co. Supabase may process that information outside your province and outside Canada. The document is not part of that request. Supabase's privacy policy describes that service: https://supabase.com/privacy",
+        },
       ],
     },
     {
@@ -198,6 +226,10 @@ export const privacyPolicy = {
           type: "p",
           text: "We keep the usage record for the current calendar month, using Coordinated Universal Time (UTC). When you start an explanation in a new month, we replace the record with that new month. We do not keep the earlier months. If you do not come back, the last month's hash and count can stay in Netlify Blobs until a later visit replaces them. A record from a past month does not change the count for the new month.",
         },
+        {
+          type: "p",
+          text: `If you sign in, we keep the email address and the account row for as long as the account exists. The paid flag stays false, and it stays with that row. Signing out removes the session from localStorage on this device. It does not delete the account. You can ask us to delete the account by writing to ${email}. We do not keep the document with the account.`,
+        },
       ],
     },
     {
@@ -209,7 +241,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: `We do not keep a copy of your document, so we usually have nothing from the document to show you or correct. The usage record is not filed under your name or your email, so an email alone does not tell us which hash is yours. If you write to ${email}, we will tell you what we hold and respond within the time those laws allow. We cannot pull a past document back from this site. We also cannot delete it from Anthropic for you, because we do not keep a record that would let us find that request.`,
+          text: `We do not keep a copy of your document, so we usually have nothing from the document to show you or correct. If you have not signed in, the usage record is not filed under your name or your email, so an email alone does not tell us which connection hash is yours. If you have signed in, we can find the account by the email address. That account includes the email and the paid flag. It does not include the document. If you write to ${email}, we will tell you what we hold and respond within the time those laws allow. We cannot pull a past document back from this site. We also cannot delete it from Anthropic for you, because we do not keep a record that would let us find that request.`,
         },
         {
           type: "p",
@@ -222,7 +254,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, the random explanation id, the salted hash of the connection's IP address, the monthly count, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation.",
+          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, the random explanation id, the salted hash of the connection's IP address, the monthly count, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation. If you sign in, it also includes the email address, the account id, the sign-in session kept on this device, and the paid flag, which stays false.",
         },
         {
           type: "p",
@@ -268,7 +300,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: `These terms are between you and ${name} for your use of Sign With Clarity at signwithclarity.ca. The site is free. There is no account.`,
+          text: `These terms are between you and ${name} for your use of Sign With Clarity at signwithclarity.ca. The site is free. You can use it without an account. Sign-in by email is optional.`,
         },
         {
           type: "p",

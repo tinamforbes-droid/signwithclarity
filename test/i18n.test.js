@@ -76,6 +76,13 @@ test("every short string exists in French and Spanish, with the same placeholder
   assert.match(t("fr", "loadingPart", { current: 2, total: 5 }), /Partie 2 de 5/);
   assert.match(t("es", "loadingPart", { current: 2, total: 5 }), /Parte 2 de 5/);
   assert.equal(pageTitle("fr", "privacy"), MESSAGES.fr.pageTitlePrivacy);
+  assert.match(t("en", "signInCheckEmail", { email: "ada@example.com" }), /^Check your email/);
+  assert.match(t("en", "signInCheckEmail", { email: "ada@example.com" }), /ada@example.com/);
+  assert.match(t("fr", "signInCheckEmail", { email: "ada@example.com" }), /courriel/i);
+  assert.match(t("es", "signInCheckEmail", { email: "ada@example.com" }), /correo/);
+  assert.match(t("en", "signInOptional"), /optional/i);
+  assert.match(t("fr", "signOutButton"), /déconnecter/);
+  assert.match(t("es", "signOutButton"), /Cerrar sesión/);
   assert.equal(LANGUAGE_CHOICES.map((choice) => choice.label).join(","), "English,Français,Español");
 });
 

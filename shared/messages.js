@@ -106,6 +106,20 @@ const en = {
   freeRemainingOne: "1 free explanation left this month. It resets on {date}.",
   freeLimitReached: "You've used your 3 free explanations this month. They reset on {date}. Paid options are coming soon.",
   errorExplanationClosed: "This explanation has already been read as far as we can in one try. Please start it again if you still have a free explanation this month.",
+  signInOptional: "Sign in is optional. You can explain a document without an account.",
+  signInEmailLabel: "Email",
+  signInButton: "Email me a sign-in link",
+  signInHint: "No password. We'll send you a link.",
+  signInSending: "Sending the link...",
+  signInCheckEmail: "Check your email. Open the link we sent to {email}. You can keep using the site while you wait.",
+  signInInvalidEmail: "Please enter the email address where we should send the link.",
+  signInFailed: "We couldn't send the link just now. Please try again in a moment.",
+  signInUnavailable: "Sign-in isn't available on this copy of the site. You can still explain a document.",
+  signedInAs: "Signed in as {email}.",
+  signOutButton: "Sign out",
+  signOutFailed: "We couldn't sign out just now. Please try again in a moment.",
+  signedInCount: "Your 3 free explanations this month are counted on this account.",
+  signInChange: "Use a different email",
 };
 
 const fr = {
@@ -204,6 +218,20 @@ const fr = {
   freeRemainingOne: "Il vous reste 1 explication gratuite ce mois-ci. Elle recommence le {date}.",
   freeLimitReached: "Vous avez utilisé vos 3 explications gratuites ce mois-ci. Elles recommencent le {date}. Les options payantes arrivent bientôt.",
   errorExplanationClosed: "Cette explication a déjà été lue aussi loin que nous le pouvons en une fois. Veuillez la recommencer si vous avez encore une explication gratuite ce mois-ci.",
+  signInOptional: "La connexion est facultative. Vous pouvez faire expliquer un document sans compte.",
+  signInEmailLabel: "Courriel",
+  signInButton: "M'envoyer un lien de connexion",
+  signInHint: "Aucun mot de passe. Nous vous enverrons un lien.",
+  signInSending: "Envoi du lien...",
+  signInCheckEmail: "Regardez vos courriels. Ouvrez le lien que nous avons envoyé à {email}. Vous pouvez continuer à utiliser le site en attendant.",
+  signInInvalidEmail: "Veuillez entrer l'adresse courriel où nous devons envoyer le lien.",
+  signInFailed: "Nous n'avons pas pu envoyer le lien pour le moment. Veuillez réessayer dans un instant.",
+  signInUnavailable: "La connexion n'est pas offerte sur cette copie du site. Vous pouvez tout de même faire expliquer un document.",
+  signedInAs: "Connecté en tant que {email}.",
+  signOutButton: "Se déconnecter",
+  signOutFailed: "Nous n'avons pas pu vous déconnecter pour le moment. Veuillez réessayer dans un instant.",
+  signedInCount: "Vos 3 explications gratuites ce mois-ci sont comptées sur ce compte.",
+  signInChange: "Utiliser un autre courriel",
 };
 
 const es = {
@@ -302,6 +330,20 @@ const es = {
   freeRemainingOne: "Le queda 1 explicación gratuita este mes. Se renueva el {date}.",
   freeLimitReached: "Ya usó sus 3 explicaciones gratuitas de este mes. Se renuevan el {date}. Las opciones de pago llegarán pronto.",
   errorExplanationClosed: "Esta explicación ya se leyó hasta donde podemos en un intento. Vuelva a empezarla si todavía le queda una explicación gratuita este mes.",
+  signInOptional: "Iniciar sesión es opcional. Puede pedir una explicación sin una cuenta.",
+  signInEmailLabel: "Correo electrónico",
+  signInButton: "Enviarme un enlace para iniciar sesión",
+  signInHint: "Sin contraseña. Le enviaremos un enlace.",
+  signInSending: "Enviando el enlace...",
+  signInCheckEmail: "Revise su correo. Abra el enlace que enviamos a {email}. Puede seguir usando el sitio mientras espera.",
+  signInInvalidEmail: "Escriba el correo electrónico al que debemos enviar el enlace.",
+  signInFailed: "No pudimos enviar el enlace en este momento. Inténtelo de nuevo en un momento.",
+  signInUnavailable: "El inicio de sesión no está disponible en esta copia del sitio. Igual puede pedir una explicación.",
+  signedInAs: "Sesión iniciada como {email}.",
+  signOutButton: "Cerrar sesión",
+  signOutFailed: "No pudimos cerrar la sesión en este momento. Inténtelo de nuevo en un momento.",
+  signedInCount: "Sus 3 explicaciones gratuitas de este mes se cuentan en esta cuenta.",
+  signInChange: "Usar otro correo",
 };
 
 export const MESSAGES = { en, fr, es };

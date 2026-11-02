@@ -18,6 +18,8 @@ import {
   regionOptions,
 } from "../shared/regions.js";
 import { usageStatusMessage } from "../shared/usageCopy.js";
+import AccountBar from "./AccountBar.jsx";
+import { currentAccessToken } from "./authClient.js";
 import LegalPage from "./LegalPage.jsx";
 import { storageNote } from "./legalCopy.js";
 
@@ -129,6 +131,87 @@ const STYLES = `
   .lang-switch button:focus-visible {
     outline: 2px solid var(--gold);
     outline-offset: 2px;
+  }
+
+  .account-bar {
+    background: var(--cream);
+    border-bottom: 1px solid rgba(201, 169, 110, 0.45);
+    padding: 16px 20px 18px;
+  }
+  .account-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .account-lead,
+  .account-hint,
+  .account-status {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-light);
+  }
+  .account-status { color: var(--navy); }
+  .account-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .account-label {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .account-input {
+    flex: 1 1 200px;
+    max-width: 280px;
+    border: 1px solid var(--gold-light);
+    background: var(--white);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .account-input:focus {
+    outline: 2px solid var(--gold);
+    border-color: var(--gold);
+  }
+  .account-btn {
+    border: 1px solid var(--navy);
+    background: var(--white);
+    color: var(--navy);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .account-btn:hover { background: var(--cream-dark); }
+  .account-btn:disabled { opacity: 0.65; cursor: default; }
+  .account-btn:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .account-form .account-hint,
+  .account-status,
+  .account-signed .account-hint {
+    flex: 1 1 100%;
+    margin-top: 4px;
+  }
+  .account-signed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    justify-content: center;
+  }
+  .account-error {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--red-flag);
   }
 
   /* HERO */
@@ -1119,7 +1202,10 @@ export default function SignWithClarity() {
         region,
         language: lang,
         onProgress: setProgress,
-        request: (payload) => postDecode(payload, { onUsage: setUsage }),
+        request: (payload) => postDecode(payload, {
+          onUsage: setUsage,
+          accessToken: currentAccessToken,
+        }),
       });
       setResults(outcome.results);
       setPartsRead(outcome.parts);
@@ -1168,6 +1254,8 @@ export default function SignWithClarity() {
             <span className="header-badge">{t(lang, "badge")}</span>
           </div>
         </header>
+
+        <AccountBar lang={lang} />
 
         {page === "home" ? (
         <>

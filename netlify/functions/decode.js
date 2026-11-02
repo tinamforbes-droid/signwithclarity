@@ -20,8 +20,10 @@
 //
 // A free connection may start three explanations per calendar month. The
 // count is kept in Netlify Blobs under a salted hash of the IP address.
-// The document itself is not stored. Paid or signed-in access, added later,
-// skips this in shared/access.js. A flag in the request body cannot.
+// If the request includes a Supabase session, this function checks that
+// session with the secret key and counts the three on that account instead.
+// The document itself is not stored. Paid access, added later, skips the
+// count in shared/access.js. A flag in the request body cannot.
 
 import {
   CHUNK_SIZE,
@@ -32,6 +34,13 @@ import {
 import { asLanguage, t } from "../../shared/messages.js";
 import { locationBlock, systemFor } from "../../shared/prompts.js";
 import { enforceUsageLimit, resolveUsageStore } from "../../shared/usageGate.js";
+
+function serverEnv(context) {
+  if (context?.env && typeof context.env === "object") {
+    return { ...process.env, ...context.env };
+  }
+  return process.env;
+}
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -185,9 +194,10 @@ export async function handler(event, context) {
       headers: event.headers,
       payload,
       store: await resolveUsageStore(context),
-      env: process.env,
+      env: serverEnv(context),
       now: context?.now instanceof Date ? context.now : new Date(),
       hasUnlimitedAccess: context?.hasUnlimitedAccess,
+      verifySession: context?.verifySession,
       language,
     });
     if (!gate.allowed) return reply(gate.statusCode, gate.body);

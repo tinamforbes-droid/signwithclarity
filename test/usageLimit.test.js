@@ -21,6 +21,7 @@ import {
   resolveUsageStore,
   usageSalt,
   usageStorageKey,
+  usageSubject,
 } from "../shared/usageGate.js";
 import { handler } from "../netlify/functions/decode.js";
 
@@ -476,4 +477,116 @@ test("the blob adapter writes only when the previous version still matches", asy
   assert.equal(await store.compareAndSet("hash", { month: "2026-11", used: 2 }, "stale"), false);
   assert.equal(await store.compareAndSet("hash", { month: "2026-11", used: 2 }, first.etag), true);
   assert.equal((await store.get("hash")).value.used, 2);
+});
+
+const USER_A = "11111111-1111-4111-8111-111111111111";
+const USER_B = "22222222-2222-4222-8222-222222222222";
+const TOKEN_A = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhIn0.sigAaaaa";
+const TOKEN_B = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiIn0.sigBbbbb";
+
+function accountVerifier(map) {
+  return async ({ token }) => {
+    const id = map[token];
+    if (!id) return null;
+    return { id, email: "should-not-be-stored@example.com", paid: true };
+  };
+}
+
+function signedEvent(token, ip = IP, extra = {}) {
+  return eventFor({
+    ip,
+    headers: {
+      "x-nf-client-connection-ip": ip,
+      authorization: `Bearer ${token}`,
+    },
+    extra,
+  });
+}
+
+test("a signed-in person has their own three, separate from the connection", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const anthropic = mockAnthropic();
+  t.after(() => anthropic.restore());
+  const store = createMemoryUsageStore();
+  const verifySession = accountVerifier({ [TOKEN_A]: USER_A, [TOKEN_B]: USER_B });
+  const context = contextFor(store, { verifySession });
+
+  assert.equal(usageSubject(null, { "x-nf-client-connection-ip": IP }), IP);
+  assert.equal(usageSubject({ id: USER_A.toUpperCase(), email: "a@b.c" }, {}), `user:${USER_A}`);
+  assert.equal(
+    usageStorageKey(usageSubject(null, { "x-nf-client-connection-ip": IP }), usageSalt()),
+    usageStorageKey(IP, usageSalt()),
+  );
+
+  for (let n = 0; n < 3; n++) {
+    const response = await handler(signedEvent(TOKEN_A, IP), context);
+    assert.equal(response.statusCode, 200, `account explanation ${n + 1}`);
+    assert.equal(JSON.parse(response.body).usage.used, n + 1);
+  }
+  const sameAccountOtherConnection = await handler(signedEvent(TOKEN_A, "203.0.113.20"), context);
+  assert.equal(sameAccountOtherConnection.statusCode, 402);
+
+  const otherAccount = await handler(signedEvent(TOKEN_B, IP, { userId: USER_A, paid: true }), context);
+  assert.equal(otherAccount.statusCode, 200);
+  assert.equal(JSON.parse(otherAccount.body).usage.used, 1);
+
+  const anonymous = await handler(eventFor({ ip: IP, extra: { userId: USER_A, paid: true } }), context);
+  assert.equal(anonymous.statusCode, 200);
+  assert.equal(JSON.parse(anonymous.body).usage.used, 1);
+
+  const dumped = JSON.stringify(store.snapshot());
+  assert.equal(dumped.includes(MARKER), false);
+  assert.equal(dumped.includes(USER_A), false);
+  assert.equal(dumped.includes(USER_B), false);
+  assert.equal(dumped.includes("should-not-be-stored@example.com"), false);
+  assert.equal(dumped.includes(TOKEN_A), false);
+  assert.equal(dumped.includes(IP), false);
+  const accountKey = usageStorageKey(`user:${USER_A}`, usageSalt());
+  assert.equal(store.snapshot()[accountKey].used, 3);
+  assert.equal(store.snapshot()[usageStorageKey(IP, usageSalt())].used, 1);
+});
+
+test("a rejected or broken session does not open a new count, and the free explanation still works", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const anthropic = mockAnthropic();
+  t.after(() => anthropic.restore());
+  const store = createMemoryUsageStore();
+
+  for (let n = 0; n < 3; n++) {
+    assert.equal((await handler(eventFor({ ip: "198.51.100.10" }), contextFor(store))).statusCode, 200);
+  }
+  const pretending = await handler(
+    eventFor({
+      ip: "198.51.100.10",
+      headers: {
+        "x-nf-client-connection-ip": "198.51.100.10",
+        authorization: "Bearer not-a-session",
+      },
+      extra: { userId: USER_A, email: "person@example.com", paid: true },
+    }),
+    contextFor(store, {
+      verifySession: async () => {
+        throw new Error("should not be called for a token that is not a session");
+      },
+    }),
+  );
+  assert.equal(pretending.statusCode, 402);
+
+  const rejected = await handler(
+    signedEvent("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJub3BlIn0.notValid", "198.51.100.11"),
+    contextFor(store, { verifySession: async () => null }),
+  );
+  assert.equal(rejected.statusCode, 200);
+  assert.equal(JSON.parse(rejected.body).usage.used, 1);
+
+  const broken = await handler(
+    signedEvent(TOKEN_A, "198.51.100.12"),
+    contextFor(store, {
+      verifySession: async () => {
+        throw new Error("supabase down");
+      },
+    }),
+  );
+  assert.equal(broken.statusCode, 200);
+  assert.equal(store.snapshot()[usageStorageKey(`user:${USER_A}`, usageSalt())], undefined);
 });

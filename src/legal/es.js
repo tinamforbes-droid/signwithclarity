@@ -48,7 +48,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El sitio no le pide que cree una cuenta. No pide su nombre, su correo electrónico, su número de teléfono ni sus datos de pago.",
+          text: "No necesita una cuenta. Iniciar sesión es opcional, y puede pedir una explicación sin una. Si elige iniciar sesión, el sitio pide un correo electrónico y le envía un enlace. No hay contraseña. El sitio no pide su nombre, su número de teléfono ni sus datos de pago. Una cuenta no queda marcada como pagada.",
         },
       ],
     },
@@ -62,6 +62,10 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: "Cuando elige Explicar mi documento, el navegador envía una solicitud a la función de Netlify de este sitio, en /.netlify/functions/decode. La solicitud incluye el texto del documento, el país que eligió, la provincia, el territorio o el estado que eligió, el idioma que eligió y un identificador al azar para esa explicación. La página crea ese identificador cuando usted pide la explicación. No es su nombre y no sale del documento. Cada parte de un documento más largo usa el mismo identificador, para que las partes cuenten como una sola explicación.",
+        },
+        {
+          type: "p",
+          text: "Si inició sesión, el navegador también envía el token de acceso con esa solicitud. La función comprueba el token con Supabase antes de decidir de quién es el conteo del mes. El token no se envía a Anthropic. Un nombre, un correo electrónico o un identificador de cuenta escrito en la solicitud del documento se ignora. La función usa solo el identificador de cuenta que Supabase confirma.",
         },
         {
           type: "p",
@@ -82,11 +86,11 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: "La función no guarda su documento, las notas, su ubicación ni la explicación en una base de datos ni en un archivo. No hay una cuenta a la cual asociarlos.",
+          text: "La función no guarda su documento, las notas, su ubicación ni la explicación en una base de datos ni en un archivo. Iniciar sesión no cambia eso. La cuenta no contiene el documento.",
         },
         {
           type: "p",
-          text: "La página conserva el texto y la explicación en la memoria mientras usted la usa. Si elige Explicar otro documento, la página borra el texto y el nombre del archivo. Cerrar la página también los borra. La elección de idioma puede quedarse en localStorage en este dispositivo. El documento, no.",
+          text: "La página conserva el texto y la explicación en la memoria mientras usted la usa. Si elige Explicar otro documento, la página borra el texto y el nombre del archivo. Cerrar la página también los borra. La elección de idioma puede quedarse en localStorage en este dispositivo, con el nombre swc-lang. Si inicia sesión, la sesión de acceso puede quedarse en localStorage en este dispositivo, con nombres que empiezan por swc-auth. Esa sesión contiene los tokens que lo mantienen con la sesión iniciada, y un código de corta duración para terminar el enlace del correo. No contiene el documento.",
         },
         {
           type: "p",
@@ -94,7 +98,19 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Para contar las tres explicaciones gratuitas de cada mes calendario, la función lee la dirección IP de la conexión y la convierte en un hash con sal. Un hash con sal es un código revuelto. Se hace a partir de la dirección IP, mezclada con un valor extra llamado sal, para que la dirección no se guarde tal cual. Guardamos el código revuelto, no la dirección. El mismo registro guarda el mes calendario, la cantidad de explicaciones empezadas este mes, un identificador al azar para cada una de esas explicaciones y cuántas veces se llamó al servicio para esa explicación. No guardamos el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación en ese registro. El hash y la cuenta no se envían a Anthropic. Las personas que usan la misma conexión a internet comparten las tres explicaciones gratuitas, porque el hash representa la conexión, no un nombre. Este límite no se guarda en el navegador. El sitio no coloca una cookie para eso, y no lo pone en localStorage. Borrar los datos del navegador no vuelve a poner la cuenta en cero.",
+          text: "Para contar las tres explicaciones gratuitas de cada mes calendario, la función lee la dirección IP de la conexión y la convierte en un hash con sal. Un hash con sal es un código revuelto. Se hace a partir de la dirección IP, mezclada con un valor extra llamado sal, para que la dirección no se guarde tal cual. Guardamos el código revuelto, no la dirección. El mismo registro guarda el mes calendario, la cantidad de explicaciones empezadas este mes, un identificador al azar para cada una de esas explicaciones y cuántas veces se llamó al servicio para esa explicación. No guardamos el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación en ese registro. El hash y la cuenta no se envían a Anthropic. Las personas que no iniciaron sesión, y que usan la misma conexión a internet, comparten las tres explicaciones gratuitas, porque el hash representa la conexión, no un nombre. Este límite no se guarda en el navegador. El sitio no coloca una cookie para eso, y no lo pone en localStorage. Borrar los datos del navegador no vuelve a poner la cuenta en cero.",
+        },
+        {
+          type: "p",
+          text: "Si inició sesión, esas tres explicaciones gratuitas se cuentan en la cuenta, y no en la conexión. La función comprueba el token de acceso con Supabase y lee el identificador de cuenta que Supabase confirma. Guarda un hash con sal de ese identificador, el mes calendario, cuántas explicaciones se empezaron, el identificador al azar de cada explicación y cuántas veces se llamó al servicio. No guarda el correo electrónico en ese registro. No guarda allí el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación. La misma cuenta tiene un solo grupo de tres, incluso desde otra conexión. Otra persona que inició sesión en la misma conexión tiene sus propias tres. Borrar los datos del navegador no vuelve a poner este conteo en cero.",
+        },
+        {
+          type: "p",
+          text: "Cuando inicia sesión, Supabase guarda la cuenta en https://ldhkqqhlztsaljccazti.supabase.co. La cuenta contiene su correo electrónico, el identificador de cuenta que Supabase asigna y los momentos que Supabase registra para esa cuenta. Supabase envía el correo de acceso. El sitio no guarda una contraseña, porque no hay contraseña. Esta cuenta no contiene su documento, las notas ni la explicación.",
+        },
+        {
+          type: "p",
+          text: "También guardamos una fila en una tabla de Supabase llamada accounts, para que un paso posterior pueda anotar si la cuenta pagó. La fila contiene el identificador de cuenta, el correo electrónico, un indicador de pago y los momentos en que la fila se creó y se actualizó. El indicador de pago se queda en falso. La fila no contiene su documento, las notas ni la explicación. La seguridad a nivel de fila (row level security) está activada: una sesión del navegador no puede cambiar el indicador de pago, y no puede leer la fila de otra persona. Esta página no lee ni escribe esa fila. La clave secreta que puede administrar la tabla se queda en el servidor, en un ajuste llamado SUPABASE_SECRET_KEY. No está incluida en la página que carga su navegador. Una cuenta nueva recibe una fila cuando esa tabla está lista. Si inició sesión antes de que la tabla existiera, la fila se agrega cuando la tabla se prepara.",
         },
       ],
     },
@@ -111,7 +127,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "La función lee la dirección IP solo para crear el hash con sal descrito arriba. No escribe la dirección IP en el registro de uso. No escribe la dirección IP en el registro del servidor.",
+          text: "La función lee la dirección IP solo para crear el hash con sal descrito arriba. No escribe la dirección IP en el registro de uso. No escribe la dirección IP en el registro del servidor. No escribe el token de acceso ni el correo electrónico en el registro del servidor.",
         },
       ],
     },
@@ -132,7 +148,11 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El código no incluye una herramienta de analítica, un píxel publicitario ni otro rastreador. No coloca cookies. Usa localStorage solo para recordar el idioma que usted eligió: inglés, francés o español. No guarda su documento en localStorage. No usa sessionStorage. No controlamos si Google o Cloudflare coloca una cookie cuando su navegador carga un tipo de letra o el archivo pdf.js desde ellos.",
+          text: "Si inicia sesión, el navegador contacta a Supabase en https://ldhkqqhlztsaljccazti.supabase.co para enviar el correo electrónico y para recibir la sesión de acceso. Esa solicitud no incluye su documento. La función también contacta esa dirección, con la clave secreta llamada SUPABASE_SECRET_KEY, para comprobar que la sesión es real. Esa comprobación envía el token de acceso. No envía el documento, las notas ni la explicación.",
+        },
+        {
+          type: "p",
+          text: "El código no incluye una herramienta de analítica, un píxel publicitario ni otro rastreador. No coloca cookies. Usa localStorage para recordar el idioma que usted eligió: inglés, francés o español. Si inicia sesión, también usa localStorage para guardar la sesión de acceso en este dispositivo. No guarda su documento en localStorage. No usa sessionStorage. No controlamos si Google, Cloudflare o Supabase coloca una cookie cuando su navegador los contacta.",
         },
       ],
     },
@@ -146,6 +166,10 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: "Usamos el hash con sal y la cuenta del mes para un solo fin: permitir tres explicaciones gratuitas por conexión en cada mes calendario, y decirle cuándo se renuevan. No usamos el hash para encontrar su nombre, y no lo unimos al documento.",
+        },
+        {
+          type: "p",
+          text: "Si inicia sesión, usamos el correo electrónico para enviar el enlace de acceso y para mostrar qué cuenta está conectada en este dispositivo. Usamos el identificador de cuenta para dar a esa cuenta sus propias tres explicaciones gratuitas en cada mes calendario, en lugar de usar el conteo de la conexión. Guardamos el indicador de pago para que un paso posterior pueda anotar si la cuenta pagó. El indicador se queda en falso. No usamos el correo electrónico para publicidad, y no lo vendemos.",
         },
         {
           type: "p",
@@ -172,6 +196,10 @@ export const privacyPolicyEs = {
           type: "p",
           text: "Este sitio no envía a Anthropic una instrucción sobre cuánto tiempo conservar una solicitud de API. No guardamos una copia propia, y el sitio no tiene forma de buscar o borrar una solicitud anterior en Anthropic. La política de privacidad de Anthropic describe lo que Anthropic hace con las entradas de la API: https://www.anthropic.com/legal/privacy",
         },
+        {
+          type: "p",
+          text: "Supabase recibe el correo electrónico y la sesión de acceso para enviar el enlace y confirmar quién inició sesión. La solicitud va a https://ldhkqqhlztsaljccazti.supabase.co. Supabase puede procesar esa información fuera de su provincia y fuera de Canadá. El documento no forma parte de esa solicitud. La política de privacidad de Supabase describe ese servicio: https://supabase.com/privacy",
+        },
       ],
     },
     {
@@ -185,6 +213,10 @@ export const privacyPolicyEs = {
           type: "p",
           text: "Guardamos ese registro de uso durante el mes calendario en curso, según el Tiempo Universal Coordinado (UTC). Cuando usted empieza una explicación en un mes nuevo, reemplazamos el registro con ese mes nuevo. No guardamos los meses anteriores. Si usted no vuelve, el hash y la cuenta del último mes pueden quedar en Netlify Blobs hasta que una visita posterior los reemplace. Un registro de un mes pasado no cambia la cuenta del mes nuevo.",
         },
+        {
+          type: "p",
+          text: `Si inicia sesión, conservamos el correo electrónico y la fila de la cuenta mientras la cuenta exista. El indicador de pago se queda en falso, y se queda con esa fila. Cerrar sesión quita la sesión de localStorage en este dispositivo. No borra la cuenta. Puede pedirnos que borremos la cuenta escribiendo a ${email}. No conservamos el documento con la cuenta.`,
+        },
       ],
     },
     {
@@ -196,7 +228,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: `Como no guardamos una copia del documento, por lo general no tenemos nada del documento que mostrarle o corregir. El registro de uso no está archivado con su nombre ni con su correo, así que un correo solo no nos dice cuál hash es el suyo. Si escribe a ${email}, le diremos qué tenemos y responderemos dentro del plazo que esas leyes permiten. No podemos recuperar un documento anterior desde este sitio. Tampoco podemos borrarlo de Anthropic por usted, porque no guardamos un registro que nos permita encontrar esa solicitud.`,
+          text: `Como no guardamos una copia del documento, por lo general no tenemos nada del documento que mostrarle o corregir. Si no inició sesión, el registro de uso no está archivado con su nombre ni con su correo, así que un correo solo no nos dice cuál hash de la conexión es el suyo. Si inició sesión, podemos encontrar la cuenta por el correo electrónico. Esa cuenta incluye el correo y el indicador de pago. No incluye el documento. Si escribe a ${email}, le diremos qué tenemos y responderemos dentro del plazo que esas leyes permiten. No podemos recuperar un documento anterior desde este sitio. Tampoco podemos borrarlo de Anthropic por usted, porque no guardamos un registro que nos permita encontrar esa solicitud.`,
         },
         {
           type: "p",
@@ -209,7 +241,7 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige, el identificador al azar de la explicación, el hash con sal de la dirección IP de la conexión, la cuenta del mes y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación.",
+          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige, el identificador al azar de la explicación, el hash con sal de la dirección IP de la conexión, la cuenta del mes y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación. Si inicia sesión, también incluye el correo electrónico, el identificador de cuenta, la sesión de acceso guardada en este dispositivo y el indicador de pago, que se queda en falso.",
         },
         {
           type: "p",
@@ -255,7 +287,7 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: `Estas condiciones son entre usted y ${name} por el uso de Sign With Clarity en signwithclarity.ca. El sitio es gratuito. No hay una cuenta.`,
+          text: `Estas condiciones son entre usted y ${name} por el uso de Sign With Clarity en signwithclarity.ca. El sitio es gratuito. Puede usarlo sin una cuenta. Iniciar sesión por correo electrónico es opcional.`,
         },
         {
           type: "p",
