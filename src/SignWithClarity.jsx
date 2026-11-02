@@ -17,6 +17,7 @@ import {
   normalizeRegionQuery,
   regionOptions,
 } from "../shared/regions.js";
+import { usageStatusMessage } from "../shared/usageCopy.js";
 import LegalPage from "./LegalPage.jsx";
 import { storageNote } from "./legalCopy.js";
 
@@ -738,6 +739,23 @@ const STYLES = `
     color: var(--red-flag);
     margin-top: 12px;
   }
+  .limit-msg {
+    margin-top: 12px;
+    background: rgba(201, 169, 110, 0.12);
+    border: 1px solid var(--gold-light);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--navy);
+  }
+  .usage-note {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-light);
+    text-align: center;
+  }
 `;
 
 function progressPercent(progress) {
@@ -972,10 +990,14 @@ export default function SignWithClarity() {
   const [results, setResults] = useState(null);
   const [errorKey, setErrorKey] = useState("");
   const [errorText, setErrorText] = useState("");
+  const [errorCode, setErrorCode] = useState("");
+  const [usage, setUsage] = useState(null);
   const fileRef = useRef();
   const plan = useMemo(() => (docText.trim() ? planDocument(docText) : null), [docText]);
   const tooLong = Boolean(plan && !plan.ok && plan.reason === "too_long");
   const error = errorKey ? t(lang, errorKey) : errorText;
+  const atLimit = errorCode === "monthly_limit" || (usage?.limited && usage.remaining <= 0);
+  const usageMessage = usageStatusMessage(lang, atLimit && usage ? { ...usage, remaining: 0 } : usage);
   const regionHint = needsRegion
     ? t(lang, country === "Canada" ? "regionHintCanada" : "regionHintUS")
     : "";
@@ -992,6 +1014,7 @@ export default function SignWithClarity() {
   function clearError() {
     setErrorKey("");
     setErrorText("");
+    setErrorCode((code) => (code === "monthly_limit" ? code : ""));
   }
 
   // Dev-only samples for local checks. Vite removes this block from production builds.
@@ -1082,7 +1105,7 @@ export default function SignWithClarity() {
       return;
     }
     setNeedsRegion(false);
-    if (tooLong) return;
+    if (tooLong || atLimit) return;
 
     clearError();
     setLoading(true);
@@ -1096,14 +1119,22 @@ export default function SignWithClarity() {
         region,
         language: lang,
         onProgress: setProgress,
-        request: (payload) => postDecode(payload),
+        request: (payload) => postDecode(payload, { onUsage: setUsage }),
       });
       setResults(outcome.results);
       setPartsRead(outcome.parts);
     } catch (err) {
-      const message = err instanceof DecodeError ? err.message : t(lang, "errorGeneric");
-      setErrorKey("");
-      setErrorText(message);
+      if (err instanceof DecodeError && err.usage) setUsage(err.usage);
+      if (err instanceof DecodeError && err.code === "monthly_limit") {
+        setErrorCode("monthly_limit");
+        setErrorKey("");
+        setErrorText("");
+      } else {
+        setErrorCode("");
+        const message = err instanceof DecodeError ? err.message : t(lang, "errorGeneric");
+        setErrorKey("");
+        setErrorText(message);
+      }
     } finally {
       setLoading(false);
       setProgress(null);
@@ -1232,14 +1263,23 @@ export default function SignWithClarity() {
                   <p className="length-note">{longDocumentNote(plan, lang)}</p>
                 )}
 
-                {(tooLong || error) && (
-                  <div className="error-msg" role="alert">⚠️ {tooLong ? tooLongMessage(plan, lang) : error}</div>
+                {tooLong && (
+                  <div className="error-msg" role="alert">⚠️ {tooLongMessage(plan, lang)}</div>
+                )}
+                {!tooLong && atLimit && usageMessage && (
+                  <div className="limit-msg" role="status">{usageMessage}</div>
+                )}
+                {!tooLong && !atLimit && error && (
+                  <div className="error-msg" role="alert">⚠️ {error}</div>
                 )}
 
-                <button className="decode-btn" onClick={decode} disabled={!docText.trim() || tooLong}>
+                <button className="decode-btn" onClick={decode} disabled={!docText.trim() || tooLong || atLimit}>
                   ✨ {t(lang, "decodeButton")}
                 </button>
                 <span className="decode-btn-sub">{t(lang, "decodeSub")}</span>
+                {!atLimit && usageMessage && (
+                  <p className="usage-note">{usageMessage}</p>
+                )}
               </div>
             </div>
           )}
@@ -1266,6 +1306,9 @@ export default function SignWithClarity() {
                 <p className="results-sub">{t(lang, "resultsSub")}</p>
                 {partsRead > 1 && (
                   <p className="results-sub">{t(lang, "resultsWhole")}</p>
+                )}
+                {usageMessage && (
+                  <p className="usage-note">{usageMessage}</p>
                 )}
               </div>
 

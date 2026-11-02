@@ -17,6 +17,11 @@
 // ("synthesize"). One model call per request keeps us inside the synchronous
 // function time limit. This function does not cut a document down to the
 // first few thousand characters.
+//
+// A free connection may start three explanations per calendar month. The
+// count is kept in Netlify Blobs under a salted hash of the IP address.
+// The document itself is not stored. Paid or signed-in access, added later,
+// skips this in shared/access.js. A flag in the request body cannot.
 
 import {
   CHUNK_SIZE,
@@ -26,6 +31,7 @@ import {
 } from "../../shared/limits.js";
 import { asLanguage, t } from "../../shared/messages.js";
 import { locationBlock, systemFor } from "../../shared/prompts.js";
+import { enforceUsageLimit, resolveUsageStore } from "../../shared/usageGate.js";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -95,7 +101,7 @@ async function askModel({ system, user, maxTokens, language }) {
   return { ok: true, text };
 }
 
-export async function handler(event) {
+export async function handler(event, context) {
   let language = "en";
   if (event.httpMethod !== "POST") {
     return reply(405, { error: t(language, "errorMethod") });
@@ -122,7 +128,7 @@ export async function handler(event) {
   }
 
   try {
-    let result;
+    let model;
     if (mode === "reduce" || mode === "synthesize") {
       const notes = normalizeDocument(payload.notes);
       if (!notes) {
@@ -133,19 +139,19 @@ export async function handler(event) {
       }
       const where = locationBlock(country, region, language);
       if (mode === "reduce") {
-        result = await askModel({
+        model = {
           system: systemFor("reduce", language),
           maxTokens: 900,
           language,
           user: `${where}\n\nNotes from several parts of one document, in order:\n${notes}`,
-        });
+        };
       } else {
-        result = await askModel({
+        model = {
           system: systemFor("synthesize", language),
           maxTokens: 1200,
           language,
           user: `${where}\n\nThe notes below were taken from every part of one insurance document, in order from the first page through the last. Later parts were not skipped. Give exclusions, conditions, and endorsements from the end the same attention as the opening.\n\nUse all of the notes when you write the four-part explanation.\n\nNotes:\n${notes}`,
-        });
+        };
       }
     } else {
       const docText = normalizeDocument(payload.docText);
@@ -159,24 +165,47 @@ export async function handler(event) {
       if (mode === "extract") {
         const chunkIndex = Number.isInteger(payload.chunkIndex) ? payload.chunkIndex : 1;
         const chunkCount = Number.isInteger(payload.chunkCount) ? payload.chunkCount : 1;
-        result = await askModel({
+        model = {
           system: systemFor("extract", language),
           maxTokens: 800,
           language,
           user: `${where}\n\nThis is part ${chunkIndex} of ${chunkCount}, in order. Read this part carefully. Exclusions in this part matter even if they feel like fine print.\n\nInsurance Document:\n${docText}`,
-        });
+        };
       } else {
-        result = await askModel({
+        model = {
           system: systemFor("single", language),
           maxTokens: 1000,
           language,
           user: `${where}\n\nInsurance Document:\n${docText}`,
-        });
+        };
       }
     }
 
-    if (!result.ok) return reply(result.statusCode, { error: result.error });
-    return reply(200, { text: result.text });
+    const gate = await enforceUsageLimit({
+      headers: event.headers,
+      payload,
+      store: await resolveUsageStore(context),
+      env: process.env,
+      now: context?.now instanceof Date ? context.now : new Date(),
+      hasUnlimitedAccess: context?.hasUnlimitedAccess,
+      language,
+    });
+    if (!gate.allowed) return reply(gate.statusCode, gate.body);
+
+    let result;
+    try {
+      result = await askModel(model);
+    } catch (err) {
+      await gate.release?.();
+      throw err;
+    }
+    if (!result.ok) {
+      await gate.release?.();
+      return reply(result.statusCode, { error: result.error });
+    }
+    const body = { text: result.text };
+    if (gate.usage) body.usage = gate.usage;
+    return reply(200, body);
   } catch (err) {
     console.error("decode function error:", err);
     return reply(500, { error: t(language, "errorReadFailed") });

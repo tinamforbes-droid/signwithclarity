@@ -74,7 +74,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "When you choose Explain my document, the browser sends a request to this site's Netlify function at /.netlify/functions/decode. The request includes the document text, the country you chose, the province, territory, or state you chose, and the language you chose.",
+          text: "When you choose Explain my document, the browser sends a request to this site's Netlify function at /.netlify/functions/decode. The request includes the document text, the country you chose, the province, territory, or state you chose, the language you chose, and a random id for that explanation. The page creates that id when you ask for the explanation. It is not your name, and it does not come from the document. Each part of a longer document uses the same id, so the parts count as one explanation.",
         },
         {
           type: "p",
@@ -105,6 +105,10 @@ export const privacyPolicy = {
           type: "p",
           text: "Documents aren't stored.",
         },
+        {
+          type: "p",
+          text: "To count the three free explanations in each calendar month, the function reads the IP address of the connection and turns it into a salted hash. A salted hash is a scrambled code. It is made from the IP address mixed with an extra value called a salt, so the address is not stored as itself. We store the scrambled code, not the address. The same record stores the calendar month, the number of explanations started this month, a random id for each of those explanations, and how many times the explainer was called for that explanation. We do not store the document, the notes, the file name, the place you chose, or the explanation in that record. The hash and the count are not sent to Anthropic. People using the same internet connection share the three free explanations, because the hash stands for the connection, not for a name. This limit is not kept in the browser. The site does not set a cookie for it, and it does not put it in localStorage. Clearing the browser does not start the count over.",
+        },
       ],
     },
     {
@@ -120,7 +124,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The function code does not read or save your IP address. Nothing in the site's code writes it down.",
+          text: "The function reads the IP address only to make the salted hash described above. It does not write the IP address into the usage record. It does not write the IP address into the server log.",
         },
       ],
     },
@@ -137,7 +141,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The site and the function that writes the explanation are hosted by Netlify. The explanation request goes to Netlify because that is where the function at /.netlify/functions/decode runs. The function code does not save the body of the request.",
+          text: "The site and the function that writes the explanation are hosted by Netlify. The explanation request goes to Netlify because that is where the function at /.netlify/functions/decode runs. The function does not save the body of the request. It does save the usage record in Netlify Blobs, which is storage that comes with this site's Netlify hosting. That record is the salted hash and the counts described above, not the document.",
         },
         {
           type: "p",
@@ -151,6 +155,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "We use the document text and the location you chose for one purpose: to write the plain-language explanation you asked for, and to show it to you.",
+        },
+        {
+          type: "p",
+          text: "We use the salted hash and the monthly count for one purpose: to allow three free explanations on a connection each calendar month, and to tell you when they reset. We do not use the hash to find your name, and we do not attach it to the document.",
         },
         {
           type: "p",
@@ -186,6 +194,10 @@ export const privacyPolicy = {
           type: "p",
           text: "We do not keep the document, the notes, the location, or the explanation after the function has replied. Your browser keeps them only until you leave the page or clear them. The language choice can stay in localStorage on this device until you change it or clear it.",
         },
+        {
+          type: "p",
+          text: "We keep the usage record for the current calendar month, using Coordinated Universal Time (UTC). When you start an explanation in a new month, we replace the record with that new month. We do not keep the earlier months. If you do not come back, the last month's hash and count can stay in Netlify Blobs until a later visit replaces them. A record from a past month does not change the count for the new month.",
+        },
       ],
     },
     {
@@ -197,7 +209,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: `Because we do not keep a copy, we usually have nothing from your document to show you or correct. If you write to ${email}, we will tell you what we hold and respond within the time those laws allow. We cannot pull a past document back from this site. We also cannot delete it from Anthropic for you, because we do not keep a record that would let us find that request.`,
+          text: `We do not keep a copy of your document, so we usually have nothing from the document to show you or correct. The usage record is not filed under your name or your email, so an email alone does not tell us which hash is yours. If you write to ${email}, we will tell you what we hold and respond within the time those laws allow. We cannot pull a past document back from this site. We also cannot delete it from Anthropic for you, because we do not keep a record that would let us find that request.`,
         },
         {
           type: "p",
@@ -210,7 +222,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation.",
+          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, the random explanation id, the salted hash of the connection's IP address, the monthly count, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation.",
         },
         {
           type: "p",

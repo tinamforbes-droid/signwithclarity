@@ -47,6 +47,12 @@ test("the privacy policy describes only the collection the code performs", () =>
   assert.match(privacy, /localStorage only to remember the language/);
   assert.equal(privacy.includes("does not use localStorage"), false);
   assert.match(privacy, /does not store your document in localStorage/);
+  assert.match(privacy, /salted hash/);
+  assert.match(privacy, /calendar month/);
+  assert.match(privacy, /Netlify Blobs/);
+  assert.match(privacy, /not the address/);
+  assert.match(privacy, /Clearing the browser does not start the count over/);
+  assert.equal(privacy.includes("does not read or save your IP address"), false);
   assert.match(privacy, /analytics/);
   assert.match(privacy, /HTTP status code/);
   assert.match(privacy, /do not sell personal information/i);
@@ -77,6 +83,7 @@ test("French and Spanish legal pages match the English shape and describe the la
     assert.equal(privacyText.includes(CONTACT_EMAIL), true);
     assert.equal(termsText.includes(CONTACT_EMAIL), true);
     assert.match(privacyText, /localStorage/);
+    assert.match(privacyText, /Netlify Blobs/);
     assert.match(privacyText, /PIPEDA/);
     assert.match(privacyText, /PIPA/);
     assert.match(privacyText, /pdf\.js/);
@@ -90,6 +97,14 @@ test("French and Spanish legal pages match the English shape and describe the la
 
   assert.match(documentPlainText(legalDocument("privacy", "fr")), /seulement pour retenir la langue/);
   assert.match(documentPlainText(legalDocument("privacy", "es")), /solo para recordar el idioma/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /hachage salé/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /mois civil/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /ne remet pas le compte à zéro/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /hash con sal/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /mes calendario/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /no vuelve a poner la cuenta en cero/);
+  assert.equal(documentPlainText(legalDocument("privacy", "fr")).includes("ne lit pas et ne sauvegarde pas votre adresse IP"), false);
+  assert.equal(documentPlainText(legalDocument("privacy", "es")).includes("no lee ni guarda su dirección IP"), false);
   assert.equal(effectiveDateLine("en"), "Effective date: November 2, 2026");
   assert.match(effectiveDateLine("fr"), /2 novembre 2026/);
   assert.match(effectiveDateLine("es"), /2 de noviembre de 2026/);

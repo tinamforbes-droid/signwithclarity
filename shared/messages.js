@@ -102,6 +102,10 @@ const en = {
   errorUnexpected: "The reading service didn't respond as expected. Please try again in a moment.",
   errorEmptyAnswer: "The reading service sent back an empty answer. Please try again in a moment.",
   errorReadFailed: "Something went wrong while reading the document. Please try again in a moment.",
+  freeRemaining: "{count} free explanations left this month. They reset on {date}.",
+  freeRemainingOne: "1 free explanation left this month. It resets on {date}.",
+  freeLimitReached: "You've used your 3 free explanations this month. They reset on {date}. Paid options are coming soon.",
+  errorExplanationClosed: "This explanation has already been read as far as we can in one try. Please start it again if you still have a free explanation this month.",
 };
 
 const fr = {
@@ -196,6 +200,10 @@ const fr = {
   errorUnexpected: "Le service de lecture n'a pas répondu comme prévu. Veuillez réessayer dans un moment.",
   errorEmptyAnswer: "Le service de lecture a renvoyé une réponse vide. Veuillez réessayer dans un moment.",
   errorReadFailed: "Quelque chose s'est mal passé pendant la lecture du document. Veuillez réessayer dans un moment.",
+  freeRemaining: "Il vous reste {count} explications gratuites ce mois-ci. Elles recommencent le {date}.",
+  freeRemainingOne: "Il vous reste 1 explication gratuite ce mois-ci. Elle recommence le {date}.",
+  freeLimitReached: "Vous avez utilisé vos 3 explications gratuites ce mois-ci. Elles recommencent le {date}. Les options payantes arrivent bientôt.",
+  errorExplanationClosed: "Cette explication a déjà été lue aussi loin que nous le pouvons en une fois. Veuillez la recommencer si vous avez encore une explication gratuite ce mois-ci.",
 };
 
 const es = {
@@ -290,6 +298,10 @@ const es = {
   errorUnexpected: "El servicio de lectura no respondió como esperábamos. Vuelva a intentarlo en un momento.",
   errorEmptyAnswer: "El servicio de lectura devolvió una respuesta vacía. Vuelva a intentarlo en un momento.",
   errorReadFailed: "Algo salió mal al leer el documento. Vuelva a intentarlo en un momento.",
+  freeRemaining: "Le quedan {count} explicaciones gratuitas este mes. Se renuevan el {date}.",
+  freeRemainingOne: "Le queda 1 explicación gratuita este mes. Se renueva el {date}.",
+  freeLimitReached: "Ya usó sus 3 explicaciones gratuitas de este mes. Se renuevan el {date}. Las opciones de pago llegarán pronto.",
+  errorExplanationClosed: "Esta explicación ya se leyó hasta donde podemos en un intento. Vuelva a empezarla si todavía le queda una explicación gratuita este mes.",
 };
 
 export const MESSAGES = { en, fr, es };

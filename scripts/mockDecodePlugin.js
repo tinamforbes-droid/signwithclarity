@@ -4,6 +4,7 @@
 
 import { asLanguage } from "../shared/messages.js";
 import { buildSamplePolicy } from "../shared/samplePolicy.js";
+import { createMemoryUsageStore, enforceUsageLimit } from "../shared/usageGate.js";
 
 const END_PHRASE = "volcanic glass shed collapse is excluded unless building 7 is listed on the declarations";
 
@@ -99,6 +100,8 @@ function readBody(req) {
   });
 }
 
+const usageStore = createMemoryUsageStore();
+
 export function mockDecodePlugin() {
   return {
     name: "swc-mock-decode",
@@ -137,7 +140,26 @@ export function mockDecodePlugin() {
           return;
         }
 
+        const headers = { ...req.headers };
+        if (!headers["x-nf-client-connection-ip"]) {
+          headers["x-nf-client-connection-ip"] = req.socket?.remoteAddress || "local";
+        }
+        const gate = await enforceUsageLimit({
+          headers,
+          payload,
+          store: usageStore,
+          language: payload.language,
+        });
+        if (!gate.allowed) {
+          res.statusCode = gate.statusCode;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(gate.body));
+          return;
+        }
+
         const { status, body } = mockResult(payload);
+        if (status !== 200) await gate.release?.();
+        else if (gate.usage) body.usage = gate.usage;
         setTimeout(() => {
           res.statusCode = status;
           res.setHeader("Content-Type", "application/json");
