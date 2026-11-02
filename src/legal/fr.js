@@ -15,7 +15,7 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: `Sign With Clarity est un site gratuit à signwithclarity.ca. Il explique des documents d'assurance en langage clair pour les personnes au Canada et aux États-Unis. Il est tenu par ${name}.`,
+          text: `Sign With Clarity est un site à signwithclarity.ca. Il explique des documents d'assurance en langage clair pour les personnes au Canada et aux États-Unis. Trois explications par mois sont gratuites. Les forfaits payants sont décrits dans les conditions d'utilisation. Il est tenu par ${name}.`,
         },
         {
           type: "p",
@@ -48,7 +48,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Vous n'avez pas besoin d'un compte. La connexion est facultative, et vous pouvez demander une explication sans compte. Si vous choisissez de vous connecter, le site demande une adresse courriel et vous envoie un lien. Il n'y a pas de mot de passe. Le site ne demande pas votre nom, votre numéro de téléphone ni vos renseignements de paiement. Un compte n'est pas marqué comme payé.",
+          text: "Vous n'avez pas besoin d'un compte. La connexion est facultative, et vous pouvez demander une explication sans compte. Si vous choisissez de vous connecter, le site demande une adresse courriel et vous envoie un lien. Il n'y a pas de mot de passe. Le site ne demande pas votre nom ni votre numéro de téléphone. Les numéros de carte sont saisis sur la page de Stripe, pas sur ce site. L'indicateur payé reste faux jusqu'à ce que le serveur le change après une confirmation de paiement de Stripe.",
         },
       ],
     },
@@ -110,7 +110,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Nous gardons aussi une ligne dans une table Supabase nommée accounts, pour qu'une étape plus tard puisse noter si le compte a payé. La ligne contient l'identifiant de compte, l'adresse courriel, un indicateur payé, et les moments où la ligne a été créée et mise à jour. L'indicateur payé reste faux. La ligne ne contient pas votre document, les notes ni l'explication. La sécurité au niveau des lignes (row level security) est activée : une session dans le navigateur ne peut pas changer l'indicateur payé, et elle ne peut pas lire la ligne de quelqu'un d'autre. Cette page ne lit pas et n'écrit pas cette ligne. La clé secrète qui peut gérer la table reste sur le serveur, dans un réglage nommé SUPABASE_SECRET_KEY. Elle n'est pas incluse dans la page que votre navigateur charge. Un nouveau compte reçoit une ligne quand cette table est en place. Si vous vous êtes connecté avant que la table existe, la ligne est ajoutée au moment où la table est mise en place.",
+          text: "Nous gardons aussi une ligne dans une table Supabase nommée accounts. La ligne contient l'identifiant de compte, l'adresse courriel, un indicateur payé, le nom du forfait (household, yearly, ou aucun), le nombre d'explications Household Check restantes, le nombre d'explications Clarity Yearly déjà utilisées dans l'année en cours, la fin de cette année, l'identifiant client Stripe, l'identifiant d'abonnement Stripe, les identifiants aléatoires des explications déjà comptées sur un forfait payant, et les moments où la ligne a été créée et mise à jour. L'indicateur payé reste faux jusqu'à ce que le serveur le change après une confirmation de paiement de Stripe. La ligne ne contient pas votre document, les notes, le numéro de carte ni l'explication. La sécurité au niveau des lignes (row level security) est activée : une session dans le navigateur ne peut pas changer l'indicateur payé ni le forfait, et elle ne peut pas lire la ligne de quelqu'un d'autre. La section des forfaits lit votre propre ligne pour montrer ce qu'il vous reste. La clé secrète qui peut gérer la table reste sur le serveur, dans un réglage nommé SUPABASE_SECRET_KEY. Elle n'est pas incluse dans la page que votre navigateur charge. Un nouveau compte reçoit une ligne quand cette table est en place. Si vous vous êtes connecté avant que la table existe, la ligne est ajoutée au moment où la table est mise en place.",
         },
       ],
     },
@@ -128,6 +128,10 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: "La fonction lit l'adresse IP seulement pour faire le hachage salé décrit plus haut. Elle n'écrit pas l'adresse IP dans le dossier d'utilisation. Elle n'écrit pas l'adresse IP dans le journal du serveur. Elle n'écrit pas le jeton de connexion ni l'adresse courriel dans le journal du serveur.",
+        },
+        {
+          type: "p",
+          text: "Si un avis de paiement de Stripe ne peut pas être enregistré, la fonction écrit l'identifiant de l'événement et le type d'événement dans le journal du serveur. Elle n'écrit pas le numéro de carte. Elle n'écrit pas le document.",
         },
       ],
     },
@@ -152,7 +156,11 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le code ne comprend pas d'outil d'analyse, de pixel publicitaire ni d'autre traceur. Il ne dépose pas de témoins (cookies). Il utilise localStorage pour retenir la langue que vous avez choisie : anglais, français ou espagnol. Si vous vous connectez, il utilise aussi localStorage pour garder la session de connexion sur cet appareil. Il ne conserve pas votre document dans localStorage. Il n'utilise pas sessionStorage. Nous ne contrôlons pas si Google, Cloudflare ou Supabase dépose un témoin quand votre navigateur les contacte.",
+          text: "Si vous achetez un forfait, le navigateur envoie le nom du forfait, la devise et le jeton de connexion à la fonction de ce site, à /.netlify/functions/checkout. La fonction vérifie le jeton, puis demande à Stripe d'ouvrir Checkout avec Managed Payments. Stripe est le vendeur et calcule la taxe. La fonction envoie à Stripe votre identifiant de compte, le prix et, si Checkout ne vous connaît pas déjà, votre adresse courriel. Elle n'envoie pas le document. Le numéro de carte est saisi sur la page de Stripe. Stripe avise notre fonction à /.netlify/functions/stripe-webhook quand un paiement réussit, quand un forfait annuel se renouvelle, et quand un forfait annuel se termine. Cet avis est vérifié avec un réglage du serveur nommé STRIPE_WEBHOOK_SECRET. La clé secrète Stripe est un réglage du serveur nommé STRIPE_SECRET_KEY. Ni l'une ni l'autre n'est incluse dans la page que votre navigateur charge. Une personne avec le forfait annuel peut ouvrir le portail client de Stripe à partir de /.netlify/functions/portal pour gérer ou annuler le forfait. La politique de confidentialité de Stripe décrit ce service : https://stripe.com/privacy",
+        },
+        {
+          type: "p",
+          text: "Le code ne comprend pas d'outil d'analyse, de pixel publicitaire ni d'autre traceur. Il ne dépose pas de témoins (cookies). Il utilise localStorage pour retenir la langue que vous avez choisie : anglais, français ou espagnol. Si vous vous connectez, il utilise aussi localStorage pour garder la session de connexion sur cet appareil. Il ne conserve pas votre document dans localStorage. Il n'utilise pas sessionStorage. Nous ne contrôlons pas si Google, Cloudflare, Supabase ou Stripe dépose un témoin quand votre navigateur les contacte.",
         },
       ],
     },
@@ -169,7 +177,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Si vous vous connectez, nous utilisons l'adresse courriel pour envoyer le lien de connexion et pour montrer quel compte est connecté sur cet appareil. Nous utilisons l'identifiant de compte pour donner à ce compte ses trois explications gratuites à chaque mois civil, au lieu de les compter sur la connexion. Nous gardons l'indicateur payé pour qu'une étape plus tard puisse noter si le compte a payé. L'indicateur reste faux. Nous n'utilisons pas l'adresse courriel pour des messages publicitaires, et nous ne la vendons pas.",
+          text: "Si vous vous connectez, nous utilisons l'adresse courriel pour envoyer le lien de connexion et pour montrer quel compte est connecté sur cet appareil. Nous utilisons l'identifiant de compte pour donner à ce compte ses trois explications gratuites à chaque mois civil, au lieu de les compter sur la connexion, et pour rattacher un paiement à ce compte. Nous gardons l'indicateur payé, le forfait, les explications Household Check restantes, le compte Clarity Yearly et l'identifiant client Stripe pour que le serveur puisse permettre les explications qui ont été payées et ouvrir le portail client. L'indicateur payé reste faux jusqu'à ce que Stripe confirme un paiement. Nous n'utilisons pas l'adresse courriel pour des messages publicitaires, et nous ne la vendons pas. Nous ne conservons pas le numéro de carte.",
         },
         {
           type: "p",
@@ -200,6 +208,10 @@ export const privacyPolicyFr = {
           type: "p",
           text: "Supabase reçoit l'adresse courriel et la session de connexion pour envoyer le lien et confirmer qui est connecté. La demande va à https://ldhkqqhlztsaljccazti.supabase.co. Supabase peut traiter ces renseignements à l'extérieur de votre province et à l'extérieur du Canada. Le document ne fait pas partie de cette demande. La politique de confidentialité de Supabase décrit ce service : https://supabase.com/privacy",
         },
+        {
+          type: "p",
+          text: "Stripe reçoit l'identifiant de compte, l'adresse courriel quand Checkout en a besoin, et les renseignements de carte que vous saisissez sur la page de Stripe, pour encaisser le paiement et calculer la taxe. Stripe est le vendeur officiel. Le document ne fait pas partie de cette demande. Stripe peut traiter ces renseignements à l'extérieur de votre province et à l'extérieur du Canada. La politique de confidentialité de Stripe est à https://stripe.com/privacy",
+        },
       ],
     },
     {
@@ -215,7 +227,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: `Si vous vous connectez, nous conservons l'adresse courriel et la ligne du compte tant que le compte existe. L'indicateur payé reste faux, et il reste avec cette ligne. Se déconnecter retire la session de localStorage sur cet appareil. Cela n'efface pas le compte. Vous pouvez nous demander d'effacer le compte en écrivant à ${email}. Nous ne conservons pas le document avec le compte.`,
+          text: `Si vous vous connectez, nous conservons l'adresse courriel et la ligne du compte tant que le compte existe. La ligne comprend l'indicateur payé, le forfait et l'identifiant client Stripe. Se déconnecter retire la session de localStorage sur cet appareil. Cela n'efface pas le compte. Vous pouvez nous demander d'effacer le compte en écrivant à ${email}. Nous ne conservons pas le document ni le numéro de carte avec le compte.`,
         },
       ],
     },
@@ -228,7 +240,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: `Comme nous ne gardons pas de copie du document, nous n'avons habituellement rien du document à vous montrer ou à corriger. Si vous ne vous êtes pas connecté, le dossier d'utilisation n'est pas classé sous votre nom ni votre courriel, alors un courriel seul ne nous dit pas quel hachage de connexion est le vôtre. Si vous vous êtes connecté, nous pouvons trouver le compte par l'adresse courriel. Ce compte comprend le courriel et l'indicateur payé. Il ne comprend pas le document. Si vous écrivez à ${email}, nous vous dirons ce que nous détenons et nous répondrons dans le délai que ces lois permettent. Nous ne pouvons pas récupérer un ancien document à partir de ce site. Nous ne pouvons pas non plus l'effacer chez Anthropic pour vous, parce que nous ne gardons pas de dossier qui nous permettrait de trouver cette demande.`,
+          text: `Comme nous ne gardons pas de copie du document, nous n'avons habituellement rien du document à vous montrer ou à corriger. Si vous ne vous êtes pas connecté, le dossier d'utilisation n'est pas classé sous votre nom ni votre courriel, alors un courriel seul ne nous dit pas quel hachage de connexion est le vôtre. Si vous vous êtes connecté, nous pouvons trouver le compte par l'adresse courriel. Ce compte comprend le courriel, l'indicateur payé, le forfait et l'identifiant client Stripe. Il ne comprend pas le document ni le numéro de carte. Si vous écrivez à ${email}, nous vous dirons ce que nous détenons et nous répondrons dans le délai que ces lois permettent. Nous ne pouvons pas récupérer un ancien document à partir de ce site. Nous ne pouvons pas non plus l'effacer chez Anthropic pour vous, parce que nous ne gardons pas de dossier qui nous permettrait de trouver cette demande.`,
         },
         {
           type: "p",
@@ -241,7 +253,7 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, l'identifiant aléatoire de l'explication, le hachage salé de l'adresse IP de la connexion, le compte du mois, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication. Si vous vous connectez, ils comprennent aussi l'adresse courriel, l'identifiant de compte, la session de connexion gardée sur cet appareil, et l'indicateur payé, qui reste faux.",
+          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, l'identifiant aléatoire de l'explication, le hachage salé de l'adresse IP de la connexion, le compte du mois, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication. Si vous vous connectez, ils comprennent aussi l'adresse courriel, l'identifiant de compte, la session de connexion gardée sur cet appareil, et l'indicateur payé, qui reste faux jusqu'à ce que Stripe confirme un paiement. Si vous achetez un forfait, Stripe traite aussi les renseignements de carte, comme cette politique le décrit.",
         },
         {
           type: "p",
@@ -287,7 +299,7 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: `Ces conditions sont entre vous et ${name} pour votre utilisation de Sign With Clarity à signwithclarity.ca. Le site est gratuit. Vous pouvez l'utiliser sans compte. La connexion par courriel est facultative.`,
+          text: `Ces conditions sont entre vous et ${name} pour votre utilisation de Sign With Clarity à signwithclarity.ca. Vous pouvez demander trois explications par mois sans payer. La connexion par courriel est facultative. Acheter d'autres explications exige un compte.`,
         },
         {
           type: "p",
@@ -347,6 +359,15 @@ export const termsOfUseFr = {
       ],
     },
     {
+      heading: "Explications payantes",
+      blocks: [
+        {
+          type: "p",
+          text: "Trois explications par mois civil sont gratuites. Household Check est un achat unique de quatre explications, au prix affiché pour le Canada ou les États-Unis. Clarity Yearly est un abonnement annuel au prix affiché. Il comprend jusqu'à 100 explications dans cette année. Stripe est le vendeur et ajoute la taxe au paiement. Un forfait annuel se renouvelle chaque année jusqu'à ce que vous l'annuliez dans le portail client de Stripe. Après l'annulation, vous pouvez continuer à l'utiliser jusqu'à la fin de l'année déjà payée. Household Check n'est pas un abonnement. Payer ne change pas ce qu'est une explication : ce n'est toujours pas un conseil en assurance, un avis juridique ni un conseil financier.",
+        },
+      ],
+    },
+    {
       heading: "Utilisation du site",
       blocks: [
         {
@@ -360,7 +381,7 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: "Le site est fourni tel quel, gratuitement. Une explication peut être incomplète ou inexacte. Le site peut être lent ou indisponible. Nous ne promettons pas qu'une explication est exacte, à jour ou convenable pour une décision que vous devez prendre.",
+          text: "Le site est fourni tel quel. Une explication peut être incomplète ou inexacte. Le site peut être lent ou indisponible. Nous ne promettons pas qu'une explication est exacte, à jour ou convenable pour une décision que vous devez prendre.",
         },
       ],
     },

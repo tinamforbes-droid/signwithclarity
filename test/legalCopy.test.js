@@ -52,7 +52,13 @@ test("the privacy policy describes only the collection the code performs", () =>
   assert.match(privacy, /ldhkqqhlztsaljccazti\.supabase\.co/);
   assert.match(privacy, /row level security/i);
   assert.match(privacy, /SUPABASE_SECRET_KEY/);
-  assert.match(privacy, /paid flag stays false/);
+  assert.match(privacy, /paid flag stays false until/);
+  assert.match(privacy, /STRIPE_SECRET_KEY/);
+  assert.match(privacy, /STRIPE_WEBHOOK_SECRET/);
+  assert.match(privacy, /stripe\.com\/privacy/);
+  assert.match(privacy, /\/\.netlify\/functions\/checkout/);
+  assert.match(privacy, /\/\.netlify\/functions\/stripe-webhook/);
+  assert.match(privacy, /card number/);
   assert.match(privacy, /swc-auth/);
   assert.match(privacy, /There is no password/);
   assert.equal(privacy.includes("There is no account to attach"), false);
@@ -138,6 +144,10 @@ test("the terms limit the site to education and say the model can be wrong", () 
   assert.match(terms, /does not recommend coverage/);
   assert.match(terms, /not a licensed insurance professional/);
   assert.match(terms, /AI can make mistakes/);
+  assert.match(terms, /Household Check/);
+  assert.match(terms, /Clarity Yearly/);
+  assert.match(terms, /100 explanations/);
+  assert.match(terms, /Stripe is the seller/);
   assert.match(terms, /insurer or broker/);
   assert.match(terms, /Documents aren't stored/);
   assert.match(STORAGE_NOTE, /Documents aren't stored/);

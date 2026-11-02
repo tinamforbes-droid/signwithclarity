@@ -15,7 +15,7 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: `Sign With Clarity es un sitio gratuito en signwithclarity.ca. Explica documentos de seguro en lenguaje claro para personas en Canadá y Estados Unidos. Lo opera ${name}.`,
+          text: `Sign With Clarity es un sitio en signwithclarity.ca. Explica documentos de seguro en lenguaje claro para personas en Canadá y Estados Unidos. Tres explicaciones al mes son gratuitas. Los planes de pago se describen en las condiciones de uso. Lo opera ${name}.`,
         },
         {
           type: "p",
@@ -48,7 +48,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "No necesita una cuenta. Iniciar sesión es opcional, y puede pedir una explicación sin una. Si elige iniciar sesión, el sitio pide un correo electrónico y le envía un enlace. No hay contraseña. El sitio no pide su nombre, su número de teléfono ni sus datos de pago. Una cuenta no queda marcada como pagada.",
+          text: "No necesita una cuenta. Iniciar sesión es opcional, y puede pedir una explicación sin una. Si elige iniciar sesión, el sitio pide un correo electrónico y le envía un enlace. No hay contraseña. El sitio no pide su nombre ni su número de teléfono. Los números de tarjeta se escriben en la página de Stripe, no en este sitio. El indicador de pago se queda en falso hasta que el servidor lo cambia después de que Stripe confirma un pago.",
         },
       ],
     },
@@ -110,7 +110,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "También guardamos una fila en una tabla de Supabase llamada accounts, para que un paso posterior pueda anotar si la cuenta pagó. La fila contiene el identificador de cuenta, el correo electrónico, un indicador de pago y los momentos en que la fila se creó y se actualizó. El indicador de pago se queda en falso. La fila no contiene su documento, las notas ni la explicación. La seguridad a nivel de fila (row level security) está activada: una sesión del navegador no puede cambiar el indicador de pago, y no puede leer la fila de otra persona. Esta página no lee ni escribe esa fila. La clave secreta que puede administrar la tabla se queda en el servidor, en un ajuste llamado SUPABASE_SECRET_KEY. No está incluida en la página que carga su navegador. Una cuenta nueva recibe una fila cuando esa tabla está lista. Si inició sesión antes de que la tabla existiera, la fila se agrega cuando la tabla se prepara.",
+          text: "También guardamos una fila en una tabla de Supabase llamada accounts. La fila contiene el identificador de cuenta, el correo electrónico, un indicador de pago, el nombre del plan (household, yearly o ninguno), cuántas explicaciones de Household Check quedan, cuántas explicaciones de Clarity Yearly se usaron en el año en curso, cuándo termina ese año, el identificador de cliente de Stripe, el identificador de suscripción de Stripe, los identificadores al azar de las explicaciones ya contadas en un plan de pago, y los momentos en que la fila se creó y se actualizó. El indicador de pago se queda en falso hasta que el servidor lo cambia después de que Stripe confirma un pago. La fila no contiene su documento, las notas, el número de tarjeta ni la explicación. La seguridad a nivel de fila (row level security) está activada: una sesión del navegador no puede cambiar el indicador de pago ni el plan, y no puede leer la fila de otra persona. La sección de planes lee su propia fila para mostrar lo que le queda. La clave secreta que puede administrar la tabla se queda en el servidor, en un ajuste llamado SUPABASE_SECRET_KEY. No está incluida en la página que carga su navegador. Una cuenta nueva recibe una fila cuando esa tabla está lista. Si inició sesión antes de que la tabla existiera, la fila se agrega cuando la tabla se prepara.",
         },
       ],
     },
@@ -128,6 +128,10 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: "La función lee la dirección IP solo para crear el hash con sal descrito arriba. No escribe la dirección IP en el registro de uso. No escribe la dirección IP en el registro del servidor. No escribe el token de acceso ni el correo electrónico en el registro del servidor.",
+        },
+        {
+          type: "p",
+          text: "Si un aviso de pago de Stripe no se puede registrar, la función escribe el identificador del evento y el tipo de evento en el registro del servidor. No escribe el número de tarjeta. No escribe el documento.",
         },
       ],
     },
@@ -152,7 +156,11 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El código no incluye una herramienta de analítica, un píxel publicitario ni otro rastreador. No coloca cookies. Usa localStorage para recordar el idioma que usted eligió: inglés, francés o español. Si inicia sesión, también usa localStorage para guardar la sesión de acceso en este dispositivo. No guarda su documento en localStorage. No usa sessionStorage. No controlamos si Google, Cloudflare o Supabase coloca una cookie cuando su navegador los contacta.",
+          text: "Si compra un plan, el navegador envía el nombre del plan, la moneda y el token de acceso a la función de este sitio en /.netlify/functions/checkout. La función comprueba el token y luego pide a Stripe que abra Checkout con Managed Payments. Stripe es el vendedor y calcula el impuesto. La función envía a Stripe su identificador de cuenta, el precio y, si Checkout todavía no lo conoce, su correo electrónico. No envía el documento. El número de tarjeta se escribe en la página de Stripe. Stripe avisa a nuestra función en /.netlify/functions/stripe-webhook cuando un pago sale bien, cuando un plan anual se renueva y cuando un plan anual termina. Ese aviso se comprueba con un ajuste del servidor llamado STRIPE_WEBHOOK_SECRET. La clave secreta de Stripe es un ajuste del servidor llamado STRIPE_SECRET_KEY. Ninguna de las dos está incluida en la página que carga su navegador. Quien tiene el plan anual puede abrir el portal de clientes de Stripe desde /.netlify/functions/portal para administrar o cancelar el plan. La política de privacidad de Stripe describe ese servicio: https://stripe.com/privacy",
+        },
+        {
+          type: "p",
+          text: "El código no incluye una herramienta de analítica, un píxel publicitario ni otro rastreador. No coloca cookies. Usa localStorage para recordar el idioma que usted eligió: inglés, francés o español. Si inicia sesión, también usa localStorage para guardar la sesión de acceso en este dispositivo. No guarda su documento en localStorage. No usa sessionStorage. No controlamos si Google, Cloudflare, Supabase o Stripe coloca una cookie cuando su navegador los contacta.",
         },
       ],
     },
@@ -169,7 +177,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Si inicia sesión, usamos el correo electrónico para enviar el enlace de acceso y para mostrar qué cuenta está conectada en este dispositivo. Usamos el identificador de cuenta para dar a esa cuenta sus propias tres explicaciones gratuitas en cada mes calendario, en lugar de usar el conteo de la conexión. Guardamos el indicador de pago para que un paso posterior pueda anotar si la cuenta pagó. El indicador se queda en falso. No usamos el correo electrónico para publicidad, y no lo vendemos.",
+          text: "Si inicia sesión, usamos el correo electrónico para enviar el enlace de acceso y para mostrar qué cuenta está conectada en este dispositivo. Usamos el identificador de cuenta para dar a esa cuenta sus propias tres explicaciones gratuitas en cada mes calendario, en lugar de usar el conteo de la conexión, y para unir un pago a esa cuenta. Guardamos el indicador de pago, el plan, las explicaciones de Household Check que quedan, el conteo de Clarity Yearly y el identificador de cliente de Stripe para que el servidor pueda permitir las explicaciones que se pagaron y abrir el portal del cliente. El indicador de pago se queda en falso hasta que Stripe confirma un pago. No usamos el correo electrónico para publicidad, y no lo vendemos. No guardamos el número de tarjeta.",
         },
         {
           type: "p",
@@ -200,6 +208,10 @@ export const privacyPolicyEs = {
           type: "p",
           text: "Supabase recibe el correo electrónico y la sesión de acceso para enviar el enlace y confirmar quién inició sesión. La solicitud va a https://ldhkqqhlztsaljccazti.supabase.co. Supabase puede procesar esa información fuera de su provincia y fuera de Canadá. El documento no forma parte de esa solicitud. La política de privacidad de Supabase describe ese servicio: https://supabase.com/privacy",
         },
+        {
+          type: "p",
+          text: "Stripe recibe el identificador de cuenta, el correo electrónico cuando Checkout lo necesita, y los datos de la tarjeta que usted escribe en la página de Stripe, para cobrar el pago y calcular el impuesto. Stripe es el vendedor oficial. El documento no forma parte de esa solicitud. Stripe puede procesar esa información fuera de su provincia y fuera de Canadá. La política de privacidad de Stripe está en https://stripe.com/privacy",
+        },
       ],
     },
     {
@@ -215,7 +227,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: `Si inicia sesión, conservamos el correo electrónico y la fila de la cuenta mientras la cuenta exista. El indicador de pago se queda en falso, y se queda con esa fila. Cerrar sesión quita la sesión de localStorage en este dispositivo. No borra la cuenta. Puede pedirnos que borremos la cuenta escribiendo a ${email}. No conservamos el documento con la cuenta.`,
+          text: `Si inicia sesión, conservamos el correo electrónico y la fila de la cuenta mientras la cuenta exista. La fila incluye el indicador de pago, el plan y el identificador de cliente de Stripe. Cerrar sesión quita la sesión de localStorage en este dispositivo. No borra la cuenta. Puede pedirnos que borremos la cuenta escribiendo a ${email}. No conservamos el documento ni el número de tarjeta con la cuenta.`,
         },
       ],
     },
@@ -228,7 +240,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: `Como no guardamos una copia del documento, por lo general no tenemos nada del documento que mostrarle o corregir. Si no inició sesión, el registro de uso no está archivado con su nombre ni con su correo, así que un correo solo no nos dice cuál hash de la conexión es el suyo. Si inició sesión, podemos encontrar la cuenta por el correo electrónico. Esa cuenta incluye el correo y el indicador de pago. No incluye el documento. Si escribe a ${email}, le diremos qué tenemos y responderemos dentro del plazo que esas leyes permiten. No podemos recuperar un documento anterior desde este sitio. Tampoco podemos borrarlo de Anthropic por usted, porque no guardamos un registro que nos permita encontrar esa solicitud.`,
+          text: `Como no guardamos una copia del documento, por lo general no tenemos nada del documento que mostrarle o corregir. Si no inició sesión, el registro de uso no está archivado con su nombre ni con su correo, así que un correo solo no nos dice cuál hash de la conexión es el suyo. Si inició sesión, podemos encontrar la cuenta por el correo electrónico. Esa cuenta incluye el correo, el indicador de pago, el plan y el identificador de cliente de Stripe. No incluye el documento ni el número de tarjeta. Si escribe a ${email}, le diremos qué tenemos y responderemos dentro del plazo que esas leyes permiten. No podemos recuperar un documento anterior desde este sitio. Tampoco podemos borrarlo de Anthropic por usted, porque no guardamos un registro que nos permita encontrar esa solicitud.`,
         },
         {
           type: "p",
@@ -241,7 +253,7 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige, el identificador al azar de la explicación, el hash con sal de la dirección IP de la conexión, la cuenta del mes y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación. Si inicia sesión, también incluye el correo electrónico, el identificador de cuenta, la sesión de acceso guardada en este dispositivo y el indicador de pago, que se queda en falso.",
+          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige, el identificador al azar de la explicación, el hash con sal de la dirección IP de la conexión, la cuenta del mes y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación. Si inicia sesión, también incluye el correo electrónico, el identificador de cuenta, la sesión de acceso guardada en este dispositivo y el indicador de pago, que se queda en falso hasta que Stripe confirma un pago. Si compra un plan, Stripe también maneja los datos de la tarjeta, como describe esta política.",
         },
         {
           type: "p",
@@ -287,7 +299,7 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: `Estas condiciones son entre usted y ${name} por el uso de Sign With Clarity en signwithclarity.ca. El sitio es gratuito. Puede usarlo sin una cuenta. Iniciar sesión por correo electrónico es opcional.`,
+          text: `Estas condiciones son entre usted y ${name} por el uso de Sign With Clarity en signwithclarity.ca. Puede pedir tres explicaciones al mes sin pagar. Iniciar sesión por correo electrónico es opcional. Comprar más explicaciones requiere una cuenta.`,
         },
         {
           type: "p",
@@ -347,6 +359,15 @@ export const termsOfUseEs = {
       ],
     },
     {
+      heading: "Explicaciones de pago",
+      blocks: [
+        {
+          type: "p",
+          text: "Tres explicaciones cada mes calendario son gratuitas. Household Check es una compra única de cuatro explicaciones, al precio que se muestra para Canadá o Estados Unidos. Clarity Yearly es una suscripción anual al precio que se muestra. Incluye hasta 100 explicaciones en ese año. Stripe es el vendedor y agrega el impuesto al pagar. Un plan anual se renueva cada año hasta que usted lo cancele en el portal de clientes de Stripe. Después de cancelar, puede seguir usándolo hasta que termine el año que ya pagó. Household Check no es una suscripción. Pagar no cambia lo que es una explicación: sigue sin ser asesoría de seguros, asesoría legal ni asesoría financiera.",
+        },
+      ],
+    },
+    {
       heading: "Uso del sitio",
       blocks: [
         {
@@ -360,7 +381,7 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: "El sitio se ofrece tal como está, sin costo. Una explicación puede estar incompleta o equivocada. El sitio puede ir lento o no estar disponible. No prometemos que una explicación sea exacta, actual o adecuada para una decisión que usted necesite tomar.",
+          text: "El sitio se ofrece tal como está. Una explicación puede estar incompleta o equivocada. El sitio puede ir lento o no estar disponible. No prometemos que una explicación sea exacta, actual o adecuada para una decisión que usted necesite tomar.",
         },
       ],
     },

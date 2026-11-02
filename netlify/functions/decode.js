@@ -22,8 +22,9 @@
 // count is kept in Netlify Blobs under a salted hash of the IP address.
 // If the request includes a Supabase session, this function checks that
 // session with the secret key and counts the three on that account instead.
-// The document itself is not stored. Paid access, added later, skips the
-// count in shared/access.js. A flag in the request body cannot.
+// The document itself is not stored. A paid account is read from Supabase
+// in shared/access.js. Household Check spends a credit. Clarity Yearly
+// spends one of its yearly explanations. A flag in the request body cannot.
 
 import {
   CHUNK_SIZE,
@@ -198,6 +199,8 @@ export async function handler(event, context) {
       now: context?.now instanceof Date ? context.now : new Date(),
       hasUnlimitedAccess: context?.hasUnlimitedAccess,
       verifySession: context?.verifySession,
+      accountStore: context?.accountStore,
+      fetchImpl: context?.fetchImpl,
       language,
     });
     if (!gate.allowed) return reply(gate.statusCode, gate.body);

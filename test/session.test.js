@@ -74,14 +74,14 @@ test("the server checks the session with the secret key and does not send the do
     },
   });
   assert.equal(calls, 1);
-  assert.deepEqual(user, { id: USER_ID });
+  assert.deepEqual(user, { id: USER_ID, email: "ada@example.com" });
 
   const wrapped = await verifySupabaseUser({
     token: TOKEN,
     env: { SUPABASE_URL: "https://ldhkqqhlztsaljccazti.supabase.co/", SUPABASE_SECRET_KEY: "sb_secret_server" },
     fetchImpl: async () => ({ ok: true, json: async () => ({ user: { id: USER_ID } }) }),
   });
-  assert.deepEqual(wrapped, { id: USER_ID });
+  assert.deepEqual(wrapped, { id: USER_ID, email: "" });
 
   const rejected = await verifySupabaseUser({
     token: TOKEN,
@@ -220,13 +220,18 @@ test("the page source does not contain the server secret", () => {
     "src/authClient.js",
     "src/AccountBar.jsx",
     "src/SignWithClarity.jsx",
+    "src/Pricing.jsx",
+    "src/accountRow.js",
     "shared/decodeRun.js",
     "shared/session.js",
     "shared/messages.js",
+    "shared/plans.js",
   ];
   for (const file of browserFiles) {
     const text = readFileSync(file, "utf8");
     assert.equal(text.includes("SUPABASE_SECRET_KEY"), false, file);
+    assert.equal(text.includes("STRIPE_SECRET_KEY"), false, file);
+    assert.equal(text.includes("STRIPE_WEBHOOK_SECRET"), false, file);
     assert.equal(text.includes("sb_secret_"), false, file);
   }
   assert.equal(readFileSync("shared/supabaseUser.js", "utf8").includes("SUPABASE_SECRET_KEY"), true);
