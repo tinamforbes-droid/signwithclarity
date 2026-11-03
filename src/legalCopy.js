@@ -15,7 +15,7 @@ import {
 export { CONTACT_EMAIL, EFFECTIVE_DATE, OWNER_LEGAL_NAME };
 
 export const STORAGE_NOTE =
-  "Documents aren't stored. The text stays in this browser until you leave or start over.";
+  "Documents aren't stored. The text or photo stays in this browser until you leave or start over.";
 
 const name = OWNER_LEGAL_NAME;
 const email = CONTACT_EMAIL;
@@ -182,7 +182,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "We use the document text and the location you chose for one purpose: to write the plain-language explanation you asked for, and to show it to you.",
+          text: "We use the document text and the location you chose for one purpose: to write the plain-language explanation you asked for, and to show it to you. A photo or scan of a page is sent the same way, and it is not stored.",
         },
         {
           type: "p",
@@ -363,7 +363,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: "Only submit text you are allowed to share. Documents aren't stored. The text stays in this browser until you leave or start over. This device remembers only the language you chose. When you ask for an explanation, the text is sent to the function described in the privacy policy.",
+          text: "Only submit text or a photo you are allowed to share. Documents aren't stored. The text or photo stays in this browser until you leave or start over. This device remembers only the language you chose. When you ask for an explanation, the text is sent to the function described in the privacy policy.",
         },
         {
           type: "p",
@@ -464,8 +464,8 @@ export function documentPlainText(doc) {
 
 const STORAGE_NOTES = {
   en: STORAGE_NOTE,
-  fr: "Les documents ne sont pas conservés. Le texte reste dans ce navigateur jusqu'à ce que vous partiez ou recommenciez.",
-  es: "Los documentos no se guardan. El texto permanece en este navegador hasta que usted se vaya o empiece de nuevo.",
+  fr: "Les documents ne sont pas conservés. Le texte ou la photo reste dans ce navigateur jusqu'à ce que vous partiez ou recommenciez.",
+  es: "Los documentos no se guardan. El texto o la foto permanece en este navegador hasta que usted se vaya o empiece de nuevo.",
 };
 
 export function storageNote(lang) {

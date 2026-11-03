@@ -169,7 +169,7 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: "Usamos el texto del documento y la ubicación que usted eligió para un solo fin: escribir la explicación en lenguaje claro que pidió, y mostrársela. El idioma sirve para escribir esa explicación en el idioma elegido.",
+          text: "Usamos el texto del documento y la ubicación que usted eligió para un solo fin: escribir la explicación en lenguaje claro que pidió, y mostrársela. El idioma sirve para escribir esa explicación en el idioma elegido. Una foto o un documento escaneado se envía de la misma manera, y no se guarda.",
         },
         {
           type: "p",
@@ -350,7 +350,7 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: "Envíe solo texto que tenga permiso de compartir. Los documentos no se guardan. El texto permanece en este navegador hasta que usted se vaya o empiece de nuevo. Este dispositivo recuerda solo el idioma que usted eligió. Cuando pide una explicación, el texto se envía a la función descrita en la política de privacidad.",
+          text: "Envíe solo texto o una foto que tenga permiso de compartir. Los documentos no se guardan. El texto o la foto permanece en este navegador hasta que usted se vaya o empiece de nuevo. Este dispositivo recuerda solo el idioma que usted eligió. Cuando pide una explicación, el texto se envía a la función descrita en la política de privacidad.",
         },
         {
           type: "p",

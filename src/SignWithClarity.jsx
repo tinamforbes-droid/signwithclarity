@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
+import { compareDisabledReason, explainDisabledReason } from "../shared/readiness.js";
 import { runComparison } from "../shared/compareRun.js";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
 import { canCompareAccount, isYearlyActive, isoDate, visibleChecks } from "../shared/entitlement.js";
-import { longDocumentNote, planDocument, tooLongMessage } from "../shared/limits.js";
+import { longDocumentNote, planDocument } from "../shared/limits.js";
 import {
   LANGUAGE_CHOICES,
   htmlLang,
@@ -26,7 +27,7 @@ import ComparePanel from "./ComparePanel.jsx";
 import { devCompareSample, emptyPolicy } from "./policyDraft.js";
 import ComparisonResult from "./ComparisonResult.jsx";
 import { loadOwnPlan } from "./accountRow.js";
-import { readDocumentFile } from "./readDocumentFile.js";
+import { FILE_ACCEPT, readDocumentFiles } from "./readDocumentFile.js";
 import Pricing from "./Pricing.jsx";
 import { currentAccessToken } from "./authClient.js";
 import LegalPage from "./LegalPage.jsx";
@@ -392,6 +393,12 @@ const STYLES = `
     color: var(--green-ok);
     font-weight: 500;
   }
+  .file-quiet {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 400;
+  }
 
   /* LOCATION SELECTORS */
   .province-row {
@@ -528,6 +535,15 @@ const STYLES = `
     margin-top: 8px;
     letter-spacing: 0.5px;
   }
+  .block-reason {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--navy);
+    text-align: center;
+  }
+  .block-reason a { color: var(--navy); }
+  .pages-add { margin-top: 8px; }
 
   /* LOADING */
   .loading-card {
@@ -1301,6 +1317,10 @@ export default function SignWithClarity() {
   const comparisonIdRef = useRef("");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
+  const [docPages, setDocPages] = useState([]);
+  const [docProblem, setDocProblem] = useState("");
+  const [docPageCount, setDocPageCount] = useState(0);
+  const [readingName, setReadingName] = useState("");
   const [country, setCountry] = useState(() => devCompareSample()?.country || "Canada");
   const [region, setRegion] = useState(() => devCompareSample()?.region || "");
   const [needsRegion, setNeedsRegion] = useState(false);
@@ -1314,7 +1334,6 @@ export default function SignWithClarity() {
   const [usage, setUsage] = useState(null);
   const fileRef = useRef();
   const plan = useMemo(() => (docText.trim() ? planDocument(docText) : null), [docText]);
-  const tooLong = Boolean(plan && !plan.ok && plan.reason === "too_long");
   const error = errorKey ? t(lang, errorKey) : errorText;
   const atLimit = errorCode === "monthly_limit"
     || errorCode === "fair_use"
@@ -1399,23 +1418,26 @@ export default function SignWithClarity() {
     document.head.appendChild(script);
   }, []);
 
-  const handleFile = async (file) => {
-    if (!file) return;
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList || []).filter(Boolean);
+    if (!files.length) return;
     clearError();
-    const result = await readDocumentFile(file);
-    setFileName(result.fileName || file.name || "");
-    if (result.errorKey) {
-      setErrorKey(result.errorKey);
-      setErrorText("");
-      return;
+    setReadingName(files[0].name || "");
+    try {
+      const result = await readDocumentFiles(files);
+      setFileName(result.fileName || files[0].name || "");
+      setDocProblem(result.errorKey || "");
+      setDocPageCount(result.pageCount || 0);
+      setDocPages(result.pages || []);
+      setDocText(result.text || "");
+    } finally {
+      setReadingName("");
     }
-    setDocText(result.text || "");
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    handleFiles(e.dataTransfer.files);
   };
 
   const places = regionOptions(country, lang);
@@ -1434,29 +1456,34 @@ export default function SignWithClarity() {
   const compareNote = yearlyCompareBlocked
     ? t(lang, "fairUseReached", { date: formatResetDate(isoDate(account?.period_end), lang) })
     : t(lang, "compareNeedsPlan");
-  const filledPolicies = policies.filter((policy) => policy.text.trim());
-  const compareTooLong = policies.some((policy) => {
-    if (!policy.text.trim()) return false;
-    const planned = planDocument(policy.text);
-    return !planned.ok && planned.reason === "too_long";
+  const compareReason = compareDisabledReason(lang, {
+    policies,
+    allowed: allowedToCompare,
+    blockedNote: compareNote,
+    readingName: workMode === "compare" ? readingName : "",
+  });
+  const explainReason = explainDisabledReason(lang, {
+    text: docText,
+    pages: docPages,
+    fileName,
+    problem: docProblem,
+    pageCount: docPageCount,
+    atLimit,
+    limitMessage: usageMessage,
+    readingName: workMode === "single" ? readingName : "",
   });
   const regionLabel = t(lang, country === "Canada" ? "regionLabelCanada" : "regionLabelUS");
   const regionListLabel = t(lang, country === "Canada" ? "regionListCanada" : "regionListUS");
   const copy = loadingCopy(lang, progress);
 
   const decode = async () => {
-    if (!docText.trim()) {
-      setErrorKey("errorEmpty");
-      setErrorText("");
-      return;
-    }
+    if (explainReason) return;
     if (!places.some((option) => option.value === region)) {
       clearError();
       setNeedsRegion(true);
       return;
     }
     setNeedsRegion(false);
-    if (tooLong || atLimit) return;
 
     clearError();
     setLoading(true);
@@ -1465,7 +1492,8 @@ export default function SignWithClarity() {
 
     try {
       const outcome = await runDecode({
-        text: docText,
+        text: docPages.length ? "" : docText,
+        pages: docPages,
         country,
         region,
         language: lang,
@@ -1498,20 +1526,13 @@ export default function SignWithClarity() {
   };
 
   const compare = async () => {
-    if (filledPolicies.length < 2) {
-      setErrorKey(filledPolicies.length === 0 ? "compareNeedText" : "compareCount");
-      setErrorText("");
-      setErrorCode("");
-      return;
-    }
+    if (compareReason) return;
     if (!places.some((option) => option.value === region)) {
       clearError();
       setNeedsRegion(true);
       return;
     }
     setNeedsRegion(false);
-    if (compareTooLong || !allowedToCompare) return;
-
     clearError();
     setLoading(true);
     setResults(null);
@@ -1520,7 +1541,7 @@ export default function SignWithClarity() {
 
     try {
       const outcome = await runComparison({
-        policies: policies.filter((policy) => policy.text.trim()),
+        policies: policies.filter((policy) => String(policy.text || "").trim() || policy.pages?.length),
         country,
         region,
         language: lang,
@@ -1623,11 +1644,7 @@ export default function SignWithClarity() {
                     lang={lang}
                     policies={policies}
                     onChange={(next) => { setPolicies(next); clearError(); }}
-                    onError={(key) => {
-                      setErrorKey(key || "");
-                      setErrorText("");
-                      setErrorCode("");
-                    }}
+                    onReading={(active, name) => setReadingName(active ? (name || "") : "")}
                   />
                 ) : (
                 <>
@@ -1641,7 +1658,13 @@ export default function SignWithClarity() {
                     className="doc-textarea"
                     placeholder={t(lang, "pastePlaceholder")}
                     value={docText}
-                    onChange={e => { setDocText(e.target.value); clearError(); }}
+                    onChange={e => {
+                      setDocText(e.target.value);
+                      setDocPages([]);
+                      setDocProblem("");
+                      setFileName("");
+                      clearError();
+                    }}
                   />
                 ) : (
                   <div
@@ -1656,8 +1679,13 @@ export default function SignWithClarity() {
                       {t(lang, "fileDrop")}<br />
                       <span style={{fontSize: "11px", marginTop: "4px", display: "block"}}>{t(lang, "fileTypes")}</span>
                     </p>
-                    {fileName && <p className="file-name">✅ {fileName}</p>}
-                    <input ref={fileRef} type="file" accept=".txt,.pdf" style={{display:"none"}} onChange={e => handleFile(e.target.files[0])} />
+                    {fileName && !docProblem && (docText.trim() || docPages.length > 0) && (
+                      <p className="file-name">
+                        ✅ {docPages.length > 1 ? t(lang, "photoPages", { count: docPages.length, name: fileName }) : fileName}
+                      </p>
+                    )}
+                    {fileName && docProblem && <p className="file-quiet">{fileName}</p>}
+                    <input ref={fileRef} type="file" accept={FILE_ACCEPT} multiple style={{display:"none"}} onChange={e => handleFiles(e.target.files)} />
                   </div>
                 )}
                 </>
@@ -1704,36 +1732,25 @@ export default function SignWithClarity() {
                   <p className="length-note">{longDocumentNote(plan, lang)}</p>
                 )}
 
-                {workMode === "single" && tooLong && (
-                  <div className="error-msg" role="alert">⚠️ {tooLongMessage(plan, lang)}</div>
-                )}
-                {workMode === "single" && !tooLong && atLimit && usageMessage && (
-                  <div className="limit-msg" role="status">
-                    {usageMessage}
-                    {errorCode !== "fair_use" && (
-                      <p className="usage-note"><a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></p>
-                    )}
-                  </div>
-                )}
-                {workMode === "compare" && (!allowedToCompare || errorCode === "compare_needs_plan" || errorCode === "fair_use") && (
-                  <div className="compare-note" role="status">
-                    {errorCode === "fair_use" && usageMessage ? usageMessage : compareNote}
-                    {errorCode !== "fair_use" && !yearlyCompareBlocked && (
-                      <p className="usage-note"><a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></p>
-                    )}
-                  </div>
-                )}
-                {error && ((workMode === "single" && !tooLong && !atLimit) || (workMode === "compare" && allowedToCompare && errorCode !== "compare_needs_plan")) && (
+                {error && !explainReason && !compareReason && (
                   <div className="error-msg" role="alert">⚠️ {error}</div>
                 )}
 
                 {workMode === "single" ? (
                   <>
-                    <button className="decode-btn" onClick={decode} disabled={!docText.trim() || tooLong || atLimit}>
+                    <button className="decode-btn" onClick={decode} disabled={Boolean(explainReason)}>
                       ✨ {t(lang, "decodeButton")}
                     </button>
                     <span className="decode-btn-sub">{t(lang, "decodeSub")}</span>
-                    {!atLimit && usageMessage && (
+                    {explainReason && (
+                      <p className="block-reason" role="status">
+                        {explainReason}
+                        {atLimit && errorCode !== "fair_use" && (
+                          <> <a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></>
+                        )}
+                      </p>
+                    )}
+                    {!explainReason && !atLimit && usageMessage && (
                       <p className="usage-note">{usageMessage}</p>
                     )}
                   </>
@@ -1742,11 +1759,19 @@ export default function SignWithClarity() {
                     <button
                       className="decode-btn"
                       onClick={compare}
-                      disabled={filledPolicies.length < 2 || compareTooLong || !allowedToCompare}
+                      disabled={Boolean(compareReason)}
                     >
                       {t(lang, "compareButton")}
                     </button>
                     <span className="decode-btn-sub">{t(lang, "compareSub")}</span>
+                    {compareReason && (
+                      <p className="block-reason" role="status">
+                        {compareReason}
+                        {!allowedToCompare && !policies.some((policy) => policy.problem) && errorCode !== "fair_use" && (
+                          <> <a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></>
+                        )}
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -1820,7 +1845,7 @@ export default function SignWithClarity() {
                 </p>
               </div>
 
-              <button className="new-decode-btn" onClick={() => { setResults(null); setDocText(""); setFileName(""); }}>
+              <button className="new-decode-btn" onClick={() => { setResults(null); setDocText(""); setDocPages([]); setDocProblem(""); setFileName(""); }}>
                 {t(lang, "newDecode")}
               </button>
             </div>

@@ -169,7 +169,7 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: "Nous utilisons le texte du document et le lieu que vous avez choisis pour une seule fin : écrire l'explication en langage clair que vous avez demandée, et vous la montrer. La langue sert à écrire cette explication dans la langue choisie.",
+          text: "Nous utilisons le texte du document et le lieu que vous avez choisis pour une seule fin : écrire l'explication en langage clair que vous avez demandée, et vous la montrer. La langue sert à écrire cette explication dans la langue choisie. Une photo ou un document numérisé est envoyé de la même façon, et il n'est pas conservé.",
         },
         {
           type: "p",
@@ -350,7 +350,7 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: "N'envoyez que du texte que vous avez le droit de partager. Les documents ne sont pas conservés. Le texte reste dans ce navigateur jusqu'à ce que vous partiez ou recommenciez. Cet appareil se souvient seulement de la langue que vous avez choisie. Quand vous demandez une explication, le texte est envoyé à la fonction décrite dans la politique de confidentialité.",
+          text: "N'envoyez que du texte ou une photo que vous avez le droit de partager. Les documents ne sont pas conservés. Le texte ou la photo reste dans ce navigateur jusqu'à ce que vous partiez ou recommenciez. Cet appareil se souvient seulement de la langue que vous avez choisie. Quand vous demandez une explication, le texte est envoyé à la fonction décrite dans la politique de confidentialité.",
         },
         {
           type: "p",

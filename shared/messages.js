@@ -27,7 +27,7 @@ const en = {
   pastePlaceholder: "Paste your insurance document text here... (policy wording, renewal notice, claim letter, etc.)",
   fileChoose: "Tap to choose a file",
   fileDrop: "or drag and drop here",
-  fileTypes: "Supports .txt and .pdf text files",
+  fileTypes: "Text, PDF, or photos (JPG, PNG, HEIC). Several photos are the pages of one document.",
   countryLabel: "Country:",
   countryCanada: "🇨🇦 Canada",
   countryUS: "🇺🇸 United States",
@@ -72,7 +72,7 @@ const en = {
   pageTitleHome: "Sign With Clarity – Understand before you sign",
   pageTitlePrivacy: "Privacy Policy – Sign With Clarity",
   pageTitleTerms: "Terms of Use – Sign With Clarity",
-  pdfScanned: "This PDF appears to be scanned or image-based. Please copy and paste the text instead.",
+  pdfScanned: "This PDF looks like a scan. We'll read it from the page images.",
   pdfReadError: "Couldn't read this PDF. Please try copying and pasting the text instead.",
   aboutOnePage: "about a page",
   aboutPages: "about {count} pages",
@@ -198,6 +198,16 @@ const en = {
   signedInChecksOne: "1 Household Check left on this account. It compares up to 4 policies.",
   checkoutHouseholdNote: "One Household Check is one comparison of up to 4 policies, with a short explanation of each. It does not expire. This is not legal, financial, or insurance advice.",
   checkoutYearlyNote: "Clarity Yearly includes up to 100 explanations in the year. A comparison of up to 4 policies counts as one. This is not legal, financial, or insurance advice.",
+  noTextInFile: "We couldn't find any text in {name}.",
+  compareNeedTwoReady: "Add at least two policies. Paste the wording, or add a photo of the pages.",
+  explainNeedDocument: "Paste the wording, or add a photo of the pages.",
+  readingFile: "Reading {name}…",
+  photoPages: "{count} pages · {name}",
+  addPages: "Add more pages",
+  tooManyPhotos: "That is {count} pages. We can read {max} pages of one document at a time. The declarations and the exclusions are the pages to start with.",
+  photoReadError: "We couldn't open that photo. A JPG or PNG of the same page usually works.",
+  photoUnreadable: "That photo didn't come through clearly. Please try the page again.",
+  loadingPhoto: "Photo {current} of {total}.",
 };
 
 const fr = {
@@ -217,7 +227,7 @@ const fr = {
   pastePlaceholder: "Collez ici le texte de votre document d'assurance... (texte de la police, avis de renouvellement, lettre de réclamation, etc.)",
   fileChoose: "Touchez pour choisir un fichier",
   fileDrop: "ou faites-le glisser ici",
-  fileTypes: "Fichiers .txt et PDF contenant du texte",
+  fileTypes: "Texte, PDF ou photos (JPG, PNG, HEIC). Plusieurs photos sont les pages d'un même document.",
   countryLabel: "Pays :",
   countryCanada: "🇨🇦 Canada",
   countryUS: "🇺🇸 États-Unis",
@@ -262,7 +272,7 @@ const fr = {
   pageTitleHome: "Sign With Clarity – Comprendre avant de signer",
   pageTitlePrivacy: "Politique de confidentialité – Sign With Clarity",
   pageTitleTerms: "Conditions d'utilisation – Sign With Clarity",
-  pdfScanned: "Ce PDF semble numérisé ou fait d'images. Veuillez copier et coller le texte.",
+  pdfScanned: "Ce PDF ressemble à un document numérisé. Nous le lirons à partir des images des pages.",
   pdfReadError: "Impossible de lire ce PDF. Essayez de copier et coller le texte.",
   aboutOnePage: "environ une page",
   aboutPages: "environ {count} pages",
@@ -388,6 +398,16 @@ const fr = {
   signedInChecksOne: "Il reste 1 Household Check sur ce compte. Il compare jusqu'à 4 polices.",
   checkoutHouseholdNote: "Un Household Check est une comparaison d'au plus 4 polices, avec une courte explication de chacune. Il n'expire pas. Ce n'est pas un conseil juridique, financier ou en assurance.",
   checkoutYearlyNote: "Clarity Yearly comprend jusqu'à 100 explications dans l'année. Une comparaison d'au plus 4 polices compte pour une. Ce n'est pas un conseil juridique, financier ou en assurance.",
+  noTextInFile: "Nous n'avons pas trouvé de texte dans {name}.",
+  compareNeedTwoReady: "Ajoutez au moins deux polices. Collez le texte, ou ajoutez une photo des pages.",
+  explainNeedDocument: "Collez le texte, ou ajoutez une photo des pages.",
+  readingFile: "Lecture de {name}…",
+  photoPages: "{count} pages · {name}",
+  addPages: "Ajouter des pages",
+  tooManyPhotos: "Cela fait {count} pages. Nous pouvons en lire {max} à la fois. Commencez par les déclarations et les exclusions.",
+  photoReadError: "Nous n'avons pas pu ouvrir cette photo. Un JPG ou un PNG de la même page convient d'habitude.",
+  photoUnreadable: "Cette photo n'est pas arrivée clairement. Veuillez réessayer la page.",
+  loadingPhoto: "Photo {current} de {total}.",
 };
 
 const es = {
@@ -407,7 +427,7 @@ const es = {
   pastePlaceholder: "Pegue aquí el texto de su documento de seguro... (texto de la póliza, aviso de renovación, carta de reclamo, etc.)",
   fileChoose: "Toque para elegir un archivo",
   fileDrop: "o arrástrelo aquí",
-  fileTypes: "Acepta archivos .txt y PDF con texto",
+  fileTypes: "Texto, PDF o fotos (JPG, PNG, HEIC). Varias fotos son las páginas de un mismo documento.",
   countryLabel: "País:",
   countryCanada: "🇨🇦 Canadá",
   countryUS: "🇺🇸 Estados Unidos",
@@ -452,7 +472,7 @@ const es = {
   pageTitleHome: "Sign With Clarity – Entienda antes de firmar",
   pageTitlePrivacy: "Política de privacidad – Sign With Clarity",
   pageTitleTerms: "Condiciones de uso – Sign With Clarity",
-  pdfScanned: "Este PDF parece escaneado o hecho de imágenes. Copie y pegue el texto.",
+  pdfScanned: "Este PDF parece un documento escaneado. Lo leeremos a partir de las imágenes de las páginas.",
   pdfReadError: "No pudimos leer este PDF. Pruebe copiar y pegar el texto.",
   aboutOnePage: "alrededor de una página",
   aboutPages: "alrededor de {count} páginas",
@@ -578,6 +598,16 @@ const es = {
   signedInChecksOne: "Queda 1 Household Check en esta cuenta. Compara hasta 4 pólizas.",
   checkoutHouseholdNote: "Un Household Check es una comparación de hasta 4 pólizas, con una explicación breve de cada una. No vence. Esto no es asesoría legal, financiera ni de seguros.",
   checkoutYearlyNote: "Clarity Yearly incluye hasta 100 explicaciones en el año. Una comparación de hasta 4 pólizas cuenta como una. Esto no es asesoría legal, financiera ni de seguros.",
+  noTextInFile: "No encontramos texto en {name}.",
+  compareNeedTwoReady: "Agregue al menos dos pólizas. Pegue el texto, o agregue una foto de las páginas.",
+  explainNeedDocument: "Pegue el texto, o agregue una foto de las páginas.",
+  readingFile: "Leyendo {name}…",
+  photoPages: "{count} páginas · {name}",
+  addPages: "Agregar más páginas",
+  tooManyPhotos: "Son {count} páginas. Podemos leer {max} páginas de un documento a la vez. Empiece por las declaraciones y las exclusiones.",
+  photoReadError: "No pudimos abrir esa foto. Un JPG o un PNG de la misma página suele funcionar.",
+  photoUnreadable: "Esa foto no llegó con claridad. Intente la página de nuevo.",
+  loadingPhoto: "Foto {current} de {total}.",
 };
 
 export const MESSAGES = { en, fr, es };
@@ -635,6 +665,12 @@ export function t(lang, key, vars) {
 }
 
 export function loadingCopy(lang, progress) {
+  if (progress?.kind === "photo" && progress.total > 1) {
+    return {
+      title: t(lang, "loadingTitle"),
+      sub: t(lang, "loadingPhoto", { current: progress.current, total: progress.total }),
+    };
+  }
   if (progress?.phase === "comparing") {
     return { title: t(lang, "loadingCompareTitle"), sub: t(lang, "loadingCompareSub") };
   }

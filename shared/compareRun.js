@@ -1,5 +1,5 @@
 import { cleanComparisonPolicies, normalizeComparison, policyLabel } from "./comparePolicy.js";
-import { DecodeError, groupNotes, joinNotes, parseModelJson, withRetry } from "./decodeRun.js";
+import { DecodeError, groupNotes, joinNotes, notesFromPages, parseModelJson, withRetry } from "./decodeRun.js";
 import {
   MAX_NOTES_CHARS,
   MAX_SERVER_NOTES,
@@ -82,13 +82,15 @@ export async function runComparison({
   }
 
   const prepared = list.map((policy, index) => {
+    const pages = Array.isArray(policy?.pages) ? policy.pages.filter(Boolean) : [];
+    if (pages.length) {
+      return { label: policyLabel(lang, policy?.label, index), pages, plan: { ok: true, chunks: [] } };
+    }
     const plan = planDocument(policy?.text);
-    return {
-      label: policyLabel(lang, policy?.label, index),
-      plan,
-    };
+    return { label: policyLabel(lang, policy?.label, index), pages: [], plan };
   });
   for (const policy of prepared) {
+    if (policy.pages.length) continue;
     if (!policy.plan.ok) {
       if (policy.plan.reason === "empty") {
         throw new DecodeError(t(lang, "compareNeedText"), { code: "empty" });
@@ -107,13 +109,41 @@ export async function runComparison({
   };
   where.comparisonId = where.explanationId;
 
-  const totalChunks = prepared.reduce((sum, policy) => sum + policy.plan.chunks.length, 0);
+  const totalChunks = prepared.reduce((sum, policy) => (
+    sum + (policy.pages.length || policy.plan.chunks.length)
+  ), 0);
   const cap = perPolicyCap(prepared.length);
   let seen = 0;
   const briefs = [];
 
   for (let index = 0; index < prepared.length; index++) {
     const policy = prepared[index];
+    if (policy.pages.length) {
+      const photoNotes = await notesFromPages({
+        pages: policy.pages,
+        where,
+        request,
+        sleep,
+        onProgress,
+        seenStart: seen,
+        total: totalChunks,
+        policy: index + 1,
+        policies: prepared.length,
+      });
+      seen += policy.pages.length;
+      onProgress?.({
+        phase: "combining",
+        policy: index + 1,
+        policies: prepared.length,
+        current: seen,
+        total: totalChunks,
+      });
+      const brief = policy.pages.length === 1
+        ? photoNotes[0]
+        : await compactNotes(photoNotes, cap, where, request, sleep);
+      briefs.push({ label: policy.label, notes: brief });
+      continue;
+    }
     const chunks = policy.plan.chunks;
     const notes = [];
     for (let chunk = 0; chunk < chunks.length; chunk++) {
