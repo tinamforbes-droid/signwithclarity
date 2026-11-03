@@ -271,7 +271,7 @@ export async function handler(event, context) {
     const gate = await enforceUsageLimit({
       headers: event.headers,
       payload,
-      store: await resolveUsageStore(context),
+      store: await resolveUsageStore(context, serverEnv(context), event),
       env: serverEnv(context),
       now: context?.now instanceof Date ? context.now : new Date(),
       hasUnlimitedAccess: context?.hasUnlimitedAccess,
@@ -387,7 +387,7 @@ export async function handler(event, context) {
     const gate = await enforceUsageLimit({
       headers: event.headers,
       payload,
-      store: await resolveUsageStore(context),
+      store: await resolveUsageStore(context, serverEnv(context), event),
       env: serverEnv(context),
       now: context?.now instanceof Date ? context.now : new Date(),
       hasUnlimitedAccess: context?.hasUnlimitedAccess,
