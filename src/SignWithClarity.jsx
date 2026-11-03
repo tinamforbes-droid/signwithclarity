@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
-import { compareDisabledReason, explainDisabledReason } from "../shared/readiness.js";
+import { flushSync } from "react-dom";
+import { compareDisabledReason, explainDisabledReason, showRunError } from "../shared/readiness.js";
 import { runComparison } from "../shared/compareRun.js";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
 import { canCompareAccount, isYearlyActive, isoDate, visibleChecks } from "../shared/entitlement.js";
@@ -1485,10 +1486,17 @@ export default function SignWithClarity() {
     }
     setNeedsRegion(false);
 
-    clearError();
-    setLoading(true);
-    setResults(null);
-    setPartsRead(1);
+    flushSync(() => {
+      setErrorKey("");
+      setErrorText("");
+      setErrorCode("");
+      setLoading(true);
+      setResults(null);
+      setComparison(null);
+      setPartsRead(1);
+      setProgress({ phase: "reading", current: 1, total: 1 });
+    });
+    document.querySelector(".loading-card")?.scrollIntoView({ block: "center" });
 
     try {
       const outcome = await runDecode({
@@ -1508,22 +1516,39 @@ export default function SignWithClarity() {
       setPartsRead(outcome.parts);
       window.dispatchEvent(new Event("swc-account-refresh"));
     } catch (err) {
-      if (err instanceof DecodeError && err.usage) setUsage(err.usage);
-      if (err instanceof DecodeError && (err.code === "monthly_limit" || err.code === "fair_use")) {
-        setErrorCode("monthly_limit");
-        setErrorKey("");
-        setErrorText("");
-      } else {
-        setErrorCode("");
-        const message = err instanceof DecodeError ? err.message : t(lang, "errorGeneric");
-        setErrorKey("");
-        setErrorText(message);
-      }
+      rememberFailure(err);
     } finally {
       setLoading(false);
       setProgress(null);
     }
   };
+
+  function rememberFailure(err) {
+    if (err instanceof DecodeError && err.usage) setUsage(err.usage);
+    const message = err instanceof DecodeError ? err.message : t(lang, "errorGeneric");
+    setErrorCode(err instanceof DecodeError ? (err.code || "") : "");
+    setErrorKey("");
+    setErrorText(message);
+    requestAnimationFrame(() => {
+      document.querySelector(".error-msg")?.scrollIntoView({ block: "center" });
+    });
+  }
+
+  async function releaseComparison() {
+    const id = comparisonIdRef.current;
+    if (!id) return;
+    try {
+      await postDecode({
+        mode: "release",
+        purpose: "compare",
+        comparisonId: id,
+        explanationId: id,
+        language: lang,
+      }, { accessToken: currentAccessToken });
+    } catch {
+      // The message from the failed comparison is the one to show.
+    }
+  }
 
   const compare = async () => {
     if (compareReason) return;
@@ -1533,11 +1558,17 @@ export default function SignWithClarity() {
       return;
     }
     setNeedsRegion(false);
-    clearError();
-    setLoading(true);
-    setResults(null);
-    setComparison(null);
     if (!comparisonIdRef.current) comparisonIdRef.current = globalThis.crypto.randomUUID();
+    flushSync(() => {
+      setErrorKey("");
+      setErrorText("");
+      setErrorCode("");
+      setLoading(true);
+      setResults(null);
+      setComparison(null);
+      setProgress({ phase: "reading", current: 1, total: 1, policies: policies.length });
+    });
+    document.querySelector(".loading-card")?.scrollIntoView({ block: "center" });
 
     try {
       const outcome = await runComparison({
@@ -1557,17 +1588,8 @@ export default function SignWithClarity() {
       setCompareParts(outcome.parts);
       window.dispatchEvent(new Event("swc-account-refresh"));
     } catch (err) {
-      if (err instanceof DecodeError && err.usage) setUsage(err.usage);
-      if (err instanceof DecodeError && (err.code === "compare_needs_plan" || err.code === "fair_use" || err.code === "monthly_limit")) {
-        setErrorCode(err.code === "fair_use" ? "fair_use" : err.code);
-        setErrorKey("");
-        setErrorText("");
-      } else {
-        setErrorCode("");
-        const message = err instanceof DecodeError ? err.message : t(lang, "errorGeneric");
-        setErrorKey("");
-        setErrorText(message);
-      }
+      rememberFailure(err);
+      await releaseComparison();
     } finally {
       setLoading(false);
       setProgress(null);
@@ -1732,7 +1754,7 @@ export default function SignWithClarity() {
                   <p className="length-note">{longDocumentNote(plan, lang)}</p>
                 )}
 
-                {error && !explainReason && !compareReason && (
+                {showRunError(workMode, error, explainReason) && (
                   <div className="error-msg" role="alert">⚠️ {error}</div>
                 )}
 
@@ -1742,7 +1764,7 @@ export default function SignWithClarity() {
                       ✨ {t(lang, "decodeButton")}
                     </button>
                     <span className="decode-btn-sub">{t(lang, "decodeSub")}</span>
-                    {explainReason && (
+                    {!error && explainReason && (
                       <p className="block-reason" role="status">
                         {explainReason}
                         {atLimit && errorCode !== "fair_use" && (
@@ -1764,7 +1786,7 @@ export default function SignWithClarity() {
                       {t(lang, "compareButton")}
                     </button>
                     <span className="decode-btn-sub">{t(lang, "compareSub")}</span>
-                    {compareReason && (
+                    {!error && compareReason && (
                       <p className="block-reason" role="status">
                         {compareReason}
                         {!allowedToCompare && !policies.some((policy) => policy.problem) && errorCode !== "fair_use" && (

@@ -71,7 +71,10 @@ function failureForStatus(status, language) {
   if (status === 408 || status === 504) {
     return { statusCode: 504, error: t(language, "errorPartTimeout") };
   }
-  if (status === 400 || status === 413) {
+  if (status === 413) {
+    return { statusCode: 413, error: t(language, "errorPageTooLarge") };
+  }
+  if (status === 400) {
     return { statusCode: 400, error: t(language, "errorCantReadPart") };
   }
   return { statusCode: 502, error: t(language, "errorUnexpected") };
@@ -143,8 +146,26 @@ export async function handler(event, context) {
   const country = cleanLabel(payload.country, "Canada");
   const region = cleanLabel(payload.region || payload.province, "Not specified");
 
-  if (!["single", "extract", "reduce", "synthesize", "compare"].includes(mode)) {
+  if (!["single", "extract", "reduce", "synthesize", "compare", "release"].includes(mode)) {
     return reply(400, { error: t(language, "errorBadMode") });
+  }
+
+  if (mode === "release") {
+    const gate = await enforceUsageLimit({
+      headers: event.headers,
+      payload,
+      store: await resolveUsageStore(context),
+      env: serverEnv(context),
+      now: context?.now instanceof Date ? context.now : new Date(),
+      hasUnlimitedAccess: context?.hasUnlimitedAccess,
+      verifySession: context?.verifySession,
+      accountStore: context?.accountStore,
+      fetchImpl: context?.fetchImpl,
+      language,
+    });
+    return reply(gate.allowed ? 200 : gate.statusCode, gate.allowed
+      ? { released: Boolean(gate.released) }
+      : gate.body);
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -264,6 +285,7 @@ export async function handler(event, context) {
       await gate.release?.();
       return reply(result.statusCode, { error: result.error });
     }
+    if (mode === "compare") await gate.complete?.();
     const body = { text: result.text };
     if (gate.usage) body.usage = gate.usage;
     return reply(200, body);

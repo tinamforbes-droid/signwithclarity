@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 
 import { hasUnlimitedAccess, settlePaidUse } from "./access.js";
+import { decideRelease } from "./entitlement.js";
 import { isComparisonRequest } from "./comparePolicy.js";
 import { asLanguage, t } from "./messages.js";
 import { bearerToken, isUserId } from "./session.js";
@@ -250,6 +251,23 @@ export async function enforceUsageLimit({
 }) {
   const lang = asLanguage(language) || "en";
   const user = await resolveAccount(headers, env, verifySession);
+  if (payload?.mode === "release") {
+    const explanationId = cleanExplanationId(payload?.comparisonId || payload?.explanationId);
+    let released = false;
+    if (user && explanationId && accountStore) {
+      try {
+        const result = await accountStore.update(user.id, (account) => {
+          const outcome = decideRelease(account, explanationId);
+          if (!outcome.restore) return { write: false };
+          return { write: true, account: outcome.account };
+        });
+        released = Boolean(result?.written);
+      } catch {
+        console.error("comparison release failed");
+      }
+    }
+    return { allowed: true, released, usage: null, release: null, finished: true };
+  }
   const access = typeof accessOverride === "function" ? accessOverride : hasUnlimitedAccess;
   const unlimited = await access({ headers, payload, env, user });
   if (unlimited) {

@@ -16,7 +16,7 @@
 import { asLanguage, t } from "./messages.js";
 import { formatResetDate } from "./usageCopy.js";
 import { createSupabaseAccountStore } from "./accountStore.js";
-import { decideConsume, decideRelease, isoDate, paidUsage } from "./entitlement.js";
+import { decideComplete, decideConsume, decideRelease, isoDate, paidUsage } from "./entitlement.js";
 
 export async function hasUnlimitedAccess() {
   return false;
@@ -105,21 +105,32 @@ export async function settlePaidUse({
   }
 
   const usage = paidUsage(account, decision.plan);
-  return {
-    allowed: true,
-    usage,
-    release: decision.kind === "fresh"
-      ? async () => {
-        try {
-          await store.update(userId, (current) => {
-            const released = decideRelease(current, explanationId);
-            if (!released.restore) return { write: false };
-            return { write: true, account: released.account };
-          });
-        } catch {
-          console.error("paid credit release failed");
-        }
+  const openCompare = decision.account?.explanation_claims?.[explanationId]?.open === true;
+  const release = decision.kind === "fresh" || openCompare
+    ? async () => {
+      try {
+        await store.update(userId, (current) => {
+          const released = decideRelease(current, explanationId);
+          if (!released.restore) return { write: false };
+          return { write: true, account: released.account };
+        });
+      } catch {
+        console.error("paid credit release failed");
       }
-      : null,
-  };
+    }
+    : null;
+  const complete = openCompare
+    ? async () => {
+      try {
+        await store.update(userId, (current) => {
+          const done = decideComplete(current, explanationId);
+          if (!done.write) return { write: false };
+          return { write: true, account: done.account };
+        });
+      } catch {
+        console.error("comparison was not marked finished");
+      }
+    }
+    : null;
+  return { allowed: true, usage, release, complete };
 }
