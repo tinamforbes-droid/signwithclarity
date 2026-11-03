@@ -209,6 +209,142 @@ test("a text policy does not use vision, and a broken photo names a code", async
   assert.match(JSON.parse(format.body).error, /\(image_format\)/);
 });
 
+test("a vision failure logs the status and Anthropic message, not the page", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const original = globalThis.fetch;
+  const logs = [];
+  const originalError = console.error;
+  console.error = (...args) => logs.push(args.map(String).join(" "));
+  const context = {
+    accountStore: createMemoryAccountStore({
+      [USER]: { paid: true, plan: "household", credits_remaining: 0, checks_remaining: 2 },
+    }),
+    now: NOW,
+    verifySession: async () => ({ id: USER, email: "ada@example.com" }),
+  };
+  const photoBody = {
+    mode: "extract",
+    purpose: "compare",
+    image: { mediaType: "image/jpeg", data: PHOTO },
+    chunkIndex: 1,
+    chunkCount: 3,
+    language: "en",
+    country: "Canada",
+    region: "British Columbia",
+    explanationId: randomUUID(),
+    comparisonId: randomUUID(),
+  };
+  function eventFor(body) {
+    return {
+      httpMethod: "POST",
+      headers: { authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify(body),
+    };
+  }
+
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 400,
+    text: async () => JSON.stringify({
+      error: {
+        type: "invalid_request_error",
+        message: `messages.0.content.0.image.source.media_type: image must be jpeg. ${PHOTO}`,
+      },
+    }),
+  });
+  t.after(() => {
+    globalThis.fetch = original;
+    console.error = originalError;
+  });
+
+  const rejected = await decode(eventFor(photoBody), context);
+  assert.equal(rejected.statusCode, 400);
+  const rejectedBody = JSON.parse(rejected.body);
+  assert.equal(rejectedBody.code, "image_400");
+  assert.match(rejectedBody.error, /\(image_400\)/);
+  const rejectedLog = logs.find((line) => line.includes("code=image_400"));
+  assert.match(rejectedLog, /status=400/);
+  assert.match(rejectedLog, /type=invalid_request_error/);
+  assert.match(rejectedLog, /must be jpeg/);
+  assert.equal(rejectedLog.includes("PHOTOTESTMARKER"), false);
+  assert.equal(context.accountStore.snapshot()[USER].checks_remaining, 2);
+
+  logs.length = 0;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => {
+      const error = new TypeError("terminated");
+      throw error;
+    },
+  });
+  const brokenBody = await decode(eventFor({ ...photoBody, explanationId: randomUUID(), comparisonId: randomUUID() }), context);
+  assert.equal(brokenBody.statusCode, 502);
+  assert.equal(JSON.parse(brokenBody.body).code, "photo_typeerror");
+  assert.match(JSON.parse(brokenBody.body).error, /\(photo_typeerror\)/);
+  const bodyLog = logs.find((line) => line.includes("code=photo_typeerror"));
+  assert.match(bodyLog, /stage=body status=200 name=TypeError msg=terminated/);
+  assert.equal(bodyLog.includes("PHOTOTESTMARKER"), false);
+  assert.equal(context.accountStore.snapshot()[USER].checks_remaining, 2);
+
+  logs.length = 0;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify({
+      content: [
+        { type: "thinking", thinking: "Named insured secret wording" },
+        { type: "text", text: sections() },
+      ],
+    }),
+  });
+  const laterText = await decode(eventFor({
+    mode: "single",
+    docText: "Tenant policy. Named insured. Deductible $500. Liability limit $1,000,000. British Columbia.",
+    language: "en",
+    country: "Canada",
+    region: "British Columbia",
+    explanationId: randomUUID(),
+  }), context);
+  assert.equal(laterText.statusCode, 200);
+  assert.match(JSON.parse(laterText.body).text, /short summary/);
+  assert.equal(logs.some((line) => line.includes("Named insured")), false);
+
+  logs.length = 0;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify({ content: [{ text: { leaked: "POLICYWORDS" } }] }),
+  });
+  const odd = await decode(eventFor({
+    mode: "single",
+    docText: "Tenant policy. Named insured. Deductible $500. Liability limit $1,000,000. British Columbia.",
+    language: "en",
+    country: "Canada",
+    region: "British Columbia",
+    explanationId: randomUUID(),
+  }), context);
+  assert.equal(odd.statusCode, 502);
+  assert.equal(JSON.parse(odd.body).code, "model_empty");
+  assert.equal(logs.some((line) => line.includes("POLICYWORDS")), false);
+
+  logs.length = 0;
+  const thrown = await decode(eventFor(photoBody), {
+    ...context,
+    accountStore: {
+      async update() {
+        throw new TypeError("Cannot read checks_remaining");
+      },
+    },
+  });
+  assert.equal(thrown.statusCode, 500);
+  assert.equal(JSON.parse(thrown.body).code, "photo_typeerror");
+  const handlerLog = logs.find((line) => line.includes("stage=handler"));
+  assert.match(handlerLog, /code=photo_typeerror/);
+  assert.match(handlerLog, /status=0 name=TypeError msg=Cannot read checks_remaining/);
+  assert.equal(handlerLog.includes(PHOTO), false);
+});
+
 test("a photo is sent to the model and is not stored on the account", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const original = globalThis.fetch;

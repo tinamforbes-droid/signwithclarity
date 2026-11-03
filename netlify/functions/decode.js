@@ -49,9 +49,44 @@ function serverEnv(context) {
 const MODEL = "claude-sonnet-4-6";
 const PHOTO_FETCH_MS = 18000;
 
+/** A log fragment with no page text and no image bytes. */
+function safeText(value) {
+  return String(value || "")
+    .replace(/[A-Za-z0-9+/]{20,}={0,2}/g, "[blob]")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
 function logCode(code, detail) {
-  const extra = String(detail || "").replace(/[^a-zA-Z0-9_:=.-]/g, "").slice(0, 80);
+  const extra = safeText(detail);
   console.error(`swc decode code=${code}${extra ? " " + extra : ""}`);
+}
+
+function anthropicError(raw) {
+  try {
+    const data = JSON.parse(raw);
+    const type = data?.error?.type;
+    const message = data?.error?.message;
+    return {
+      type: typeof type === "string" && /^[a-z0-9_]{1,40}$/.test(type) ? type : "",
+      message: safeText(message),
+    };
+  } catch {
+    return { type: "", message: "" };
+  }
+}
+
+function failureCode(err, photo) {
+  const name = String(err?.name || "Error");
+  const message = String(err?.message || "");
+  const timedOut = name === "TimeoutError" || name === "AbortError" || /timeout|timed out|aborted/i.test(message);
+  if (timedOut) return photo ? "photo_timeout" : "text_timeout";
+  if (/fetch failed|network|socket|econn/i.test(message)) return "upstream_fetch";
+  const slug = name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 24).toLowerCase();
+  if (slug && slug !== "error") return photo ? `photo_${slug}` : `read_${slug}`;
+  return photo ? "photo_read" : "read_failed";
 }
 
 function withCode(text, code) {
@@ -60,16 +95,6 @@ function withCode(text, code) {
   return `${text} (${code})`;
 }
 
-function anthropicErrorType(raw) {
-  try {
-    const data = JSON.parse(raw);
-    const type = data?.error?.type;
-    if (typeof type === "string" && /^[a-z0-9_]{1,40}$/.test(type)) return type;
-  } catch {
-    // The body can echo the page. Do not log it.
-  }
-  return "";
-}
 
 function reply(statusCode, payload) {
   return {
@@ -150,22 +175,36 @@ async function askModel({ system, user, images, maxTokens, language }) {
         : undefined,
     });
   } catch (err) {
-    const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
-    const code = photo ? (timedOut ? "photo_timeout" : "upstream_fetch") : (timedOut ? "text_timeout" : "upstream_fetch");
-    logCode(code, `name=${err?.name || "Error"}`);
+    const code = failureCode(err, photo);
+    logCode(code, `stage=fetch status=0 name=${err?.name || "Error"} msg=${safeText(err?.message)}`);
     return {
       ok: false,
       statusCode: 504,
       code,
-      error: withCode(t(language, timedOut ? "errorPartTimeout" : "errorReadFailed"), code),
+      error: withCode(t(language, code.endsWith("timeout") ? "errorPartTimeout" : "errorReadFailed"), code),
     };
   }
 
-  const raw = await response.text();
+  let raw = "";
+  try {
+    raw = await response.text();
+  } catch (err) {
+    const fallen = failureCode(err, photo);
+    const code = fallen === "photo_read" || fallen === "read_failed"
+      ? (photo ? "image_body" : "model_body")
+      : fallen;
+    logCode(code, `stage=body status=${response.status || 0} name=${err?.name || "Error"} msg=${safeText(err?.message)}`);
+    return {
+      ok: false,
+      statusCode: code.endsWith("timeout") ? 504 : 502,
+      code,
+      error: withCode(t(language, code.endsWith("timeout") ? "errorPartTimeout" : "errorReadFailed"), code),
+    };
+  }
   if (!response.ok) {
     const code = photo ? `image_${response.status}` : `model_${response.status}`;
-    const type = anthropicErrorType(raw);
-    logCode(code, type ? `type=${type}` : "");
+    const api = anthropicError(raw);
+    logCode(code, `status=${response.status} type=${api.type || "none"} msg=${api.message || "none"}`);
     const failure = failureForStatus(response.status, language);
     return { ok: false, ...failure, code, error: withCode(failure.error, code) };
   }
@@ -174,14 +213,36 @@ async function askModel({ system, user, images, maxTokens, language }) {
   try {
     data = JSON.parse(raw);
   } catch {
-    return { ok: false, statusCode: 502, error: t(language, "errorUnexpected") };
+    logCode(photo ? "image_parse" : "model_parse", `status=${response.status}`);
+    return {
+      ok: false,
+      statusCode: 502,
+      code: photo ? "image_parse" : "model_parse",
+      error: withCode(t(language, "errorUnexpected"), photo ? "image_parse" : "model_parse"),
+    };
   }
 
-  const text = data?.content?.[0]?.text || "";
+  const text = modelText(data);
   if (!text.trim()) {
-    return { ok: false, statusCode: 502, error: t(language, "errorEmptyAnswer") };
+    logCode(photo ? "image_empty" : "model_empty", `status=${response.status}`);
+    return {
+      ok: false,
+      statusCode: 502,
+      code: photo ? "image_empty" : "model_empty",
+      error: withCode(t(language, "errorEmptyAnswer"), photo ? "image_empty" : "model_empty"),
+    };
   }
   return { ok: true, text };
+}
+
+function modelText(data) {
+  const content = data?.content;
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((block) => (typeof block?.text === "string" ? block.text : ""))
+    .join("\n")
+    .trim();
 }
 
 export async function handler(event, context) {
@@ -342,7 +403,13 @@ export async function handler(event, context) {
       result = await askModel(model);
     } catch (err) {
       await gate.release?.();
-      throw err;
+      const photo = Boolean(model?.images?.length);
+      const code = failureCode(err, photo);
+      logCode(code, `stage=model status=0 name=${err?.name || "Error"} msg=${safeText(err?.message)}`);
+      return reply(code.endsWith("timeout") ? 504 : 500, {
+        error: withCode(t(language, code.endsWith("timeout") ? "errorPartTimeout" : "errorReadFailed"), code),
+        code,
+      });
     }
     if (!result.ok) {
       await gate.release?.();
@@ -353,7 +420,12 @@ export async function handler(event, context) {
     if (gate.usage) body.usage = gate.usage;
     return reply(200, body);
   } catch (err) {
-    logCode("read_failed", `name=${err?.name || "Error"}`);
-    return reply(500, { error: withCode(t(language, "errorReadFailed"), "read_failed"), code: "read_failed" });
+    const photo = Boolean(payload?.image);
+    const code = failureCode(err, photo);
+    logCode(code, `stage=handler status=0 name=${err?.name || "Error"} msg=${safeText(err?.message)}`);
+    return reply(code.endsWith("timeout") ? 504 : 500, {
+      error: withCode(t(language, code.endsWith("timeout") ? "errorPartTimeout" : "errorReadFailed"), code),
+      code,
+    });
   }
 }
