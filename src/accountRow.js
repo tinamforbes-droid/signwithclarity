@@ -15,11 +15,20 @@ export async function loadOwnPlan() {
   const user = session?.user;
   if (!user?.id) return { configured: true, signedIn: false, account: null };
   try {
-    const { data, error } = await client
+    let { data, error } = await client
       .from("accounts")
-      .select("paid, plan, credits_remaining, yearly_used, period_end")
+      .select("paid, plan, credits_remaining, checks_remaining, yearly_used, period_end")
       .eq("user_id", user.id)
       .maybeSingle();
+    if (error) {
+      const fallback = await client
+        .from("accounts")
+        .select("paid, plan, credits_remaining, yearly_used, period_end")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
     return {
       configured: true,
       signedIn: true,

@@ -1,5 +1,9 @@
-import { MAX_CALLS_PER_EXPLANATION } from "./usageCopy.js";
-import { HOUSEHOLD_EXPLANATION_CREDITS, YEARLY_FAIR_USE_LIMIT } from "./plans.js";
+import { MAX_CALLS_PER_COMPARISON, MAX_CALLS_PER_EXPLANATION } from "./usageCopy.js";
+import {
+  HOUSEHOLD_CHECKS_PER_PURCHASE,
+  LEGACY_EXPLANATIONS_PER_CHECK,
+  YEARLY_FAIR_USE_LIMIT,
+} from "./plans.js";
 
 const ACTIVE_SUBSCRIPTION = new Set(["active", "trialing", "past_due"]);
 const ENDED_SUBSCRIPTION = new Set(["canceled", "unpaid", "incomplete_expired"]);
@@ -11,6 +15,7 @@ export function blankAccount(userId, email = null) {
     paid: false,
     plan: null,
     credits_remaining: 0,
+    checks_remaining: null,
     yearly_used: 0,
     period_end: null,
     stripe_customer_id: null,
@@ -46,6 +51,46 @@ export function isHouseholdActive(account) {
   return (account.credits_remaining || 0) > 0;
 }
 
+/**
+ * Household Checks left. A null balance is an older row that still
+ * counts single explanations: one check for every four, rounded up.
+ * A number, including zero, is already converted and is left as it is.
+ */
+export function visibleChecks(account) {
+  if (!account) return 0;
+  if (Number.isInteger(account.checks_remaining)) return Math.max(0, account.checks_remaining);
+  const credits = Math.max(0, account.credits_remaining || 0);
+  if (credits <= 0) return 0;
+  return Math.ceil(credits / LEGACY_EXPLANATIONS_PER_CHECK);
+}
+
+export function migrateChecks(account) {
+  if (!account) return { account: null, migrated: false };
+  if (Number.isInteger(account.checks_remaining)) return { account, migrated: false };
+  return {
+    migrated: true,
+    account: { ...account, checks_remaining: visibleChecks(account) },
+  };
+}
+
+export function canCompareAccount(account, now = new Date()) {
+  if (!account) return false;
+  const checks = visibleChecks(account);
+  if (isYearlyActive(account, now)) {
+    if ((account.yearly_used || 0) < YEARLY_FAIR_USE_LIMIT) return true;
+    return checks > 0;
+  }
+  return checks > 0;
+}
+
+function householdStanding(account, credits, checks) {
+  if (account.plan === "yearly" && account.paid === true) {
+    return { plan: "yearly", paid: true };
+  }
+  const keep = credits > 0 || checks > 0;
+  return { plan: keep ? "household" : null, paid: keep };
+}
+
 function withClaim(account, explanationId, plan, n) {
   return {
     ...account,
@@ -56,30 +101,49 @@ function withClaim(account, explanationId, plan, n) {
   };
 }
 
+function claimPlan(entry) {
+  return entry?.plan === "check" || entry?.plan === "yearly" || entry?.plan === "household"
+    ? entry.plan
+    : "household";
+}
+
 /**
- * Count one explanation against the paid plan, or say there is no paid plan.
- * An explanation id that already started does not spend a second credit.
+ * Count one explanation, or one comparison, against the paid plan.
+ * An id that already started does not spend a second time.
  * Nothing in here reads a flag from the request body.
+ *
+ * A comparison spends one Household Check, or one Clarity Yearly
+ * explanation. The policies inside that comparison share the id.
+ * Older single-explanation credits are spent only by a single explanation.
  */
 export function decideConsume(account, explanationId, now, limits = {}) {
   const yearlyCap = limits.yearlyCap || YEARLY_FAIR_USE_LIMIT;
-  const maxCalls = limits.maxCalls || MAX_CALLS_PER_EXPLANATION;
-  const current = account || blankAccount("");
+  const purpose = limits.purpose === "compare" ? "compare" : "explain";
+  const hadRow = Boolean(account);
+  const { account: migrated, migrated: didMigrate } = migrateChecks(account || blankAccount(""));
+  const persist = hadRow && didMigrate;
+  const current = migrated;
   const existing = claimCount(current.explanation_claims, explanationId);
+  const existingPlan = claimPlan(current.explanation_claims?.[explanationId]);
+  const maxCalls = existingPlan === "check" || purpose === "compare"
+    ? (limits.maxCalls || MAX_CALLS_PER_COMPARISON)
+    : (limits.maxCalls || MAX_CALLS_PER_EXPLANATION);
+
   if (existing > 0) {
-    if (existing >= maxCalls) return { kind: "closed", account: current };
+    if (existing >= maxCalls) return { kind: "closed", account: current, migrated: persist };
     return {
       kind: "repeat",
-      plan: current.explanation_claims[explanationId].plan,
-      account: withClaim(current, explanationId, current.explanation_claims[explanationId].plan, existing + 1),
+      plan: existingPlan,
+      migrated: persist,
+      account: withClaim(current, explanationId, existingPlan, existing + 1),
     };
   }
 
-  if (isYearlyActive(current, now)) {
-    if ((current.yearly_used || 0) >= yearlyCap) return { kind: "fair_use", account: current };
+  if (isYearlyActive(current, now) && (current.yearly_used || 0) < yearlyCap) {
     return {
       kind: "fresh",
       plan: "yearly",
+      migrated: persist,
       account: withClaim(
         { ...current, yearly_used: (current.yearly_used || 0) + 1 },
         explanationId,
@@ -89,28 +153,54 @@ export function decideConsume(account, explanationId, now, limits = {}) {
     };
   }
 
-  if (isHouseholdActive(current)) {
-    const credits = current.credits_remaining - 1;
-    const next = withClaim(
-      {
-        ...current,
-        credits_remaining: credits,
-        paid: credits > 0,
-        plan: credits > 0 ? "household" : null,
-      },
-      explanationId,
-      "household",
-      1,
-    );
-    return { kind: "fresh", plan: "household", account: next };
+  if (purpose === "compare" && (current.checks_remaining || 0) > 0) {
+    const checks = current.checks_remaining - 1;
+    const credits = current.credits_remaining || 0;
+    const standing = householdStanding(current, credits, checks);
+    return {
+      kind: "fresh",
+      plan: "check",
+      migrated: persist,
+      account: withClaim(
+        { ...current, checks_remaining: checks, ...standing },
+        explanationId,
+        "check",
+        1,
+      ),
+    };
   }
 
-  return { kind: "none", account: current };
+  if (isYearlyActive(current, now)) {
+    return { kind: "fair_use", account: current, migrated: persist };
+  }
+
+  if (purpose === "compare") {
+    return { kind: "needs_plan", account: current, migrated: persist };
+  }
+
+  if (isHouseholdActive(current)) {
+    const credits = current.credits_remaining - 1;
+    const checks = current.checks_remaining || 0;
+    const standing = householdStanding(current, credits, checks);
+    return {
+      kind: "fresh",
+      plan: "household",
+      migrated: persist,
+      account: withClaim(
+        { ...current, credits_remaining: credits, ...standing },
+        explanationId,
+        "household",
+        1,
+      ),
+    };
+  }
+
+  return { kind: "none", account: current, migrated: persist };
 }
 
 /** Give back a credit when the first call for that explanation failed. */
 export function decideRelease(account, explanationId) {
-  const current = account || blankAccount("");
+  const { account: current } = migrateChecks(account || blankAccount(""));
   const entry = current.explanation_claims?.[explanationId];
   if (!entry || entry.n !== 1) return { restore: false, account: current };
   const claims = { ...current.explanation_claims };
@@ -125,17 +215,18 @@ export function decideRelease(account, explanationId) {
       },
     };
   }
-  if (entry.plan === "household") {
-    const credits = (current.credits_remaining || 0) + 1;
-    const keepYearly = current.plan === "yearly";
+  if (entry.plan === "household" || entry.plan === "check") {
+    const checks = (current.checks_remaining || 0) + (entry.plan === "check" ? 1 : 0);
+    const credits = (current.credits_remaining || 0) + (entry.plan === "household" ? 1 : 0);
+    const standing = householdStanding(current, credits, checks);
     return {
       restore: true,
       account: {
         ...current,
         explanation_claims: claims,
         credits_remaining: credits,
-        plan: keepYearly ? "yearly" : "household",
-        paid: keepYearly ? current.paid : true,
+        checks_remaining: checks,
+        ...standing,
       },
     };
   }
@@ -143,11 +234,24 @@ export function decideRelease(account, explanationId) {
 }
 
 export function paidUsage(account, plan) {
+  if (plan === "check") {
+    return {
+      limited: true,
+      plan: "household",
+      kind: "check",
+      remaining: Math.max(0, account?.checks_remaining || 0),
+      checks: Math.max(0, account?.checks_remaining || 0),
+      explanations: Math.max(0, account?.credits_remaining || 0),
+    };
+  }
   if (plan === "household") {
     return {
       limited: true,
       plan: "household",
+      kind: "explanation",
       remaining: Math.max(0, account?.credits_remaining || 0),
+      checks: Math.max(0, account?.checks_remaining || 0),
+      explanations: Math.max(0, account?.credits_remaining || 0),
     };
   }
   const used = Math.max(0, account?.yearly_used || 0);
@@ -203,12 +307,13 @@ function isOlderNotice(account, created) {
 export function applyCheckout(account, notice, now) {
   const base = account || blankAccount(notice.userId);
   if (notice.plan === "household") {
-    const credits = (base.credits_remaining || 0) + HOUSEHOLD_EXPLANATION_CREDITS;
-    const yearly = isYearlyActive(base, now);
+    const { account: migrated } = migrateChecks(base);
+    const checks = (migrated.checks_remaining || 0) + HOUSEHOLD_CHECKS_PER_PURCHASE;
+    const yearly = isYearlyActive(migrated, now);
     return {
-      ...base,
-      credits_remaining: credits,
-      stripe_customer_id: notice.customerId || base.stripe_customer_id,
+      ...migrated,
+      checks_remaining: checks,
+      stripe_customer_id: notice.customerId || migrated.stripe_customer_id,
       plan: yearly ? "yearly" : "household",
       paid: true,
     };
@@ -230,20 +335,23 @@ export function applyCheckout(account, notice, now) {
 }
 
 function endYearly(account, synced) {
-  const credits = account.credits_remaining || 0;
+  const { account: migrated } = migrateChecks(account);
+  const credits = migrated.credits_remaining || 0;
+  const checks = migrated.checks_remaining || 0;
+  const keep = credits > 0 || checks > 0;
   return {
-    ...account,
-    plan: credits > 0 ? "household" : null,
-    paid: credits > 0,
+    ...migrated,
+    plan: keep ? "household" : null,
+    paid: keep,
     period_end: null,
     yearly_used: 0,
     stripe_subscription_id: null,
-    subscription_synced_at: synced || account.subscription_synced_at,
+    subscription_synced_at: synced || migrated.subscription_synced_at,
   };
 }
 
 export function applySubscription(account, notice) {
-  const base = account || blankAccount(notice.userId);
+  const { account: base } = migrateChecks(account || blankAccount(notice.userId));
   if (isOlderNotice(base, notice.created)) return null;
   const synced = syncedAt(notice.created) || base.subscription_synced_at;
   if (notice.deleted || ENDED_SUBSCRIPTION.has(notice.status)) {

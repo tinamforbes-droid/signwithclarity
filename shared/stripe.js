@@ -141,7 +141,7 @@ export function clearPriceCache() {
   priceCache.clear();
 }
 
-export function checkoutSessionParams({ priceId, plan, currency, userId, email, customerId, origin, locale }) {
+export function checkoutSessionParams({ priceId, plan, currency, userId, email, customerId, origin, locale, submitMessage }) {
   const params = {
     mode: plan === "yearly" ? "subscription" : "payment",
     line_items: [{ price: priceId, quantity: 1 }],
@@ -161,5 +161,7 @@ export function checkoutSessionParams({ priceId, plan, currency, userId, email, 
   if (plan === "yearly") {
     params.subscription_data = { metadata: { user_id: userId, plan: "yearly" } };
   }
+  const message = String(submitMessage || "").trim();
+  if (message) params.custom_text = { submit: { message: message.slice(0, 500) } };
   return params;
 }

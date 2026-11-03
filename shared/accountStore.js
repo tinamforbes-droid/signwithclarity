@@ -1,5 +1,5 @@
 import { isUserId, supabaseProjectUrl } from "./session.js";
-import { blankAccount } from "./entitlement.js";
+import { blankAccount, visibleChecks } from "./entitlement.js";
 
 const COLUMNS = [
   "user_id",
@@ -7,6 +7,7 @@ const COLUMNS = [
   "paid",
   "plan",
   "credits_remaining",
+  "checks_remaining",
   "yearly_used",
   "period_end",
   "stripe_customer_id",
@@ -20,6 +21,7 @@ const PATCH_FIELDS = [
   "paid",
   "plan",
   "credits_remaining",
+  "checks_remaining",
   "yearly_used",
   "period_end",
   "stripe_customer_id",
@@ -43,6 +45,7 @@ function normalizeRow(row) {
     paid: row.paid === true,
     plan: row.plan === "household" || row.plan === "yearly" ? row.plan : null,
     credits_remaining: Number.isInteger(row.credits_remaining) ? row.credits_remaining : 0,
+    checks_remaining: Number.isInteger(row.checks_remaining) ? row.checks_remaining : null,
     yearly_used: Number.isInteger(row.yearly_used) ? row.yearly_used : 0,
     period_end: row.period_end || null,
     stripe_customer_id: row.stripe_customer_id || null,
@@ -58,6 +61,9 @@ function patchBody(account) {
   for (const field of PATCH_FIELDS) body[field] = account[field] ?? null;
   body.explanation_claims = account.explanation_claims || {};
   body.credits_remaining = account.credits_remaining || 0;
+  body.checks_remaining = Number.isInteger(account.checks_remaining)
+    ? account.checks_remaining
+    : visibleChecks(account);
   body.yearly_used = account.yearly_used || 0;
   body.paid = account.paid === true;
   return body;

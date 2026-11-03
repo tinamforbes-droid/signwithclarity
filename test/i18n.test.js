@@ -132,6 +132,20 @@ test("French and Spanish prompts keep the same sections and do not ask for Engli
   assert.match(systemFor("reduce", "es"), /Latin American Spanish/);
   assert.match(systemFor("single", "es"), /Latin American Spanish/);
   assert.equal(systemFor("single", "fr").includes("plain, simple English"), false);
+
+  for (const lang of ["en", "fr", "es"]) {
+    const system = systemFor("compare", lang);
+    for (const key of ["policies", "table", "gaps", "overlaps", "questions"]) {
+      assert.match(system, new RegExp(`"${key}"`));
+    }
+    assert.match(system, /scare words/);
+    assert.match(system, /do not tell the person which policy/i);
+  }
+  assert.match(systemFor("compare", "fr"), /Canadian French/);
+  assert.match(systemFor("compare", "es"), /Latin American Spanish/);
+  const comparing = loadingCopy("fr", { phase: "reading", policy: 2, policies: 4, current: 3, total: 8 });
+  assert.match(comparing.title, /police 2 de 4/);
+  assert.match(loadingCopy("es", { phase: "comparing", policies: 2 }).title, /Comparando/);
 });
 
 test("province names are shown in French and Spanish, and the blank picker still needs an exact choice", () => {

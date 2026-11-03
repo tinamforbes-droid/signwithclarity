@@ -17,7 +17,8 @@ import { handler as decode } from "../netlify/functions/decode.js";
 import { handler as portal } from "../netlify/functions/portal.js";
 import { handler as webhook } from "../netlify/functions/stripe-webhook.js";
 import {
-  HOUSEHOLD_EXPLANATION_CREDITS,
+  HOUSEHOLD_CHECKS_PER_PURCHASE,
+  LEGACY_EXPLANATIONS_PER_CHECK,
   YEARLY_FAIR_USE_LIMIT,
   checkoutReturnOrigin,
   selectPrice,
@@ -64,7 +65,8 @@ function accountContext(store, extra = {}) {
 }
 
 test("the plan constants and the price lookup stay with the product", () => {
-  assert.equal(HOUSEHOLD_EXPLANATION_CREDITS, 4);
+  assert.equal(HOUSEHOLD_CHECKS_PER_PURCHASE, 1);
+  assert.equal(LEGACY_EXPLANATIONS_PER_CHECK, 4);
   assert.equal(YEARLY_FAIR_USE_LIMIT, 100);
   const prices = [
     { id: "price_old", active: false, currency: "cad", product: "prod_VYa35DVVX8zzUK", recurring: null },
@@ -117,7 +119,8 @@ test("a webhook signature must match, and a repeated notice does not add credits
   assert.equal(good.statusCode, 200);
   assert.equal(store.snapshot()[USER].paid, true);
   assert.equal(store.snapshot()[USER].plan, "household");
-  assert.equal(store.snapshot()[USER].credits_remaining, 4);
+  assert.equal(store.snapshot()[USER].credits_remaining, 0);
+  assert.equal(store.snapshot()[USER].checks_remaining, 1);
   assert.equal(JSON.stringify(store.snapshot()).includes(MARKER), false);
 
   const again = await webhook({
@@ -126,7 +129,7 @@ test("a webhook signature must match, and a repeated notice does not add credits
     body,
   }, accountContext(store));
   assert.equal(again.statusCode, 200);
-  assert.equal(store.snapshot()[USER].credits_remaining, 4);
+  assert.equal(store.snapshot()[USER].checks_remaining, 1);
 
   const tampered = await webhook({
     httpMethod: "POST",
@@ -248,19 +251,28 @@ test("household credits add up, and a body flag cannot spend or grant them", () 
     customerId: "cus_h",
   }, NOW);
   account = applyCheckout(account, { plan: "household", userId: USER, customerId: "cus_h" }, NOW);
-  assert.equal(account.credits_remaining, 8);
+  assert.equal(account.checks_remaining, 2);
+  assert.equal(account.credits_remaining, 0);
 
   const first = randomUUID();
-  const spent = decideConsume(account, first, NOW);
+  const spent = decideConsume(account, first, NOW, { purpose: "compare" });
   assert.equal(spent.kind, "fresh");
-  assert.equal(spent.account.credits_remaining, 7);
-  const again = decideConsume(spent.account, first, NOW);
+  assert.equal(spent.plan, "check");
+  assert.equal(spent.account.checks_remaining, 1);
+  const again = decideConsume(spent.account, first, NOW, { purpose: "compare" });
   assert.equal(again.kind, "repeat");
-  assert.equal(again.account.credits_remaining, 7);
+  assert.equal(again.account.checks_remaining, 1);
   const restored = decideRelease(spent.account, first);
   assert.equal(restored.restore, true);
-  assert.equal(restored.account.credits_remaining, 8);
+  assert.equal(restored.account.checks_remaining, 2);
   assert.equal(restored.account.paid, true);
+
+  const legacy = { ...account, credits_remaining: 4, checks_remaining: 1 };
+  const explained = decideConsume(legacy, randomUUID(), NOW);
+  assert.equal(explained.kind, "fresh");
+  assert.equal(explained.plan, "household");
+  assert.equal(explained.account.credits_remaining, 3);
+  assert.equal(explained.account.checks_remaining, 1);
 
   let yearly = applyCheckout(null, {
     plan: "yearly",
@@ -336,6 +348,7 @@ test("checkout requires a real session and asks Stripe for Managed Payments", as
   assert.match(params, new RegExp(`client_reference_id=${USER}`));
   assert.match(params, /mode=payment/);
   assert.match(params, /price_house_cad/);
+  assert.match(decodeURIComponent(params), /comparison of up to 4 policies/);
   assert.equal(params.includes(MARKER), false);
   assert.equal(params.includes("99999999"), false);
   assert.equal(params.includes("sk_test_example"), false);
@@ -456,7 +469,8 @@ test("decode spends a household credit once per explanation, then the free limit
     assert.equal(response.statusCode, 200);
   }
   assert.equal(accounts.snapshot()[USER].credits_remaining, 0);
-  assert.equal(accounts.snapshot()[USER].paid, false);
+  assert.equal(accounts.snapshot()[USER].checks_remaining, 1);
+  assert.equal(accounts.snapshot()[USER].paid, true);
 
   const free = await decode({
     httpMethod: "POST",

@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
+import { runComparison } from "../shared/compareRun.js";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
+import { canCompareAccount, isYearlyActive, isoDate, visibleChecks } from "../shared/entitlement.js";
 import { longDocumentNote, planDocument, tooLongMessage } from "../shared/limits.js";
 import {
   LANGUAGE_CHOICES,
@@ -17,8 +19,14 @@ import {
   normalizeRegionQuery,
   regionOptions,
 } from "../shared/regions.js";
-import { usageStatusMessage } from "../shared/usageCopy.js";
+import { YEARLY_FAIR_USE_LIMIT } from "../shared/plans.js";
+import { formatResetDate, usageStatusMessage } from "../shared/usageCopy.js";
 import AccountBar from "./AccountBar.jsx";
+import ComparePanel from "./ComparePanel.jsx";
+import { devCompareSample, emptyPolicy } from "./policyDraft.js";
+import ComparisonResult from "./ComparisonResult.jsx";
+import { loadOwnPlan } from "./accountRow.js";
+import { readDocumentFile } from "./readDocumentFile.js";
 import Pricing from "./Pricing.jsx";
 import { currentAccessToken } from "./authClient.js";
 import LegalPage from "./LegalPage.jsx";
@@ -285,6 +293,7 @@ const STYLES = `
 
   /* MAIN CONTENT */
   .main { flex: 1; padding: 0 16px 48px; max-width: 600px; margin: 0 auto; width: 100%; }
+  .main-wide { max-width: 980px; }
 
   /* UPLOAD CARD */
   .upload-card {
@@ -952,6 +961,115 @@ const STYLES = `
   @media (max-width: 800px) {
     .pricing-grid { grid-template-columns: 1fr; }
   }
+
+  .mode-switch {
+    display: flex;
+    background: var(--cream-dark);
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 16px;
+  }
+  .compare-lead {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+  .compare-policy {
+    border: 1px solid var(--gold-light);
+    border-radius: 12px;
+    padding: 12px;
+    margin: 0 0 12px;
+  }
+  .compare-policy-legend {
+    font-size: 13px;
+    color: var(--navy);
+    font-weight: 500;
+    padding: 0 4px;
+  }
+  .compare-policy-head {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 10px;
+  }
+  .compare-name { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-light); }
+  .compare-name-input, .compare-remove, .compare-add {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+  }
+  .compare-name-input {
+    border: 1px solid var(--gold-light);
+    background: var(--white);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+  }
+  .compare-name-input:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+  .compare-remove, .compare-add {
+    border: 1px solid var(--navy);
+    background: var(--white);
+    color: var(--navy);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  .compare-add { width: 100%; margin-bottom: 4px; }
+  .compare-remove:hover, .compare-add:hover { background: var(--cream-dark); }
+  .compare-textarea { height: 110px; }
+  .compare-note {
+    margin-top: 12px;
+    background: rgba(201, 169, 110, 0.12);
+    border: 1px solid var(--gold-light);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--navy);
+  }
+  .compare-note a { color: var(--navy); }
+  .section-table .result-section-header,
+  .section-gaps .result-section-header { background: var(--navy); }
+  .section-overlaps .result-section-header { background: #6e5b3e; }
+  .compare-summary { margin-bottom: 14px; }
+  .compare-summary:last-child { margin-bottom: 0; }
+  .compare-summary-name {
+    font-size: 15px;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .compare-kicker {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 8px;
+  }
+  .compare-table-wrap { overflow-x: auto; }
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    line-height: 1.45;
+    min-width: 520px;
+  }
+  .compare-caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .compare-table th, .compare-table td {
+    border-bottom: 1px solid var(--cream-dark);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .compare-table thead th { color: var(--navy); font-weight: 500; }
+  .compare-table tbody th { color: var(--text-light); font-weight: 500; white-space: nowrap; }
 `;
 
 function progressPercent(progress) {
@@ -1175,10 +1293,16 @@ export default function SignWithClarity() {
   const [lang, setLang] = useState(readInitialLanguage);
   const { page, openPage } = useSitePage(lang);
   const [tab, setTab] = useState("paste");
+  const [workMode, setWorkMode] = useState(() => (devCompareSample() ? "compare" : "single"));
+  const [policies, setPolicies] = useState(() => devCompareSample()?.policies || [emptyPolicy(), emptyPolicy()]);
+  const [comparison, setComparison] = useState(null);
+  const [compareParts, setCompareParts] = useState(1);
+  const [account, setAccount] = useState(null);
+  const comparisonIdRef = useRef("");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
-  const [country, setCountry] = useState("Canada");
-  const [region, setRegion] = useState("");
+  const [country, setCountry] = useState(() => devCompareSample()?.country || "Canada");
+  const [region, setRegion] = useState(() => devCompareSample()?.region || "");
   const [needsRegion, setNeedsRegion] = useState(false);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -1203,6 +1327,26 @@ export default function SignWithClarity() {
   useEffect(() => {
     document.documentElement.lang = htmlLang(lang);
   }, [lang]);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      loadOwnPlan().then((row) => {
+        if (!active) return;
+        setAccount(row?.account || null);
+      }).catch(() => {
+        if (active) setAccount(null);
+      });
+    };
+    refresh();
+    window.addEventListener("swc-account-refresh", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("swc-account-refresh", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
 
   function selectLanguage(next) {
     setLang(next);
@@ -1257,35 +1401,15 @@ export default function SignWithClarity() {
 
   const handleFile = async (file) => {
     if (!file) return;
-    setFileName(file.name);
     clearError();
-
-    if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let fullText = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const pageText = content.items.map(item => item.str).join(" ");
-          fullText += pageText + "\n";
-        }
-        if (fullText.trim()) {
-          setDocText(fullText);
-        } else {
-          setErrorKey("pdfScanned");
-          setErrorText("");
-        }
-      } catch {
-        setErrorKey("pdfReadError");
-        setErrorText("");
-      }
-    } else {
-      const reader = new FileReader();
-      reader.onload = (e) => setDocText(e.target.result);
-      reader.readAsText(file);
+    const result = await readDocumentFile(file);
+    setFileName(result.fileName || file.name || "");
+    if (result.errorKey) {
+      setErrorKey(result.errorKey);
+      setErrorText("");
+      return;
     }
+    setDocText(result.text || "");
   };
 
   const handleDrop = (e) => {
@@ -1295,6 +1419,27 @@ export default function SignWithClarity() {
   };
 
   const places = regionOptions(country, lang);
+  const comparePreview = import.meta.env.DEV && (() => {
+    try {
+      return new URLSearchParams(window.location.search).get("sample") === "compare";
+    } catch {
+      return false;
+    }
+  })();
+  const allowedToCompare = comparePreview || canCompareAccount(account);
+  const yearlyCompareBlocked = !comparePreview
+    && isYearlyActive(account)
+    && (account?.yearly_used || 0) >= YEARLY_FAIR_USE_LIMIT
+    && visibleChecks(account) === 0;
+  const compareNote = yearlyCompareBlocked
+    ? t(lang, "fairUseReached", { date: formatResetDate(isoDate(account?.period_end), lang) })
+    : t(lang, "compareNeedsPlan");
+  const filledPolicies = policies.filter((policy) => policy.text.trim());
+  const compareTooLong = policies.some((policy) => {
+    if (!policy.text.trim()) return false;
+    const planned = planDocument(policy.text);
+    return !planned.ok && planned.reason === "too_long";
+  });
   const regionLabel = t(lang, country === "Canada" ? "regionLabelCanada" : "regionLabelUS");
   const regionListLabel = t(lang, country === "Canada" ? "regionListCanada" : "regionListUS");
   const copy = loadingCopy(lang, progress);
@@ -1330,8 +1475,10 @@ export default function SignWithClarity() {
           accessToken: currentAccessToken,
         }),
       });
+      setComparison(null);
       setResults(outcome.results);
       setPartsRead(outcome.parts);
+      window.dispatchEvent(new Event("swc-account-refresh"));
     } catch (err) {
       if (err instanceof DecodeError && err.usage) setUsage(err.usage);
       if (err instanceof DecodeError && (err.code === "monthly_limit" || err.code === "fair_use")) {
@@ -1349,6 +1496,64 @@ export default function SignWithClarity() {
       setProgress(null);
     }
   };
+
+  const compare = async () => {
+    if (filledPolicies.length < 2) {
+      setErrorKey(filledPolicies.length === 0 ? "compareNeedText" : "compareCount");
+      setErrorText("");
+      setErrorCode("");
+      return;
+    }
+    if (!places.some((option) => option.value === region)) {
+      clearError();
+      setNeedsRegion(true);
+      return;
+    }
+    setNeedsRegion(false);
+    if (compareTooLong || !allowedToCompare) return;
+
+    clearError();
+    setLoading(true);
+    setResults(null);
+    setComparison(null);
+    if (!comparisonIdRef.current) comparisonIdRef.current = globalThis.crypto.randomUUID();
+
+    try {
+      const outcome = await runComparison({
+        policies: policies.filter((policy) => policy.text.trim()),
+        country,
+        region,
+        language: lang,
+        comparisonId: comparisonIdRef.current,
+        onProgress: setProgress,
+        request: (payload) => postDecode(payload, {
+          onUsage: setUsage,
+          accessToken: currentAccessToken,
+        }),
+      });
+      comparisonIdRef.current = "";
+      setComparison(outcome.comparison);
+      setCompareParts(outcome.parts);
+      window.dispatchEvent(new Event("swc-account-refresh"));
+    } catch (err) {
+      if (err instanceof DecodeError && err.usage) setUsage(err.usage);
+      if (err instanceof DecodeError && (err.code === "compare_needs_plan" || err.code === "fair_use" || err.code === "monthly_limit")) {
+        setErrorCode(err.code === "fair_use" ? "fair_use" : err.code);
+        setErrorKey("");
+        setErrorText("");
+      } else {
+        setErrorCode("");
+        const message = err instanceof DecodeError ? err.message : t(lang, "errorGeneric");
+        setErrorKey("");
+        setErrorText(message);
+      }
+    } finally {
+      setLoading(false);
+      setProgress(null);
+    }
+  };
+
+  const showForm = !results && !comparison && !loading;
 
   return (
     <>
@@ -1395,15 +1600,37 @@ export default function SignWithClarity() {
           </div>
         </div>
 
-        <main className="main">
+        <main className={workMode === "compare" || comparison ? "main main-wide" : "main"}>
           {/* UPLOAD CARD */}
-          {!results && !loading && (
+          {showForm && (
             <div className="upload-card">
               <div className="upload-card-header">
                 <span className="upload-card-header-icon">📄</span>
-                <span className="upload-card-title">{t(lang, "uploadTitle")}</span>
+                <span className="upload-card-title">{t(lang, workMode === "compare" ? "compareUploadTitle" : "uploadTitle")}</span>
               </div>
               <div className="upload-card-body">
+                <div className="mode-switch" role="group" aria-label={t(lang, "workModeLabel")}>
+                  <button type="button" className={`tab ${workMode === "single" ? "active" : ""}`} onClick={() => { setWorkMode("single"); clearError(); }}>
+                    {t(lang, "modeSingle")}
+                  </button>
+                  <button type="button" className={`tab ${workMode === "compare" ? "active" : ""}`} onClick={() => { setWorkMode("compare"); clearError(); }}>
+                    {t(lang, "modeCompare")}
+                  </button>
+                </div>
+
+                {workMode === "compare" ? (
+                  <ComparePanel
+                    lang={lang}
+                    policies={policies}
+                    onChange={(next) => { setPolicies(next); clearError(); }}
+                    onError={(key) => {
+                      setErrorKey(key || "");
+                      setErrorText("");
+                      setErrorCode("");
+                    }}
+                  />
+                ) : (
+                <>
                 <div className="tabs">
                   <button type="button" className={`tab ${tab === "paste" ? "active" : ""}`} onClick={() => setTab("paste")}>✏️ {t(lang, "tabPaste")}</button>
                   <button type="button" className={`tab ${tab === "upload" ? "active" : ""}`} onClick={() => setTab("upload")}>📎 {t(lang, "tabUpload")}</button>
@@ -1432,6 +1659,8 @@ export default function SignWithClarity() {
                     {fileName && <p className="file-name">✅ {fileName}</p>}
                     <input ref={fileRef} type="file" accept=".txt,.pdf" style={{display:"none"}} onChange={e => handleFile(e.target.files[0])} />
                   </div>
+                )}
+                </>
                 )}
 
                 <p className="storage-note">{storageNote(lang)}</p>
@@ -1471,14 +1700,14 @@ export default function SignWithClarity() {
                   />
                 </div>
 
-                {plan?.ok && plan.chunks.length > 1 && (
+                {workMode === "single" && plan?.ok && plan.chunks.length > 1 && (
                   <p className="length-note">{longDocumentNote(plan, lang)}</p>
                 )}
 
-                {tooLong && (
+                {workMode === "single" && tooLong && (
                   <div className="error-msg" role="alert">⚠️ {tooLongMessage(plan, lang)}</div>
                 )}
-                {!tooLong && atLimit && usageMessage && (
+                {workMode === "single" && !tooLong && atLimit && usageMessage && (
                   <div className="limit-msg" role="status">
                     {usageMessage}
                     {errorCode !== "fair_use" && (
@@ -1486,16 +1715,39 @@ export default function SignWithClarity() {
                     )}
                   </div>
                 )}
-                {!tooLong && !atLimit && error && (
+                {workMode === "compare" && (!allowedToCompare || errorCode === "compare_needs_plan" || errorCode === "fair_use") && (
+                  <div className="compare-note" role="status">
+                    {errorCode === "fair_use" && usageMessage ? usageMessage : compareNote}
+                    {errorCode !== "fair_use" && !yearlyCompareBlocked && (
+                      <p className="usage-note"><a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></p>
+                    )}
+                  </div>
+                )}
+                {error && ((workMode === "single" && !tooLong && !atLimit) || (workMode === "compare" && allowedToCompare && errorCode !== "compare_needs_plan")) && (
                   <div className="error-msg" role="alert">⚠️ {error}</div>
                 )}
 
-                <button className="decode-btn" onClick={decode} disabled={!docText.trim() || tooLong || atLimit}>
-                  ✨ {t(lang, "decodeButton")}
-                </button>
-                <span className="decode-btn-sub">{t(lang, "decodeSub")}</span>
-                {!atLimit && usageMessage && (
-                  <p className="usage-note">{usageMessage}</p>
+                {workMode === "single" ? (
+                  <>
+                    <button className="decode-btn" onClick={decode} disabled={!docText.trim() || tooLong || atLimit}>
+                      ✨ {t(lang, "decodeButton")}
+                    </button>
+                    <span className="decode-btn-sub">{t(lang, "decodeSub")}</span>
+                    {!atLimit && usageMessage && (
+                      <p className="usage-note">{usageMessage}</p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="decode-btn"
+                      onClick={compare}
+                      disabled={filledPolicies.length < 2 || compareTooLong || !allowedToCompare}
+                    >
+                      {t(lang, "compareButton")}
+                    </button>
+                    <span className="decode-btn-sub">{t(lang, "compareSub")}</span>
+                  </>
                 )}
               </div>
             </div>
@@ -1574,8 +1826,21 @@ export default function SignWithClarity() {
             </div>
           )}
 
+          {comparison && !loading && (
+            <ComparisonResult
+              lang={lang}
+              comparison={comparison}
+              parts={compareParts}
+              usageMessage={usageMessage}
+              onAgain={() => {
+                setComparison(null);
+                setPolicies([emptyPolicy(), emptyPolicy()]);
+              }}
+            />
+          )}
+
           {/* HOW IT WORKS */}
-          {!results && !loading && (
+          {showForm && workMode === "single" && (
             <div className="how-section">
               <h2 className="how-title">{t(lang, "howTitle")}</h2>
               <p className="how-sub">{t(lang, "howSub")}</p>

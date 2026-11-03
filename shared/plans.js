@@ -15,8 +15,23 @@
 export const HOUSEHOLD_PRODUCT_ID = "prod_VYa35DVVX8zzUK";
 export const YEARLY_PRODUCT_ID = "prod_VYaEVm0qbwlG00";
 
-/** Explanations included in one Household Check purchase. */
-export const HOUSEHOLD_EXPLANATION_CREDITS = 4;
+/**
+ * One Household Check purchase is one comparison of up to 4 policies,
+ * including a short explanation of each. It is not four separate credits.
+ */
+export const HOUSEHOLD_CHECKS_PER_PURCHASE = 1;
+
+/**
+ * Older balances counted single explanations, four for each purchase.
+ * A balance that has not been converted yet unlocks one Household Check
+ * for every four of those explanations, rounded up. The explanations stay,
+ * so an account that already paid can still explain one document at a time.
+ */
+export const LEGACY_EXPLANATIONS_PER_CHECK = 4;
+
+/** Policies in one comparison. */
+export const MIN_COMPARE_POLICIES = 2;
+export const MAX_COMPARE_POLICIES = 4;
 
 /**
  * Explanations included in one Clarity Yearly period.

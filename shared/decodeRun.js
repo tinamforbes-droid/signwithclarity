@@ -27,7 +27,7 @@ function asDecodeError(err, language) {
   );
 }
 
-async function withRetry(fn, { sleep, part, total, language }) {
+export async function withRetry(fn, { sleep, part, total, language }) {
   let last;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
