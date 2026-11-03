@@ -103,8 +103,8 @@ function canvasToJpeg(source, scale, quality) {
 
 async function defaultEncodeCanvas(canvas) {
   let scale = 1;
-  let quality = 0.62;
-  for (let attempt = 0; attempt < 6; attempt++) {
+  let quality = 0.55;
+  for (let attempt = 0; attempt < 7; attempt++) {
     const data = canvasToJpeg(canvas, scale, quality);
     if (data.length >= 32 && data.length <= MAX_IMAGE_DATA_CHARS) {
       return { mediaType: "image/jpeg", data };

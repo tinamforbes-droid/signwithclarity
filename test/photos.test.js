@@ -13,7 +13,7 @@ import { isHeicFile, isPdfFile, readDocumentFiles } from "../src/readDocumentFil
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature";
-const PHOTO = `PHOTOTESTMARKER${"A".repeat(40)}`;
+const PHOTO = `/9j/PHOTOTESTMARKER${"A".repeat(40)}`;
 const NOW = new Date("2026-11-02T15:00:00Z");
 
 function sections() {
@@ -29,7 +29,7 @@ test("a scan with no text layer is not treated as a finished document", () => {
   assert.equal(textIsEnough("", 3), false);
   assert.equal(textIsEnough("Page 1", 4), false);
   assert.equal(textIsEnough("Named insured Sam Lee. Liability limit one million. Deductible five hundred.", 1), true);
-  assert.deepEqual(fittedSize(4000, 2000), { width: 1568, height: 784 });
+  assert.deepEqual(fittedSize(4000, 2000), { width: 1024, height: 512 });
   assert.equal(cleanImage({ mediaType: "image/jpeg", data: PHOTO })?.data, PHOTO);
   assert.equal(cleanImage({ mediaType: "image/heic", data: PHOTO }), null);
   assert.equal(cleanImage({ mediaType: "image/jpeg", data: "short" }), null);
@@ -116,6 +116,97 @@ test("a disabled compare button names the file that had no text", () => {
     fileName: "Car Insurance.pdf",
     problem: "noText",
   }), /Car Insurance\.pdf/);
+});
+
+test("a text policy does not use vision, and a broken photo names a code", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const original = globalThis.fetch;
+  const logs = [];
+  const originalError = console.error;
+  console.error = (...args) => logs.push(args.map(String).join(" "));
+  let sent = null;
+  globalThis.fetch = async (_url, options) => {
+    sent = JSON.parse(options.body);
+    if (sent.messages[0].content?.[0]?.type === "image") {
+      const error = new Error("timed out");
+      error.name = "TimeoutError";
+      throw error;
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ content: [{ text: sections() }] }),
+    };
+  };
+  t.after(() => {
+    globalThis.fetch = original;
+    console.error = originalError;
+  });
+
+  const context = {
+    accountStore: createMemoryAccountStore({
+      [USER]: { paid: true, plan: "household", credits_remaining: 0, checks_remaining: 2 },
+    }),
+    now: NOW,
+    verifySession: async () => ({ id: USER, email: "ada@example.com" }),
+  };
+  const text = await decode({
+    httpMethod: "POST",
+    headers: { authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({
+      mode: "single",
+      docText: "Tenant policy. Named insured. Deductible $500. Liability limit $1,000,000. British Columbia.",
+      language: "en",
+      country: "Canada",
+      region: "British Columbia",
+      explanationId: randomUUID(),
+    }),
+  }, context);
+  assert.equal(text.statusCode, 200);
+  assert.equal(typeof sent.messages[0].content, "string");
+  assert.equal(sent.messages[0].content.includes("Tenant policy"), true);
+  assert.equal(JSON.stringify(sent).includes("image"), false);
+
+  const photo = await decode({
+    httpMethod: "POST",
+    headers: { authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({
+      mode: "extract",
+      purpose: "compare",
+      image: { mediaType: "image/jpeg", data: PHOTO },
+      chunkIndex: 1,
+      chunkCount: 3,
+      language: "en",
+      country: "Canada",
+      region: "British Columbia",
+      explanationId: randomUUID(),
+      comparisonId: randomUUID(),
+    }),
+  }, context);
+  assert.equal(photo.statusCode, 504);
+  const body = JSON.parse(photo.body);
+  assert.equal(body.code, "photo_timeout");
+  assert.match(body.error, /\(photo_timeout\)/);
+  assert.match(body.error, /too long/i);
+  assert.equal(logs.some((line) => line.includes("code=photo_timeout")), true);
+  assert.equal(logs.some((line) => line.includes("PHOTOTESTMARKER")), false);
+  assert.equal(context.accountStore.snapshot()[USER].checks_remaining, 2);
+
+  const format = await decode({
+    httpMethod: "POST",
+    headers: { authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({
+      mode: "extract",
+      image: { mediaType: "image/jpeg", data: `NOTJPEG${"A".repeat(40)}` },
+      language: "en",
+      country: "Canada",
+      region: "British Columbia",
+      explanationId: randomUUID(),
+    }),
+  }, context);
+  assert.equal(format.statusCode, 400);
+  assert.equal(JSON.parse(format.body).code, "image_format");
+  assert.match(JSON.parse(format.body).error, /\(image_format\)/);
 });
 
 test("a photo is sent to the model and is not stored on the account", async (t) => {
