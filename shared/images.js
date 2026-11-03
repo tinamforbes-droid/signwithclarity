@@ -5,15 +5,19 @@ export const IMAGE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image
 /** Pages of one document we will read as photos. */
 export const MAX_IMAGE_PAGES = 16;
 
-/** Longest edge, in pixels, before a photo is sent. */
-export const MAX_IMAGE_EDGE = 1568;
+/**
+ * Longest edge, in pixels, before a photo is sent.
+ * A phone photo of a page is still readable at this size, and the
+ * vision call finishes inside the function time limit.
+ */
+export const MAX_IMAGE_EDGE = 1024;
 
 /**
- * Base64 length cap for one photo. Kept under half a megabyte of image
- * data so one page fits a Netlify request and the vision call can finish
- * inside the function time limit.
+ * Base64 length cap for one photo. About 350 KB of image data.
+ * One page then stays far under Netlify's 6 MB request limit, and the
+ * vision call has less to look at.
  */
-export const MAX_IMAGE_DATA_CHARS = 700_000;
+export const MAX_IMAGE_DATA_CHARS = 480_000;
 
 /**
  * A text PDF has sentences. A scan, or a PDF made from phone photos,
@@ -36,6 +40,11 @@ export function fittedSize(width, height, maxEdge = MAX_IMAGE_EDGE) {
     width: Math.max(1, Math.round(w * scale)),
     height: Math.max(1, Math.round(h * scale)),
   };
+}
+
+/** Canvas JPEGs start with this. Anything else is not a JPEG we made. */
+export function isJpegData(data) {
+  return String(data || "").startsWith("/9j/");
 }
 
 export function cleanImage(value) {

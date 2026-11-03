@@ -28,7 +28,7 @@
 // A comparison is not free. A flag in the request body cannot turn this on.
 
 import { cleanComparisonPolicies } from "../../shared/comparePolicy.js";
-import { cleanImage, photoInstruction } from "../../shared/images.js";
+import { cleanImage, isJpegData, photoInstruction } from "../../shared/images.js";
 import {
   CHUNK_SIZE,
   MAX_SERVER_NOTES,
@@ -47,6 +47,29 @@ function serverEnv(context) {
 }
 
 const MODEL = "claude-sonnet-4-6";
+const PHOTO_FETCH_MS = 18000;
+
+function logCode(code, detail) {
+  const extra = String(detail || "").replace(/[^a-zA-Z0-9_:=.-]/g, "").slice(0, 80);
+  console.error(`swc decode code=${code}${extra ? " " + extra : ""}`);
+}
+
+function withCode(text, code) {
+  if (!code) return text;
+  if (String(text).includes(`(${code})`)) return text;
+  return `${text} (${code})`;
+}
+
+function anthropicErrorType(raw) {
+  try {
+    const data = JSON.parse(raw);
+    const type = data?.error?.type;
+    if (typeof type === "string" && /^[a-z0-9_]{1,40}$/.test(type)) return type;
+  } catch {
+    // The body can echo the page. Do not log it.
+  }
+  return "";
+}
 
 function reply(statusCode, payload) {
   return {
@@ -92,26 +115,59 @@ function messageContent(user, images) {
 }
 
 async function askModel({ system, user, images, maxTokens, language }) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
+  const photo = Boolean(images?.length);
+  let body;
+  try {
+    body = JSON.stringify({
       model: MODEL,
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: messageContent(user, images) }],
-    }),
-  });
+    });
+  } catch {
+    const code = photo ? "image_size" : "read_failed";
+    logCode(code, "stage=encode");
+    return {
+      ok: false,
+      statusCode: 413,
+      code,
+      error: withCode(t(language, photo ? "errorPageTooLarge" : "errorReadFailed"), code),
+    };
+  }
+
+  let response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body,
+      signal: photo && typeof AbortSignal !== "undefined" && AbortSignal.timeout
+        ? AbortSignal.timeout(PHOTO_FETCH_MS)
+        : undefined,
+    });
+  } catch (err) {
+    const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
+    const code = photo ? (timedOut ? "photo_timeout" : "upstream_fetch") : (timedOut ? "text_timeout" : "upstream_fetch");
+    logCode(code, `name=${err?.name || "Error"}`);
+    return {
+      ok: false,
+      statusCode: 504,
+      code,
+      error: withCode(t(language, timedOut ? "errorPartTimeout" : "errorReadFailed"), code),
+    };
+  }
 
   const raw = await response.text();
   if (!response.ok) {
-    console.error("Anthropic API error:", response.status);
+    const code = photo ? `image_${response.status}` : `model_${response.status}`;
+    const type = anthropicErrorType(raw);
+    logCode(code, type ? `type=${type}` : "");
     const failure = failureForStatus(response.status, language);
-    return { ok: false, ...failure };
+    return { ok: false, ...failure, code, error: withCode(failure.error, code) };
   }
 
   let data;
@@ -226,10 +282,17 @@ export async function handler(event, context) {
       const chunkIndex = Number.isInteger(payload.chunkIndex) ? payload.chunkIndex : 1;
       const chunkCount = Number.isInteger(payload.chunkCount) ? payload.chunkCount : 1;
       if (image) {
+        if (image.mediaType === "image/jpeg" && !isJpegData(image.data)) {
+          logCode("image_format", `mode=${mode} bytes=${image.data.length}`);
+          return reply(400, {
+            error: withCode(t(language, "photoUnreadable"), "image_format"),
+            code: "image_format",
+          });
+        }
         const looking = mode === "extract" ? "extract" : "single";
         model = {
           system: systemFor(looking, language),
-          maxTokens: looking === "extract" ? 800 : 1000,
+          maxTokens: looking === "extract" ? 450 : 700,
           language,
           images: [image],
           user: `${where}\n\n${photoInstruction(chunkIndex, chunkCount)}`,
@@ -283,14 +346,14 @@ export async function handler(event, context) {
     }
     if (!result.ok) {
       await gate.release?.();
-      return reply(result.statusCode, { error: result.error });
+      return reply(result.statusCode, { error: result.error, ...(result.code ? { code: result.code } : {}) });
     }
     if (mode === "compare") await gate.complete?.();
     const body = { text: result.text };
     if (gate.usage) body.usage = gate.usage;
     return reply(200, body);
   } catch (err) {
-    console.error("decode function error:", err);
-    return reply(500, { error: t(language, "errorReadFailed") });
+    logCode("read_failed", `name=${err?.name || "Error"}`);
+    return reply(500, { error: withCode(t(language, "errorReadFailed"), "read_failed"), code: "read_failed" });
   }
 }
