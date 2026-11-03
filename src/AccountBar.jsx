@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { isPlausibleEmail, magicLinkRequest } from "../shared/session.js";
 import { t } from "../shared/messages.js";
 import { loadOwnPlan } from "./accountRow.js";
+import { planHintText } from "./planHints.js";
 import { authConfigured, getAuthClient } from "./authClient.js";
 
 function sessionEmail(session) {
@@ -64,17 +65,7 @@ export default function AccountBar({ lang }) {
     const refresh = () => {
       loadOwnPlan().then((row) => {
         if (!active) return;
-        const account = row?.account;
-        if (account?.plan === "yearly" && account.paid) {
-          setPlanHint(t(lang, "signedInYearly"));
-          return;
-        }
-        const credits = account?.plan === "household" && account.paid ? account.credits_remaining : 0;
-        if (credits > 0) {
-          setPlanHint(t(lang, "signedInHousehold", { count: credits }));
-          return;
-        }
-        setPlanHint("");
+        setPlanHint(planHintText(lang, row?.account));
       }).catch(() => {
         if (active) setPlanHint("");
       });

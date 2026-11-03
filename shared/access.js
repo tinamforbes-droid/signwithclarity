@@ -6,9 +6,11 @@
  * context when they need to skip the counter.
  *
  * A confirmed account is read from public.accounts with the server
- * secret. Household Check spends one of its credits. Clarity Yearly
- * spends one of YEARLY_FAIR_USE_LIMIT explanations in the paid year.
- * Anyone else keeps the free monthly limit.
+ * secret. A Household Check comparison spends one Household Check.
+ * A single explanation spends an older explanation credit, if one
+ * is left. Clarity Yearly spends one of YEARLY_FAIR_USE_LIMIT
+ * explanations in the paid year, and a comparison counts as one.
+ * Anyone else keeps the free monthly limit. Comparison is not free.
  */
 
 import { asLanguage, t } from "./messages.js";
@@ -26,6 +28,7 @@ export async function settlePaidUse({
   explanationId,
   now = new Date(),
   language = "en",
+  purpose = "explain",
   accountStore,
   fetchImpl,
 } = {}) {
@@ -39,8 +42,9 @@ export async function settlePaidUse({
   let result;
   try {
     result = await store.update(userId, (account) => {
-      const decision = decideConsume(account, explanationId, now);
-      if (decision.kind === "fresh" || decision.kind === "repeat") {
+      const decision = decideConsume(account, explanationId, now, { purpose });
+      const spend = decision.kind === "fresh" || decision.kind === "repeat";
+      if (spend || decision.migrated) {
         return { write: true, account: decision.account, decision };
       }
       return { write: false, decision };
@@ -60,6 +64,18 @@ export async function settlePaidUse({
 
   const decision = result?.decision;
   if (!decision || decision.kind === "none") return null;
+
+  if (decision.kind === "needs_plan") {
+    return {
+      allowed: false,
+      statusCode: 402,
+      body: {
+        error: t(lang, "compareNeedsPlan"),
+        code: "compare_needs_plan",
+      },
+      release: null,
+    };
+  }
 
   const account = decision.account || result.account;
   if (decision.kind === "closed") {

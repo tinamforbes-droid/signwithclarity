@@ -10,6 +10,14 @@ export const FREE_EXPLANATION_LIMIT = 3;
  */
 export const MAX_CALLS_PER_EXPLANATION = 120;
 
+/**
+ * A comparison reads up to four policies, each in parts, then writes
+ * one result. The cap is higher than a single explanation so a long
+ * policy is not cut off, and it still stops one id from being reused
+ * for comparison after comparison.
+ */
+export const MAX_CALLS_PER_COMPARISON = 480;
+
 export function monthKey(date) {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -55,6 +63,10 @@ export function usageStatusMessage(lang, usage) {
   if (usage.plan === "household") {
     const count = usage.remaining ?? 0;
     if (count <= 0) return "";
+    if (usage.kind === "check") {
+      if (count === 1) return t(lang, "householdCheckRemainingOne");
+      return t(lang, "householdCheckRemaining", { count });
+    }
     if (count === 1) return t(lang, "householdRemainingOne");
     return t(lang, "householdRemaining", { count });
   }

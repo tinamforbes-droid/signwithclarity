@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 
 import { hasUnlimitedAccess, settlePaidUse } from "./access.js";
+import { isComparisonRequest } from "./comparePolicy.js";
 import { asLanguage, t } from "./messages.js";
 import { bearerToken, isUserId } from "./session.js";
 import { verifySupabaseUser } from "./supabaseUser.js";
@@ -255,7 +256,8 @@ export async function enforceUsageLimit({
     return { allowed: true, usage: { limited: false }, release: null };
   }
 
-  const explanationId = cleanExplanationId(payload?.explanationId) || randomUUID();
+  const explanationId = cleanExplanationId(payload?.comparisonId || payload?.explanationId) || randomUUID();
+  const comparing = isComparisonRequest(payload);
   if (user) {
     const paid = await settlePaidUse({
       user,
@@ -263,10 +265,20 @@ export async function enforceUsageLimit({
       explanationId,
       now,
       language: lang,
+      purpose: comparing ? "compare" : "explain",
       accountStore,
       fetchImpl,
     });
     if (paid) return paid;
+  }
+
+  if (comparing) {
+    return {
+      allowed: false,
+      statusCode: 402,
+      body: { error: t(lang, "compareNeedsPlan"), code: "compare_needs_plan" },
+      release: null,
+    };
   }
 
   if (!store) {

@@ -2,6 +2,7 @@
 // Loaded only when SWC_MOCK=1, and only for the Vite dev server.
 // Production builds do not include it.
 
+import { isComparisonRequest } from "../shared/comparePolicy.js";
 import { asLanguage } from "../shared/messages.js";
 import { buildSamplePolicy } from "../shared/samplePolicy.js";
 import { createMemoryUsageStore, enforceUsageLimit } from "../shared/usageGate.js";
@@ -80,6 +81,64 @@ function mockResult(payload) {
     return { status: 200, body: { text: notes.slice(0, 8000) } };
   }
 
+  if (payload.mode === "compare") {
+    const lang = asLanguage(payload.language) || "en";
+    const policies = Array.isArray(payload.policies) ? payload.policies : [];
+    const labels = policies.map((policy, index) => String(policy?.label || `Policy ${index + 1}`));
+    const place = String(payload.region || "Ontario");
+    const copy = {
+      en: {
+        car: "This auto policy covers a 2019 Honda Civic for Sam Lee. Liability is $1,000,000. Collision and comprehensive each have a $500 deductible. Using the car for deliveries is excluded. The renewal date in the wording is March 1, 2027.",
+        home: "This home policy covers a dwelling in Toronto for Sam Lee. The building limit is $600,000 and the deductible is $1,000. Personal liability is $1,000,000. Fire and theft are covered. Water backup needs an endorsement, and flood is not included. The renewal date in the wording is March 1, 2027.",
+        other: "A short explanation of what this policy says, based only on the wording that was read.",
+        gaps: `• Flood is not mentioned as covered. In ${place}, overland flood is often separate. This is something to ask about.`,
+        overlaps: "• Both policies show a $1,000,000 liability limit. It is worth asking whether they would pay the same kind of claim.",
+        questions: "• Does the home policy's liability cover the same kind of claim as the auto policy?\n• Is water backup listed as an endorsement?\n• Are both set to renew on March 1, 2027?",
+      },
+      fr: {
+        car: "Cette police auto couvre une Honda Civic 2019 pour Sam Lee. La responsabilité est de 1 000 000 $. La collision et les accidents sans collision ont chacun une franchise de 500 $. L'usage pour des livraisons est exclu. La date de renouvellement indiquée est le 1er mars 2027.",
+        home: "Cette police habitation couvre un logement à Toronto pour Sam Lee. Le plafond du bâtiment est de 600 000 $ et la franchise est de 1 000 $. La responsabilité civile est de 1 000 000 $. L'incendie et le vol sont couverts. Le refoulement d'eau exige un avenant, et l'inondation n'est pas incluse. La date de renouvellement indiquée est le 1er mars 2027.",
+        other: "Une courte explication de ce que dit cette police, à partir seulement du texte qui a été lu.",
+        gaps: `• L'inondation n'est pas indiquée comme couverte. En ${place}, l'inondation de surface est souvent à part. C'est une question à poser.`,
+        overlaps: "• Les deux polices indiquent un plafond de responsabilité de 1 000 000 $. Il vaut la peine de demander si elles paieraient le même genre de réclamation.",
+        questions: "• La responsabilité de la police habitation couvre-t-elle le même genre de réclamation que la police auto?\n• Le refoulement d'eau est-il inscrit comme avenant?\n• Les deux se renouvellent-elles le 1er mars 2027?",
+      },
+      es: {
+        car: "Esta póliza de auto cubre un Honda Civic 2019 de Sam Lee. La responsabilidad es de $1,000,000. La colisión y la cobertura amplia tienen un deducible de $500 cada una. El uso para entregas está excluido. La fecha de renovación que aparece es el 1 de marzo de 2027.",
+        home: "Esta póliza de hogar cubre una vivienda en Toronto de Sam Lee. El límite del edificio es de $600,000 y el deducible es de $1,000. La responsabilidad personal es de $1,000,000. Cubre incendio y robo. El respaldo de agua necesita un endoso, y la inundación no está incluida. La fecha de renovación que aparece es el 1 de marzo de 2027.",
+        other: "Una explicación breve de lo que dice esta póliza, solo a partir del texto que se leyó.",
+        gaps: `• La inundación no aparece como cubierta. En ${place}, la inundación suele contratarse aparte. Es algo para preguntar.`,
+        overlaps: "• Las dos pólizas muestran un límite de responsabilidad de $1,000,000. Vale la pena preguntar si pagarían el mismo tipo de reclamo.",
+        questions: "• ¿La responsabilidad de la póliza de hogar cubre el mismo tipo de reclamo que la del auto?\n• ¿El respaldo de agua está anotado como endoso?\n• ¿Las dos se renuevan el 1 de marzo de 2027?",
+      },
+    };
+    const chosen = copy[lang] || copy.en;
+    return {
+      status: 200,
+      body: {
+        text: JSON.stringify({
+          policies: labels.map((label) => ({
+            label,
+            summary: label === "Car" || label === "Auto" ? chosen.car : label === "Home" || label === "Habitation" || label === "Hogar" ? chosen.home : chosen.other,
+          })),
+          table: labels.map((label) => ({
+            label,
+            covered: label === "Home" || label === "Habitation" || label === "Hogar" ? (lang === "fr" ? "Incendie et vol" : lang === "es" ? "Incendio y robo" : "Fire and theft") : (lang === "fr" ? "Responsabilité, collision" : lang === "es" ? "Responsabilidad, colisión" : "Liability, collision"),
+            limits: label === "Home" || label === "Habitation" || label === "Hogar" ? "$600,000" : "$1,000,000",
+            deductible: label === "Home" || label === "Habitation" || label === "Hogar" ? "$1,000" : "$500",
+            exclusions: label === "Home" || label === "Habitation" || label === "Hogar"
+              ? (lang === "fr" ? "Inondation; refoulement d'eau sans avenant" : lang === "es" ? "Inundación; respaldo de agua sin endoso" : "Flood; water backup unless endorsed")
+              : (lang === "fr" ? "Livraisons" : lang === "es" ? "Entregas" : "Delivery business"),
+            renewal: lang === "fr" ? "1er mars 2027" : lang === "es" ? "1 de marzo de 2027" : "March 1, 2027",
+          })),
+          gaps: chosen.gaps,
+          overlaps: chosen.overlaps,
+          questions: chosen.questions,
+        }),
+      },
+    };
+  }
+
   const sawEnd = combined.toLowerCase().includes(END_PHRASE);
   const language = asLanguage(payload.language) || "en";
   return { status: 200, body: { text: JSON.stringify(sections({ sawEnd, language })) } };
@@ -144,17 +203,20 @@ export function mockDecodePlugin() {
         if (!headers["x-nf-client-connection-ip"]) {
           headers["x-nf-client-connection-ip"] = req.socket?.remoteAddress || "local";
         }
-        const gate = await enforceUsageLimit({
-          headers,
-          payload,
-          store: usageStore,
-          language: payload.language,
-        });
-        if (!gate.allowed) {
-          res.statusCode = gate.statusCode;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify(gate.body));
-          return;
+        let gate = { allowed: true, usage: null, release: null };
+        if (!isComparisonRequest(payload)) {
+          gate = await enforceUsageLimit({
+            headers,
+            payload,
+            store: usageStore,
+            language: payload.language,
+          });
+          if (!gate.allowed) {
+            res.statusCode = gate.statusCode;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(gate.body));
+            return;
+          }
         }
 
         const { status, body } = mockResult(payload);

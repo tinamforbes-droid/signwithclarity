@@ -23,9 +23,11 @@
 // If the request includes a Supabase session, this function checks that
 // session with the secret key and counts the three on that account instead.
 // The document itself is not stored. A paid account is read from Supabase
-// in shared/access.js. Household Check spends a credit. Clarity Yearly
-// spends one of its yearly explanations. A flag in the request body cannot.
+// in shared/access.js. One Household Check pays for one comparison of up
+// to 4 policies. Clarity Yearly counts that comparison as one explanation.
+// A comparison is not free. A flag in the request body cannot turn this on.
 
+import { cleanComparisonPolicies } from "../../shared/comparePolicy.js";
 import {
   CHUNK_SIZE,
   MAX_SERVER_NOTES,
@@ -129,7 +131,7 @@ export async function handler(event, context) {
   const country = cleanLabel(payload.country, "Canada");
   const region = cleanLabel(payload.region || payload.province, "Not specified");
 
-  if (!["single", "extract", "reduce", "synthesize"].includes(mode)) {
+  if (!["single", "extract", "reduce", "synthesize", "compare"].includes(mode)) {
     return reply(400, { error: t(language, "errorBadMode") });
   }
 
@@ -163,6 +165,25 @@ export async function handler(event, context) {
           user: `${where}\n\nThe notes below were taken from every part of one insurance document, in order from the first page through the last. Later parts were not skipped. Give exclusions, conditions, and endorsements from the end the same attention as the opening.\n\nUse all of the notes when you write the four-part explanation.\n\nNotes:\n${notes}`,
         };
       }
+    } else if (mode === "compare") {
+      const cleaned = cleanComparisonPolicies(payload.policies, language);
+      if (!cleaned.ok) {
+        const key = cleaned.reason === "notes"
+          ? "errorTooManyNotes"
+          : cleaned.reason === "count"
+            ? "compareCount"
+            : "compareNeedText";
+        return reply(400, { error: t(language, key), code: cleaned.reason });
+      }
+      const blocks = cleaned.policies.map((policy, index) => (
+        `Policy ${index + 1} — ${policy.label}\n${policy.notes}`
+      ));
+      model = {
+        system: systemFor("compare", language),
+        maxTokens: 2200,
+        language,
+        user: `${locationBlock(country, region, language)}\n\nCompare these ${cleaned.policies.length} policies. Keep the labels unchanged and in this order. Use only the notes below. Later notes matter as much as earlier ones.\n\n${blocks.join("\n\n")}`,
+      };
     } else {
       const docText = normalizeDocument(payload.docText);
       if (!docText) {

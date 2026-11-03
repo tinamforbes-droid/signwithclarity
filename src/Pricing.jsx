@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { visibleChecks } from "../shared/entitlement.js";
 import { currencyForCountry } from "../shared/plans.js";
 import { t } from "../shared/messages.js";
 import { currentAccessToken } from "./authClient.js";
@@ -92,9 +93,8 @@ export default function Pricing({ lang, country }) {
 
   const account = viewer?.account;
   const yearly = account?.plan === "yearly" && account?.paid === true;
-  const householdCredits = account?.plan === "household" && account?.paid === true
-    ? account.credits_remaining
-    : 0;
+  const checks = account?.paid ? visibleChecks(account) : 0;
+  const householdCredits = account?.paid ? Math.max(0, account.credits_remaining || 0) : 0;
   const signedIn = Boolean(viewer?.signedIn);
 
   async function buy(plan) {
@@ -160,7 +160,7 @@ export default function Pricing({ lang, country }) {
           <h3 className="plan-name">{t(lang, "pricingFreeName")}</h3>
           <p className="plan-price">{money(0, currency, lang)}</p>
           <p className="plan-detail">{t(lang, "pricingFreeDetail")}</p>
-          {!yearly && !(householdCredits > 0) && signedIn && (
+          {!yearly && !(householdCredits > 0) && !(checks > 0) && signedIn && (
             <p className="plan-current">{t(lang, "pricingCurrent")}</p>
           )}
         </article>
@@ -169,6 +169,9 @@ export default function Pricing({ lang, country }) {
           <h3 className="plan-name">{t(lang, "pricingHouseholdName")}</h3>
           <p className="plan-price">{money(9, currency, lang)}</p>
           <p className="plan-detail">{t(lang, "pricingHouseholdDetail")}</p>
+          {checks > 0 && (
+            <p className="plan-current">{t(lang, checks === 1 ? "householdCheckRemainingOne" : "householdCheckRemaining", { count: checks })}</p>
+          )}
           {householdCredits > 0 && (
             <p className="plan-current">{t(lang, householdCredits === 1 ? "householdRemainingOne" : "householdRemaining", { count: householdCredits })}</p>
           )}
