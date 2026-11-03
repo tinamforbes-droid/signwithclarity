@@ -28,6 +28,7 @@
 // A comparison is not free. A flag in the request body cannot turn this on.
 
 import { cleanComparisonPolicies } from "../../shared/comparePolicy.js";
+import { cleanImage, photoInstruction } from "../../shared/images.js";
 import {
   CHUNK_SIZE,
   MAX_SERVER_NOTES,
@@ -76,7 +77,18 @@ function failureForStatus(status, language) {
   return { statusCode: 502, error: t(language, "errorUnexpected") };
 }
 
-async function askModel({ system, user, maxTokens, language }) {
+function messageContent(user, images) {
+  if (!images?.length) return user;
+  return [
+    ...images.map((image) => ({
+      type: "image",
+      source: { type: "base64", media_type: image.mediaType, data: image.data },
+    })),
+    { type: "text", text: user },
+  ];
+}
+
+async function askModel({ system, user, images, maxTokens, language }) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -88,7 +100,7 @@ async function askModel({ system, user, maxTokens, language }) {
       model: MODEL,
       max_tokens: maxTokens,
       system,
-      messages: [{ role: "user", content: user }],
+      messages: [{ role: "user", content: messageContent(user, images) }],
     }),
   });
 
@@ -185,30 +197,45 @@ export async function handler(event, context) {
         user: `${locationBlock(country, region, language)}\n\nCompare these ${cleaned.policies.length} policies. Keep the labels unchanged and in this order. Use only the notes below. Later notes matter as much as earlier ones.\n\n${blocks.join("\n\n")}`,
       };
     } else {
-      const docText = normalizeDocument(payload.docText);
-      if (!docText) {
-        return reply(400, { error: t(language, "errorNoText") });
-      }
-      if (docText.length > CHUNK_SIZE) {
-        return reply(400, { error: pieceTooLongMessage(language) });
+      const image = payload.image ? cleanImage(payload.image) : null;
+      if (payload.image && !image) {
+        return reply(400, { error: t(language, "photoUnreadable"), code: "bad_image" });
       }
       const where = locationBlock(country, region, language);
-      if (mode === "extract") {
-        const chunkIndex = Number.isInteger(payload.chunkIndex) ? payload.chunkIndex : 1;
-        const chunkCount = Number.isInteger(payload.chunkCount) ? payload.chunkCount : 1;
+      const chunkIndex = Number.isInteger(payload.chunkIndex) ? payload.chunkIndex : 1;
+      const chunkCount = Number.isInteger(payload.chunkCount) ? payload.chunkCount : 1;
+      if (image) {
+        const looking = mode === "extract" ? "extract" : "single";
         model = {
-          system: systemFor("extract", language),
-          maxTokens: 800,
+          system: systemFor(looking, language),
+          maxTokens: looking === "extract" ? 800 : 1000,
           language,
-          user: `${where}\n\nThis is part ${chunkIndex} of ${chunkCount}, in order. Read this part carefully. Exclusions in this part matter even if they feel like fine print.\n\nInsurance Document:\n${docText}`,
+          images: [image],
+          user: `${where}\n\n${photoInstruction(chunkIndex, chunkCount)}`,
         };
       } else {
-        model = {
-          system: systemFor("single", language),
-          maxTokens: 1000,
-          language,
-          user: `${where}\n\nInsurance Document:\n${docText}`,
-        };
+        const docText = normalizeDocument(payload.docText);
+        if (!docText) {
+          return reply(400, { error: t(language, "errorNoText") });
+        }
+        if (docText.length > CHUNK_SIZE) {
+          return reply(400, { error: pieceTooLongMessage(language) });
+        }
+        if (mode === "extract") {
+          model = {
+            system: systemFor("extract", language),
+            maxTokens: 800,
+            language,
+            user: `${where}\n\nThis is part ${chunkIndex} of ${chunkCount}, in order. Read this part carefully. Exclusions in this part matter even if they feel like fine print.\n\nInsurance Document:\n${docText}`,
+          };
+        } else {
+          model = {
+            system: systemFor("single", language),
+            maxTokens: 1000,
+            language,
+            user: `${where}\n\nInsurance Document:\n${docText}`,
+          };
+        }
       }
     }
 

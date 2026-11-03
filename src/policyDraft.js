@@ -3,7 +3,7 @@ const SAMPLE_HOME = "ABC Home Policy. Named insured: Sam Lee. Dwelling in Toront
 
 export function emptyPolicy() {
   const id = globalThis.crypto?.randomUUID?.() || `policy-${Date.now()}-${Math.random()}`;
-  return { id, label: "", text: "", fileName: "", tab: "paste" };
+  return { id, label: "", text: "", pages: [], fileName: "", problem: "", pageCount: 0, tab: "paste" };
 }
 
 /** Local preview only. Production builds leave this empty. */

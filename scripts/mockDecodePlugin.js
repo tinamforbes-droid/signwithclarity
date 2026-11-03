@@ -58,6 +58,25 @@ function mockResult(payload) {
     };
   }
 
+  if (payload.image && payload.mode !== "compare") {
+    const lang = asLanguage(payload.language) || "en";
+    if (payload.mode === "single") {
+      return { status: 200, body: { text: JSON.stringify(sections({ sawEnd: false, language: lang })) } };
+    }
+    return {
+      status: 200,
+      body: {
+        text: JSON.stringify({
+          coverage: `Notes from a photo, page ${payload.chunkIndex || 1} of ${payload.chunkCount || 1}.`,
+          facts: "• Read from the photo of the page.",
+          flags: "• None in this part.",
+          questions: "• None in this part.",
+          terms: "",
+        }),
+      },
+    };
+  }
+
   if (payload.mode === "extract") {
     const flags = [];
     const match = doc.match(/[^.]*exclud[^.]*\./i);

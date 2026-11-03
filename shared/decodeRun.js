@@ -1,3 +1,4 @@
+import { MAX_IMAGE_PAGES } from "./images.js";
 import {
   MAX_NOTES_CHARS,
   MAX_SERVER_NOTES,
@@ -206,8 +207,76 @@ function createExplanationId() {
   return globalThis.crypto.randomUUID();
 }
 
+export async function notesFromPages({
+  pages,
+  where,
+  request,
+  sleep,
+  onProgress,
+  seenStart = 0,
+  total,
+  policy,
+  policies,
+}) {
+  const lang = where.language;
+  const notes = [];
+  const count = pages.length;
+  for (let i = 0; i < count; i++) {
+    const current = seenStart + i + 1;
+    onProgress?.({
+      phase: "reading",
+      kind: "photo",
+      current,
+      total: total || count,
+      policy,
+      policies,
+    });
+    const noteText = await withRetry(
+      () => request({
+        mode: "extract",
+        ...where,
+        image: pages[i],
+        chunkIndex: i + 1,
+        chunkCount: count,
+      }),
+      { sleep, part: i + 1, total: count, language: lang },
+    );
+    notes.push(`Part ${i + 1} of ${count}:\n${noteText}`);
+  }
+  return notes;
+}
+
+async function sectionsFromNotes({ notes, where, request, sleep, onProgress, total }) {
+  const lang = where.language;
+  let pending = notes;
+  for (let round = 0; round < 6 && joinNotes(pending).length > MAX_NOTES_CHARS && pending.length > 1; round++) {
+    onProgress?.({ phase: "combining", current: total, total });
+    const groups = groupNotes(pending, MAX_NOTES_CHARS);
+    if (groups.length >= pending.length) break;
+    const next = [];
+    for (const group of groups) {
+      const reduced = await withRetry(
+        () => request({ mode: "reduce", ...where, notes: group.join("\n\n") }),
+        { sleep, language: lang },
+      );
+      next.push(reduced);
+    }
+    pending = next;
+  }
+  const notesText = joinNotes(pending);
+  if (notesText.length > MAX_SERVER_NOTES) {
+    throw new DecodeError(t(lang, "errorCombine"), { code: "too_long" });
+  }
+  onProgress?.({ phase: "combining", current: total, total });
+  return withRetry(
+    async () => modelSections(await request({ mode: "synthesize", ...where, notes: notesText }), lang),
+    { sleep, language: lang },
+  );
+}
+
 export async function runDecode({
   text,
+  pages,
   country,
   region,
   language = "en",
@@ -217,6 +286,53 @@ export async function runDecode({
   sleep = defaultSleep,
 }) {
   const lang = asLanguage(language) || "en";
+  const images = Array.isArray(pages) ? pages.filter(Boolean) : [];
+  const where = {
+    country,
+    region,
+    language: lang,
+    explanationId: explanationId || createExplanationId(),
+  };
+  if (images.length) {
+    if (images.length > MAX_IMAGE_PAGES) {
+      throw new DecodeError(
+        t(lang, "tooManyPhotos", { count: images.length, max: MAX_IMAGE_PAGES }),
+        { code: "too_long" },
+      );
+    }
+    if (images.length === 1) {
+      onProgress?.({ phase: "reading", kind: "photo", current: 1, total: 1 });
+      const results = await withRetry(
+        async () => modelSections(await request({
+          mode: "single",
+          ...where,
+          image: images[0],
+          chunkIndex: 1,
+          chunkCount: 1,
+        }), lang),
+        { sleep, language: lang },
+      );
+      return { results, parts: 1 };
+    }
+    const notes = await notesFromPages({
+      pages: images,
+      where,
+      request,
+      sleep,
+      onProgress,
+      total: images.length,
+    });
+    const results = await sectionsFromNotes({
+      notes,
+      where,
+      request,
+      sleep,
+      onProgress,
+      total: images.length,
+    });
+    return { results, parts: images.length };
+  }
+
   const plan = planDocument(text);
   if (!plan.ok) {
     if (plan.reason === "empty") {
@@ -226,12 +342,6 @@ export async function runDecode({
   }
 
   const total = plan.chunks.length;
-  const where = {
-    country,
-    region,
-    language: lang,
-    explanationId: explanationId || createExplanationId(),
-  };
 
   if (total === 1) {
     onProgress?.({ phase: "reading", current: 1, total: 1 });
