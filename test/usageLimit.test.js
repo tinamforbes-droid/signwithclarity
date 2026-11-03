@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 
+import { createMemoryAccountStore } from "../shared/accountStore.js";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
 import { hasUnlimitedAccess } from "../shared/access.js";
 import { buildSamplePolicy } from "../shared/samplePolicy.js";
@@ -138,6 +139,104 @@ test("outside Netlify, tests do not open the blob store", async () => {
   assert.equal(await resolveUsageStore({}, { NETLIFY: "" }), null);
   const passed = createMemoryUsageStore();
   assert.equal(await resolveUsageStore({ usageStore: passed }, { NETLIFY: "true" }), passed);
+});
+
+test("a paid comparison does not need blobs, and a lambda event connects the free store", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const previousBlobs = process.env.NETLIFY_BLOBS_CONTEXT;
+  const original = globalThis.fetch;
+  const urls = [];
+  const puts = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const address = String(url);
+    urls.push(address);
+    if (address.includes("api.anthropic.com")) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ content: [{ text: sections() }] }),
+      };
+    }
+    puts.push(options.body ? String(options.body) : "");
+    const method = String(options.method || "get").toLowerCase();
+    return {
+      status: method === "put" ? 200 : 404,
+      ok: method === "put",
+      headers: { get: () => null },
+      body: null,
+    };
+  };
+  t.after(() => {
+    globalThis.fetch = original;
+    if (previousBlobs === undefined) delete process.env.NETLIFY_BLOBS_CONTEXT;
+    else process.env.NETLIFY_BLOBS_CONTEXT = previousBlobs;
+  });
+
+  const user = "11111111-1111-4111-8111-111111111111";
+  const accounts = createMemoryAccountStore({
+    [user]: { paid: true, plan: "household", credits_remaining: 0, checks_remaining: 1 },
+  });
+  const paid = await handler({
+    httpMethod: "POST",
+    headers: { authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature" },
+    body: JSON.stringify({
+      mode: "compare",
+      language: "en",
+      country: "Canada",
+      region: "British Columbia",
+      explanationId: randomUUID(),
+      policies: [
+        { label: "Westland", notes: "Named insured. Liability one million. Deductible five hundred." },
+        { label: "Car", notes: "Named insured. Collision deductible seven hundred. Liability one million." },
+      ],
+    }),
+  }, {
+    env: { NETLIFY: "true" },
+    now: new Date("2026-11-02T15:00:00Z"),
+    accountStore: accounts,
+    verifySession: async () => ({ id: user, email: "ada@example.com" }),
+  });
+  assert.equal(paid.statusCode, 200, paid.body);
+  assert.equal(accounts.snapshot()[user].checks_remaining, 0);
+  assert.equal(urls.some((url) => url.includes("api.anthropic.com")), true);
+  assert.equal(urls.some((url) => url.includes("edge.example")), false);
+
+  urls.length = 0;
+  const site = "9a003659-aaaa-0000-aaaa-63d3720d8621";
+  const free = await handler({
+    httpMethod: "POST",
+    headers: {
+      "X-Nf-Site-Id": site,
+      "X-Nf-Deploy-Id": "deploy-1",
+      "x-nf-client-connection-ip": IP,
+    },
+    blobs: Buffer.from(JSON.stringify({
+      url: "https://edge.example",
+      token: "edge-token",
+    })).toString("base64"),
+    body: JSON.stringify({
+      mode: "single",
+      docText: `A short hail clause. ${MARKER}`,
+      language: "en",
+      country: "Canada",
+      region: "Alberta",
+      explanationId: randomUUID(),
+    }),
+  }, { env: { NETLIFY: "true" } });
+  assert.equal(free.statusCode, 200, free.body);
+  assert.equal(JSON.parse(free.body).usage.used, 1);
+  assert.equal(JSON.parse(free.body).usage.remaining, 2);
+  const blobCall = urls.find((url) => url.startsWith("https://edge.example/"));
+  assert.equal(blobCall.startsWith(`https://edge.example/${site}/site:swc-usage/`), true);
+  assert.equal(puts.some((body) => body.includes(MARKER)), false);
+  assert.equal(urls.some((url) => url.includes("api.anthropic.com")), true);
+
+  urls.length = 0;
+  delete process.env.NETLIFY_BLOBS_CONTEXT;
+  const blocked = await handler(eventFor(), { env: { NETLIFY: "true" } });
+  assert.equal(blocked.statusCode, 503);
+  assert.equal(JSON.parse(blocked.body).code, "usage_store");
+  assert.equal(urls.some((url) => url.includes("api.anthropic.com")), false);
 });
 
 test("a signed-in or paid visitor is not unlimited until a later step says so", async () => {

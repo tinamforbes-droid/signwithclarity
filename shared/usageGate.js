@@ -1,5 +1,5 @@
 import { createHmac, randomUUID } from "node:crypto";
-import { getStore } from "@netlify/blobs";
+import { connectLambda, getStore } from "@netlify/blobs";
 
 import { hasUnlimitedAccess, settlePaidUse } from "./access.js";
 import { decideRelease } from "./entitlement.js";
@@ -110,12 +110,71 @@ export function adaptBlobStore(store) {
   };
 }
 
-export async function resolveUsageStore(context, env = process.env) {
+/**
+ * A v1 function does not receive the Blobs environment on its own.
+ * Netlify puts it on the Lambda event, and connectLambda copies it
+ * across. Headers are matched without caring about capital letters.
+ */
+export function attachBlobsEnvironment(event) {
+  if (!event || typeof event.blobs !== "string" || !event.blobs) return false;
+  const headers = {};
+  for (const [key, value] of Object.entries(event.headers || {})) {
+    const text = Array.isArray(value) ? value[0] : value;
+    headers[String(key).toLowerCase()] = text == null ? "" : String(text);
+  }
+  connectLambda({ blobs: event.blobs, headers });
+  return true;
+}
+
+function blobsContext() {
+  const raw = process.env.NETLIFY_BLOBS_CONTEXT;
+  if (!raw) return {};
+  try {
+    return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Strong reads need an uncached address. The Lambda payload only
+ * includes the cached edge address, and asking for strong consistency
+ * then throws. Use strong consistency when that address is present.
+ */
+function usageStoreOptions() {
+  const context = blobsContext();
+  const strong = Boolean(context.uncachedEdgeURL || (context.apiURL && !context.edgeURL));
+  return strong ? { name: "swc-usage", consistency: "strong" } : { name: "swc-usage" };
+}
+
+function openNetlifyUsageStore(event) {
+  try {
+    attachBlobsEnvironment(event);
+    return adaptBlobStore(getStore(usageStoreOptions()));
+  } catch (err) {
+    console.error(`swc blobs name=${err?.name || "Error"}`);
+    const error = new Error("usage store unavailable");
+    error.code = "usage_store";
+    throw error;
+  }
+}
+
+export async function resolveUsageStore(context, env = process.env, event) {
   if (context && Object.prototype.hasOwnProperty.call(context, "usageStore")) {
     return context.usageStore;
   }
   if (!isNetlifyRuntime(env)) return null;
-  return adaptBlobStore(getStore({ name: "swc-usage", consistency: "strong" }));
+  let opened;
+  return {
+    async get(key) {
+      opened ??= openNetlifyUsageStore(event);
+      return opened.get(key);
+    },
+    async compareAndSet(key, value, etag) {
+      opened ??= openNetlifyUsageStore(event);
+      return opened.compareAndSet(key, value, etag);
+    },
+  };
 }
 
 function sanitizeExplanations(value) {
@@ -311,11 +370,11 @@ export async function enforceUsageLimit({
   try {
     outcome = await commit(store, key, (raw) => decide(raw, month, explanationId));
   } catch (err) {
-    if (err?.code === "usage_busy") {
+    if (err?.code === "usage_busy" || err?.code === "usage_store") {
       return {
         allowed: false,
         statusCode: 503,
-        body: { error: t(lang, "errorGeneric"), code: "usage_busy" },
+        body: { error: t(lang, "errorGeneric"), code: err.code },
         release: null,
       };
     }
