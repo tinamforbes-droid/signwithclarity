@@ -8,8 +8,12 @@ export const MAX_IMAGE_PAGES = 16;
 /** Longest edge, in pixels, before a photo is sent. */
 export const MAX_IMAGE_EDGE = 1568;
 
-/** Base64 length cap for one photo. About 1.3 MB of image data. */
-export const MAX_IMAGE_DATA_CHARS = 1_800_000;
+/**
+ * Base64 length cap for one photo. Kept under half a megabyte of image
+ * data so one page fits a Netlify request and the vision call can finish
+ * inside the function time limit.
+ */
+export const MAX_IMAGE_DATA_CHARS = 700_000;
 
 /**
  * A text PDF has sentences. A scan, or a PDF made from phone photos,

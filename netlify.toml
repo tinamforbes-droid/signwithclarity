@@ -14,6 +14,11 @@
 [functions]
   directory = "netlify/functions"
 
+# A photo page can take longer than the default 10 seconds.
+# 26 seconds is the longest a synchronous function is allowed to run.
+[functions."decode"]
+  timeout = 26
+
 # Privacy Policy and Terms of Use are routes in the same app.
 # Netlify serves existing files first, then this rewrite, so the
 # decode function and built assets are left alone.

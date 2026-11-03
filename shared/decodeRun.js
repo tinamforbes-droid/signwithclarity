@@ -121,6 +121,7 @@ export function plainServerMessage(error, status, language = "en") {
       return trimmed;
     }
   }
+  if (status === 413) return t(language, "errorPageTooLarge");
   if (status === 429) return t(language, "errorBusy");
   if (status === 504 || status === 502 || status === 503) {
     return t(language, "errorPartTimeout");

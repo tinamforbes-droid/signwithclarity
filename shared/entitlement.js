@@ -91,12 +91,13 @@ function householdStanding(account, credits, checks) {
   return { plan: keep ? "household" : null, paid: keep };
 }
 
-function withClaim(account, explanationId, plan, n) {
+function withClaim(account, explanationId, plan, n, extra = {}) {
+  const prev = account.explanation_claims?.[explanationId] || {};
   return {
     ...account,
     explanation_claims: {
       ...(account.explanation_claims || {}),
-      [explanationId]: { n, plan },
+      [explanationId]: { ...prev, ...extra, n, plan },
     },
   };
 }
@@ -123,6 +124,8 @@ export function decideConsume(account, explanationId, now, limits = {}) {
   const { account: migrated, migrated: didMigrate } = migrateChecks(account || blankAccount(""));
   const persist = hadRow && didMigrate;
   const current = migrated;
+  const existingEntry = current.explanation_claims?.[explanationId];
+  const claimExtra = purpose === "compare" && existingEntry?.open !== false ? { open: true } : {};
   const existing = claimCount(current.explanation_claims, explanationId);
   const existingPlan = claimPlan(current.explanation_claims?.[explanationId]);
   const maxCalls = existingPlan === "check" || purpose === "compare"
@@ -135,7 +138,7 @@ export function decideConsume(account, explanationId, now, limits = {}) {
       kind: "repeat",
       plan: existingPlan,
       migrated: persist,
-      account: withClaim(current, explanationId, existingPlan, existing + 1),
+      account: withClaim(current, explanationId, existingPlan, existing + 1, claimExtra),
     };
   }
 
@@ -149,6 +152,7 @@ export function decideConsume(account, explanationId, now, limits = {}) {
         explanationId,
         "yearly",
         1,
+        claimExtra,
       ),
     };
   }
@@ -166,6 +170,7 @@ export function decideConsume(account, explanationId, now, limits = {}) {
         explanationId,
         "check",
         1,
+        claimExtra,
       ),
     };
   }
@@ -198,11 +203,17 @@ export function decideConsume(account, explanationId, now, limits = {}) {
   return { kind: "none", account: current, migrated: persist };
 }
 
-/** Give back a credit when the first call for that explanation failed. */
+/**
+ * Give the credit back when a reading does not finish.
+ * A comparison stays open until the final combined result succeeds.
+ * Any failed step of an open comparison gives the credit back,
+ * including a later page. A finished comparison is left as it is.
+ */
 export function decideRelease(account, explanationId) {
   const { account: current } = migrateChecks(account || blankAccount(""));
   const entry = current.explanation_claims?.[explanationId];
-  if (!entry || entry.n !== 1) return { restore: false, account: current };
+  if (!entry || entry.open === false) return { restore: false, account: current };
+  if (entry.n !== 1 && entry.open !== true) return { restore: false, account: current };
   const claims = { ...current.explanation_claims };
   delete claims[explanationId];
   if (entry.plan === "yearly") {
@@ -231,6 +242,23 @@ export function decideRelease(account, explanationId) {
     };
   }
   return { restore: false, account: current };
+}
+
+/** The combined comparison result was delivered. Later failures must not refund it. */
+export function decideComplete(account, explanationId) {
+  const current = account || blankAccount("");
+  const entry = current.explanation_claims?.[explanationId];
+  if (!entry || entry.open !== true) return { write: false, account: current };
+  return {
+    write: true,
+    account: {
+      ...current,
+      explanation_claims: {
+        ...current.explanation_claims,
+        [explanationId]: { ...entry, open: false },
+      },
+    },
+  };
 }
 
 export function paidUsage(account, plan) {

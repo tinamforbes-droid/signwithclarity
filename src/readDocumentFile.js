@@ -1,4 +1,5 @@
 import {
+  MAX_IMAGE_DATA_CHARS,
   MAX_IMAGE_PAGES,
   fittedSize,
   textIsEnough,
@@ -84,11 +85,34 @@ function blobToImage(blob) {
   return createImageBitmap(blob);
 }
 
+function canvasToJpeg(source, scale, quality) {
+  const width = Math.max(1, Math.round(source.width * scale));
+  const height = Math.max(1, Math.round(source.height * scale));
+  const canvas = scale === 1 ? source : document.createElement("canvas");
+  if (scale !== 1) {
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(source, 0, 0, width, height);
+  }
+  const data = String(canvas.toDataURL("image/jpeg", quality)).split(",")[1] || "";
+  return data;
+}
+
 async function defaultEncodeCanvas(canvas) {
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
-  const data = String(dataUrl).split(",")[1] || "";
-  if (!data) return null;
-  return { mediaType: "image/jpeg", data };
+  let scale = 1;
+  let quality = 0.62;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const data = canvasToJpeg(canvas, scale, quality);
+    if (data.length >= 32 && data.length <= MAX_IMAGE_DATA_CHARS) {
+      return { mediaType: "image/jpeg", data };
+    }
+    scale *= 0.75;
+    quality = Math.max(0.42, quality - 0.06);
+  }
+  return null;
 }
 
 export async function defaultEncodeImage(file) {

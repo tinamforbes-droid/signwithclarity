@@ -5,8 +5,9 @@ import test from "node:test";
 import { createMemoryAccountStore } from "../shared/accountStore.js";
 import { runComparison } from "../shared/compareRun.js";
 import { runDecode } from "../shared/decodeRun.js";
-import { cleanImage, fittedSize, textIsEnough } from "../shared/images.js";
-import { compareDisabledReason, explainDisabledReason } from "../shared/readiness.js";
+import { cleanImage, fittedSize, textIsEnough, MAX_IMAGE_DATA_CHARS } from "../shared/images.js";
+import { decideComplete, decideRelease } from "../shared/entitlement.js";
+import { compareDisabledReason, explainDisabledReason, showRunError } from "../shared/readiness.js";
 import { handler as decode } from "../netlify/functions/decode.js";
 import { isHeicFile, isPdfFile, readDocumentFiles } from "../src/readDocumentFile.js";
 
@@ -32,6 +33,10 @@ test("a scan with no text layer is not treated as a finished document", () => {
   assert.equal(cleanImage({ mediaType: "image/jpeg", data: PHOTO })?.data, PHOTO);
   assert.equal(cleanImage({ mediaType: "image/heic", data: PHOTO }), null);
   assert.equal(cleanImage({ mediaType: "image/jpeg", data: "short" }), null);
+  assert.equal(cleanImage({ mediaType: "image/jpeg", data: "A".repeat(MAX_IMAGE_DATA_CHARS + 1) }), null);
+  assert.equal(showRunError("compare", "This part took too long to read.", "Paste the wording, or add a photo of the pages."), true);
+  assert.equal(showRunError("single", "Something went wrong.", "Paste the wording, or add a photo of the pages."), false);
+  assert.equal(showRunError("compare", "", "Paste the wording, or add a photo of the pages."), false);
 });
 
 test("an image-only PDF becomes page photos, and a text PDF stays text", async () => {
@@ -244,4 +249,106 @@ test("several photos are one explanation, and a comparison of photos spends one 
   assert.equal(calls.filter((call) => call.image).length, 3);
   assert.equal(calls.filter((call) => call.mode === "compare").length, 1);
   assert.equal(calls.filter((call) => call.mode === "compare")[0].language, "fr");
+});
+
+test("a comparison that fails on a later page gives the Household Check back", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const original = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ content: [{ text: sections() }] }),
+      };
+    }
+    return { ok: false, status: 504, text: async () => "<html>timeout</html>" };
+  };
+  t.after(() => {
+    globalThis.fetch = original;
+  });
+
+  const accounts = createMemoryAccountStore({
+    [USER]: { paid: true, plan: "household", credits_remaining: 4, checks_remaining: 1 },
+  });
+  const context = {
+    accountStore: accounts,
+    now: NOW,
+    verifySession: async () => ({ id: USER, email: "ada@example.com" }),
+  };
+  const id = randomUUID();
+  const headers = { authorization: `Bearer ${TOKEN}`, "x-nf-client-connection-ip": "203.0.113.15" };
+  const first = await decode({
+    httpMethod: "POST",
+    headers,
+    body: JSON.stringify({
+      mode: "extract",
+      purpose: "compare",
+      docText: "Tenant insurance wording with a deductible of five hundred dollars.",
+      language: "en",
+      country: "Canada",
+      region: "British Columbia",
+      explanationId: id,
+      comparisonId: id,
+    }),
+  }, context);
+  assert.equal(first.statusCode, 200);
+  assert.equal(accounts.snapshot()[USER].checks_remaining, 0);
+  assert.equal(accounts.snapshot()[USER].explanation_claims[id].open, true);
+
+  const failed = await decode({
+    httpMethod: "POST",
+    headers,
+    body: JSON.stringify({
+      mode: "extract",
+      purpose: "compare",
+      image: { mediaType: "image/jpeg", data: PHOTO },
+      chunkIndex: 2,
+      chunkCount: 3,
+      language: "en",
+      country: "Canada",
+      region: "British Columbia",
+      explanationId: id,
+      comparisonId: id,
+    }),
+  }, context);
+  assert.equal(failed.statusCode, 504);
+  assert.match(JSON.parse(failed.body).error, /too long|trop de temps|demasiado/i);
+  assert.equal(accounts.snapshot()[USER].checks_remaining, 1);
+  assert.equal(accounts.snapshot()[USER].explanation_claims[id], undefined);
+
+  const again = await decode({
+    httpMethod: "POST",
+    headers,
+    body: JSON.stringify({
+      mode: "release",
+      comparisonId: id,
+      explanationId: id,
+      language: "en",
+    }),
+  }, context);
+  assert.equal(again.statusCode, 200);
+  assert.equal(JSON.parse(again.body).released, false);
+  assert.equal(accounts.snapshot()[USER].checks_remaining, 1);
+});
+
+test("a finished comparison is not refunded", () => {
+  const id = randomUUID();
+  const open = {
+    paid: true,
+    plan: "household",
+    credits_remaining: 0,
+    checks_remaining: 0,
+    explanation_claims: { [id]: { n: 4, plan: "check", open: true } },
+  };
+  const finished = decideComplete(open, id).account;
+  assert.equal(finished.explanation_claims[id].open, false);
+  const refund = decideRelease(finished, id);
+  assert.equal(refund.restore, false);
+  assert.equal(refund.account.checks_remaining, 0);
+  const unfinished = decideRelease(open, id);
+  assert.equal(unfinished.restore, true);
+  assert.equal(unfinished.account.checks_remaining, 1);
 });

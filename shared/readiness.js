@@ -2,6 +2,13 @@ import { MAX_IMAGE_PAGES, policyHasReading } from "./images.js";
 import { planDocument, tooLongMessage } from "./limits.js";
 import { t } from "./messages.js";
 
+/** A comparison error must stay visible even though the single-document box is empty. */
+export function showRunError(workMode, error, explainReason) {
+  if (!error) return false;
+  if (workMode === "compare") return true;
+  return !explainReason;
+}
+
 function fileProblem(lang, policy) {
   if (!policy?.problem) return "";
   const name = String(policy.fileName || "").trim();
