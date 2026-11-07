@@ -110,12 +110,27 @@ export async function stripeRequest({ env, path, method = "GET", params, fetchIm
     data = {};
   }
   if (!response.ok) {
+    const message = stripeErrorText(data);
+    console.error(`swc stripe status=${response.status} msg=${message || "none"}`);
     const error = new Error("stripe request failed");
     error.code = "stripe_http";
     error.status = response.status;
     throw error;
   }
   return data;
+}
+
+/** Stripe's own error sentence, with key-shaped tokens removed. */
+function stripeErrorText(data) {
+  const message = data?.error?.message;
+  if (typeof message !== "string") return "";
+  return message
+    .replace(/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9_]+/g, "[secret]")
+    .replace(/\bwhsec_[A-Za-z0-9_]+/g, "[secret]")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
 }
 
 export async function resolvePriceId({ env, plan, currency, fetchImpl, now = Date.now() } = {}) {
@@ -141,11 +156,12 @@ export function clearPriceCache() {
   priceCache.clear();
 }
 
-export function checkoutSessionParams({ priceId, plan, currency, userId, email, customerId, origin, locale, submitMessage }) {
+export function checkoutSessionParams({ priceId, plan, currency, userId, email, customerId, origin, locale }) {
   const params = {
     mode: plan === "yearly" ? "subscription" : "payment",
     line_items: [{ price: priceId, quantity: 1 }],
     managed_payments: { enabled: true },
+    // Managed Payments rejects custom_text on both plans.
     client_reference_id: userId,
     metadata: { user_id: userId, plan },
     success_url: `${origin}/?checkout=success`,
@@ -161,7 +177,5 @@ export function checkoutSessionParams({ priceId, plan, currency, userId, email, 
   if (plan === "yearly") {
     params.subscription_data = { metadata: { user_id: userId, plan: "yearly" } };
   }
-  const message = String(submitMessage || "").trim();
-  if (message) params.custom_text = { submit: { message: message.slice(0, 500) } };
   return params;
 }
