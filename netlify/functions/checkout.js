@@ -15,7 +15,6 @@ import {
   requestOrigin,
 } from "../../shared/plans.js";
 import { checkoutSessionParams, resolvePriceId, stripeRequest } from "../../shared/stripe.js";
-import { t } from "../../shared/messages.js";
 import { failure, jsonReply, languageFrom, readJson, signedInUser } from "../../shared/functionHttp.js";
 
 const LOCALES = { en: "en", fr: "fr", es: "es" };
@@ -66,7 +65,6 @@ export async function handler(event, context) {
         customerId,
         origin,
         locale: LOCALES[lang] || "en",
-        submitMessage: t(lang, plan === "yearly" ? "checkoutYearlyNote" : "checkoutHouseholdNote"),
       }),
     });
     if (!session?.url || typeof session.url !== "string") {

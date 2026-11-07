@@ -23,7 +23,7 @@ import {
   checkoutReturnOrigin,
   selectPrice,
 } from "../shared/plans.js";
-import { checkoutSessionParams, clearPriceCache, formEncode, verifyStripeSignature } from "../shared/stripe.js";
+import { checkoutSessionParams, clearPriceCache, formEncode, stripeRequest, verifyStripeSignature } from "../shared/stripe.js";
 import { createMemoryUsageStore } from "../shared/usageGate.js";
 
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -348,7 +348,7 @@ test("checkout requires a real session and asks Stripe for Managed Payments", as
   assert.match(params, new RegExp(`client_reference_id=${USER}`));
   assert.match(params, /mode=payment/);
   assert.match(params, /price_house_cad/);
-  assert.match(decodeURIComponent(params), /comparison of up to 4 policies/);
+  assert.equal(decodeURIComponent(params).includes("custom_text"), false);
   assert.equal(params.includes(MARKER), false);
   assert.equal(params.includes("99999999"), false);
   assert.equal(params.includes("sk_test_example"), false);
@@ -369,6 +369,88 @@ test("checkout requires a real session and asks Stripe for Managed Payments", as
   assert.match(encoded, /customer=cus_123/);
   assert.equal(encoded.includes("customer_email"), false);
   assert.match(encoded, /subscription_data(?:%5B|\[)metadata(?:%5D|\])(?:%5B|\[)plan(?:%5D|\])=yearly/);
+  assert.equal(encoded.includes("custom_text"), false);
+  assert.equal(Object.hasOwn(yearly, "custom_text"), false);
+
+  const household = checkoutSessionParams({
+    priceId: "price_house",
+    plan: "household",
+    userId: USER,
+    origin: "https://signwithclarity.ca",
+  });
+  assert.equal(formEncode(household).includes("custom_text"), false);
+});
+
+test("a refused checkout logs Stripe's message and not the secret", async () => {
+  clearPriceCache();
+  const logs = [];
+  const original = console.error;
+  console.error = (...args) => logs.push(args.map(String).join(" "));
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/prices?")) {
+      return {
+        ok: true,
+        text: async () => JSON.stringify({
+          data: [{
+            id: "price_year_cad",
+            active: true,
+            currency: "cad",
+            product: "prod_VYaEVm0qbwlG00",
+            recurring: { interval: "year" },
+          }],
+        }),
+      };
+    }
+    return {
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({
+        error: {
+          message: "You cannot use custom_text with Managed Payments. sk_test_example",
+          type: "invalid_request_error",
+        },
+      }),
+    };
+  };
+  try {
+    const opened = await checkout({
+      httpMethod: "POST",
+      headers: { authorization: `Bearer ${TOKEN}`, origin: "https://signwithclarity.ca" },
+      body: JSON.stringify({ plan: "yearly", currency: "cad", language: "en" }),
+    }, accountContext(createMemoryAccountStore(), { fetchImpl }));
+    assert.equal(opened.statusCode, 502);
+    assert.equal(JSON.parse(opened.body).code, "checkout");
+    const line = logs.find((entry) => entry.includes("swc stripe"));
+    assert.match(line, /status=400/);
+    assert.match(line, /You cannot use custom_text with Managed Payments/);
+    assert.equal(line.includes("sk_test_example"), false);
+    assert.equal(line.includes("sk_test"), false);
+  } finally {
+    console.error = original;
+  }
+
+  const direct = [];
+  console.error = (...args) => direct.push(args.map(String).join(" "));
+  try {
+    await stripeRequest({
+      env: { STRIPE_SECRET_KEY: "sk_test_example" },
+      path: "/checkout/sessions",
+      method: "POST",
+      fetchImpl: async () => ({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify({ error: { message: "Card error for whsec_test_secret only." } }),
+      }),
+    });
+    assert.fail("stripe request should throw");
+  } catch (err) {
+    assert.equal(err.code, "stripe_http");
+    assert.equal(err.status, 400);
+  } finally {
+    console.error = original;
+  }
+  assert.match(direct[0], /msg=Card error for \[secret\] only/);
+  assert.equal(direct[0].includes("whsec_test_secret"), false);
 });
 
 test("the customer portal opens only for a yearly plan", async () => {
