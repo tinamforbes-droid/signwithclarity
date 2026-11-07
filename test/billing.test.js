@@ -24,6 +24,7 @@ import {
   selectPrice,
 } from "../shared/plans.js";
 import { checkoutSessionParams, clearPriceCache, formEncode, stripeRequest, verifyStripeSignature } from "../shared/stripe.js";
+import { pageUsesLiveStripe, projectAccountForStripeMode } from "../shared/stripeMode.js";
 import { createMemoryUsageStore } from "../shared/usageGate.js";
 
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -169,6 +170,7 @@ test("a yearly subscription is capped, survives cancel-at-period-end, and ends w
   const event = {
     id: "evt_year",
     type: "checkout.session.completed",
+    livemode: true,
     created: 1_762_000_100,
     data: {
       object: {
@@ -193,6 +195,7 @@ test("a yearly subscription is capped, survives cancel-at-period-end, and ends w
   assert.equal(store.snapshot()[USER].plan, "yearly");
   assert.equal(store.snapshot()[USER].paid, true);
   assert.equal(store.snapshot()[USER].yearly_used, 0);
+  assert.equal(store.snapshot()[USER].stripe_livemode, true);
   assert.equal(isYearlyActive(store.snapshot()[USER], NOW), true);
 
   store.snapshot();
@@ -453,6 +456,192 @@ test("a refused checkout logs Stripe's message and not the secret", async () => 
   assert.equal(direct[0].includes("whsec_test_secret"), false);
 });
 
+test("a live checkout replaces a sandbox customer and does not keep the sandbox plan", async () => {
+  clearPriceCache();
+  const sandboxCustomer = "cus_VYbpNDzSQrXk0J";
+  const store = createMemoryAccountStore({
+    [USER]: {
+      paid: true,
+      plan: "yearly",
+      yearly_used: 1,
+      period_end: "2027-11-07T00:10:00.000Z",
+      credits_remaining: 0,
+      checks_remaining: 0,
+      stripe_customer_id: sandboxCustomer,
+    },
+  });
+  const seen = [];
+  const fetchImpl = async (url, options = {}) => {
+    const address = String(url);
+    seen.push({ url: address, body: options.body || "", method: options.method || "GET" });
+    if (address.includes("/prices?")) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          data: [{
+            id: "price_year_cad",
+            active: true,
+            currency: "cad",
+            product: "prod_VYaEVm0qbwlG00",
+            recurring: { interval: "year" },
+          }],
+        }),
+      };
+    }
+    if (address.endsWith("/customers") && options.method === "POST") {
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: "cus_live_new" }) };
+    }
+    if (address.includes("/checkout/sessions")) {
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: "cs_live", url: "https://checkout.stripe.com/c/pay/cs_live" }) };
+    }
+    return {
+      ok: false,
+      status: 404,
+      text: async () => JSON.stringify({
+        error: { code: "resource_missing", message: `No such customer: '${sandboxCustomer}'` },
+      }),
+    };
+  };
+  const opened = await checkout({
+    httpMethod: "POST",
+    headers: { authorization: `Bearer ${TOKEN}`, origin: "https://signwithclarity.ca" },
+    body: JSON.stringify({ plan: "yearly", currency: "cad", language: "en" }),
+  }, accountContext(store, {
+    env: {
+      STRIPE_SECRET_KEY: "rk_live_example",
+      STRIPE_WEBHOOK_SECRET: SECRET,
+      VITE_SUPABASE_URL: "https://ldhkqqhlztsaljccazti.supabase.co",
+      SUPABASE_SECRET_KEY: "sb_secret_server",
+    },
+    fetchImpl,
+  }));
+  assert.equal(opened.statusCode, 200, opened.body);
+  const session = seen.find((call) => call.url.includes("/checkout/sessions"));
+  assert.match(session.body, /customer=cus_live_new/);
+  assert.equal(session.body.includes(sandboxCustomer), false);
+  assert.equal(session.body.includes("custom_text"), false);
+  assert.equal(seen.some((call) => call.url.includes(sandboxCustomer)), false);
+  assert.equal(store.snapshot()[USER].stripe_customer_id, "cus_live_new");
+  assert.equal(store.snapshot()[USER].stripe_livemode, true);
+  assert.equal(store.snapshot()[USER].plan, null);
+  assert.equal(store.snapshot()[USER].paid, false);
+
+  const previousKey = process.env.ANTHROPIC_API_KEY;
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const blocked = await decode({
+    httpMethod: "POST",
+    headers: { authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({
+      mode: "compare",
+      language: "en",
+      country: "Canada",
+      region: "British Columbia",
+      policies: [
+        { label: "Westland", notes: "Named insured. Liability one million. Deductible five hundred." },
+        { label: "Car", notes: "Named insured. Collision deductible seven hundred. Liability one million." },
+      ],
+    }),
+  }, accountContext(createMemoryAccountStore({
+    [USER]: {
+      paid: true,
+      plan: "yearly",
+      yearly_used: 0,
+      period_end: "2027-11-07T00:10:00.000Z",
+      stripe_customer_id: sandboxCustomer,
+      credits_remaining: 0,
+      checks_remaining: 0,
+    },
+  }), {
+    env: {
+      STRIPE_SECRET_KEY: "rk_live_example",
+      STRIPE_WEBHOOK_SECRET: SECRET,
+      VITE_SUPABASE_URL: "https://ldhkqqhlztsaljccazti.supabase.co",
+      SUPABASE_SECRET_KEY: "sb_secret_server",
+    },
+    fetchImpl: async () => {
+      throw new Error("the model should not be called");
+    },
+  }));
+  if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+  else process.env.ANTHROPIC_API_KEY = previousKey;
+  assert.equal(blocked.statusCode, 402, blocked.body);
+  assert.equal(JSON.parse(blocked.body).code, "compare_needs_plan");
+
+  const sandboxYearly = {
+    paid: true,
+    plan: "yearly",
+    period_end: "2027-11-07T00:10:00.000Z",
+    stripe_customer_id: sandboxCustomer,
+    stripe_livemode: null,
+  };
+  assert.equal(projectAccountForStripeMode(sandboxYearly, true).plan, null);
+  assert.equal(projectAccountForStripeMode(sandboxYearly, false).plan, "yearly");
+  assert.equal(pageUsesLiveStripe("signwithclarity.ca"), true);
+  assert.equal(pageUsesLiveStripe("www.signwithclarity.ca"), true);
+  assert.equal(pageUsesLiveStripe("something.netlify.app"), false);
+  const legacy = projectAccountForStripeMode({
+    paid: true,
+    plan: "household",
+    credits_remaining: 2,
+    checks_remaining: 1,
+  }, true);
+  assert.equal(legacy.checks_remaining, 1);
+  assert.equal(legacy.plan, "household");
+});
+
+test("checkout still opens when a new customer cannot be created", async () => {
+  clearPriceCache();
+  const sandboxCustomer = "cus_VYbpNDzSQrXk0J";
+  const seen = [];
+  const fetchImpl = async (url, options = {}) => {
+    const address = String(url);
+    seen.push({ url: address, body: options.body || "" });
+    if (address.includes("/prices?")) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          data: [{ id: "price_house_cad", active: true, currency: "cad", product: "prod_VYa35DVVX8zzUK", recurring: null }],
+        }),
+      };
+    }
+    if (address.endsWith("/customers")) {
+      return {
+        ok: false,
+        status: 403,
+        text: async () => JSON.stringify({ error: { code: "api_key_expired", message: "This restricted key cannot create customers." } }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ id: "cs_email", url: "https://checkout.stripe.com/c/pay/cs_email" }),
+    };
+  };
+  const opened = await checkout({
+    httpMethod: "POST",
+    headers: { authorization: `Bearer ${TOKEN}`, origin: "https://signwithclarity.ca" },
+    body: JSON.stringify({ plan: "household", currency: "cad", language: "en" }),
+  }, accountContext(createMemoryAccountStore({
+    [USER]: { paid: false, plan: null, stripe_customer_id: sandboxCustomer },
+  }), {
+    env: {
+      STRIPE_SECRET_KEY: "rk_live_example",
+      STRIPE_WEBHOOK_SECRET: SECRET,
+      VITE_SUPABASE_URL: "https://ldhkqqhlztsaljccazti.supabase.co",
+      SUPABASE_SECRET_KEY: "sb_secret_server",
+    },
+    fetchImpl,
+  }));
+  assert.equal(opened.statusCode, 200, opened.body);
+  const session = seen.find((call) => call.url.includes("/checkout/sessions"));
+  assert.match(decodeURIComponent(session.body), /customer_email=ada@example.com/);
+  assert.match(session.body, /customer_creation=always/);
+  assert.equal(session.body.includes(sandboxCustomer), false);
+  assert.equal(session.body.includes("custom_text"), false);
+});
+
 test("the customer portal opens only for a yearly plan", async () => {
   const store = createMemoryAccountStore({
     [USER]: {
@@ -645,6 +834,9 @@ test("the plan migration does not let a signed-in person write paid", () => {
   assert.match(sql, /create table if not exists public\.billing_events/i);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke insert, update, delete on table public\.accounts from public, anon, authenticated/i);
+  const livemodeSql = readFileSync("supabase/migrations/20261107000000_stripe_livemode.sql", "utf8");
+  assert.match(livemodeSql, /add column if not exists stripe_livemode boolean/i);
+  assert.match(livemodeSql, /revoke insert, update, delete on table public\.accounts from public, anon, authenticated/i);
   assert.equal(/grant (all|insert|update|delete)[^;]*to authenticated/i.test(sql), false);
   assert.equal(/doc_text|policy_wording|card_number/i.test(sql), false);
 });

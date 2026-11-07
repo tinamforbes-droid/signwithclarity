@@ -17,6 +17,7 @@ import { asLanguage, t } from "./messages.js";
 import { formatResetDate } from "./usageCopy.js";
 import { createSupabaseAccountStore } from "./accountStore.js";
 import { decideComplete, decideConsume, decideRelease, isoDate, paidUsage } from "./entitlement.js";
+import { projectAccountForStripeMode, stripeKeyIsLive } from "./stripeMode.js";
 
 export async function hasUnlimitedAccess() {
   return false;
@@ -42,7 +43,8 @@ export async function settlePaidUse({
   let result;
   try {
     result = await store.update(userId, (account) => {
-      const decision = decideConsume(account, explanationId, now, { purpose });
+      const viewed = projectAccountForStripeMode(account, stripeKeyIsLive(env?.STRIPE_SECRET_KEY));
+      const decision = decideConsume(viewed, explanationId, now, { purpose });
       const spend = decision.kind === "fresh" || decision.kind === "repeat";
       if (spend || decision.migrated) {
         return { write: true, account: decision.account, decision };

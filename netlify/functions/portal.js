@@ -3,7 +3,9 @@
 
 import { createSupabaseAccountStore } from "../../shared/accountStore.js";
 import { checkoutReturnOrigin, requestOrigin } from "../../shared/plans.js";
-import { stripeRequest } from "../../shared/stripe.js";
+import { createStripeCustomer, findCurrentCustomer, stripeRequest } from "../../shared/stripe.js";
+import { accountWithStripeCustomer, projectAccountForStripeMode, stripeKeyIsLive } from "../../shared/stripeMode.js";
+import { isPlausibleEmail } from "../../shared/session.js";
 import { failure, jsonReply, languageFrom, readJson, signedInUser } from "../../shared/functionHttp.js";
 
 export async function handler(event, context) {
@@ -27,17 +29,39 @@ export async function handler(event, context) {
     return failure(lang, 503, "pricingManageFailed", "account");
   }
 
-  const yearly = account?.plan === "yearly" && account?.paid === true && account?.stripe_customer_id;
+  const live = stripeKeyIsLive(env?.STRIPE_SECRET_KEY);
+  const viewed = projectAccountForStripeMode(account, live);
+  const yearly = viewed?.plan === "yearly" && viewed?.paid === true;
   if (!yearly) return failure(lang, 400, "pricingNoSubscription", "no_subscription");
 
   try {
+    let customerId = await findCurrentCustomer({
+      env,
+      fetchImpl,
+      customerId: viewed.stripe_customer_id,
+    });
+    if (!customerId) {
+      const email = isPlausibleEmail(user.email) ? user.email : "";
+      customerId = await createStripeCustomer({ env, fetchImpl, email, userId: user.id });
+      if (customerId) {
+        try {
+          await store.update(user.id, (current) => ({
+            write: true,
+            account: accountWithStripeCustomer(current, customerId, live),
+          }));
+        } catch {
+          console.error("stripe customer was not saved");
+        }
+      }
+    }
+    if (!customerId) return failure(lang, 502, "pricingManageFailed", "portal");
     const session = await stripeRequest({
       env,
       path: "/billing_portal/sessions",
       method: "POST",
       fetchImpl,
       params: {
-        customer: account.stripe_customer_id,
+        customer: customerId,
         return_url: `${checkoutReturnOrigin(requestOrigin(event.headers))}/#pricing`,
         locale: lang === "fr" ? "fr" : lang === "es" ? "es" : "en",
       },

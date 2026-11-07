@@ -115,6 +115,10 @@ export async function stripeRequest({ env, path, method = "GET", params, fetchIm
     const error = new Error("stripe request failed");
     error.code = "stripe_http";
     error.status = response.status;
+    const stripeCode = data?.error?.code;
+    if (typeof stripeCode === "string" && /^[a-z0-9_]{1,64}$/.test(stripeCode)) {
+      error.stripeCode = stripeCode;
+    }
     throw error;
   }
   return data;
@@ -173,9 +177,51 @@ export function checkoutSessionParams({ priceId, plan, currency, userId, email, 
     params.customer = customerId;
   } else if (email) {
     params.customer_email = email;
+    if (params.mode === "payment") params.customer_creation = "always";
   }
   if (plan === "yearly") {
     params.subscription_data = { metadata: { user_id: userId, plan: "yearly" } };
   }
   return params;
+}
+
+/** A customer id that exists in this Stripe mode. A missing or deleted id is blank. */
+export async function findCurrentCustomer({ env, fetchImpl, customerId } = {}) {
+  const id = String(customerId || "").trim();
+  if (!id.startsWith("cus_")) return "";
+  try {
+    const customer = await stripeRequest({
+      env,
+      fetchImpl,
+      path: `/customers/${encodeURIComponent(id)}`,
+    });
+    if (!customer || customer.deleted === true) return "";
+    return id;
+  } catch (err) {
+    if (err?.code === "stripe_not_configured") throw err;
+    return "";
+  }
+}
+
+/** Create a customer in the current Stripe mode. A refusal returns a blank id. */
+export async function createStripeCustomer({ env, fetchImpl, email, userId } = {}) {
+  const address = String(email || "").trim();
+  if (!address) return "";
+  try {
+    const customer = await stripeRequest({
+      env,
+      fetchImpl,
+      method: "POST",
+      path: "/customers",
+      params: {
+        email: address,
+        metadata: { user_id: userId },
+      },
+    });
+    const id = String(customer?.id || "");
+    return id.startsWith("cus_") ? id : "";
+  } catch (err) {
+    if (err?.code === "stripe_not_configured") throw err;
+    return "";
+  }
 }
