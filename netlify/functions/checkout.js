@@ -14,7 +14,8 @@ import {
   isPlan,
   requestOrigin,
 } from "../../shared/plans.js";
-import { checkoutSessionParams, resolvePriceId, stripeRequest } from "../../shared/stripe.js";
+import { checkoutSessionParams, createStripeCustomer, findCurrentCustomer, resolvePriceId, stripeRequest } from "../../shared/stripe.js";
+import { accountStripeMode, accountWithStripeCustomer, stripeKeyIsLive } from "../../shared/stripeMode.js";
 import { failure, jsonReply, languageFrom, readJson, signedInUser } from "../../shared/functionHttp.js";
 
 const LOCALES = { en: "en", fr: "fr", es: "es" };
@@ -36,12 +37,13 @@ export async function handler(event, context) {
 
   const fetchImpl = context?.fetchImpl || globalThis.fetch;
   const origin = checkoutReturnOrigin(requestOrigin(event.headers));
-  let customerId = "";
+  const live = stripeKeyIsLive(env?.STRIPE_SECRET_KEY);
+  const email = isPlausibleEmail(user.email) ? user.email : "";
+  let account = null;
   const store = context?.accountStore || createSupabaseAccountStore(env, fetchImpl);
   if (store) {
     try {
-      const account = await store.get(user.id);
-      customerId = account?.stripe_customer_id || "";
+      account = await store.get(user.id);
     } catch {
       console.error("account was not read before checkout");
     }
@@ -50,23 +52,49 @@ export async function handler(event, context) {
   try {
     const price = await resolvePriceId({ env, plan, currency, fetchImpl });
     if (!price?.id) return failure(lang, 500, "pricingUnavailable", "price");
-    const email = !customerId && isPlausibleEmail(user.email) ? user.email : "";
-    const session = await stripeRequest({
-      env,
-      path: "/checkout/sessions",
-      method: "POST",
-      fetchImpl,
-      params: checkoutSessionParams({
-        priceId: price.id,
-        plan,
-        currency: price.presentment,
-        userId: user.id,
-        email,
-        customerId,
-        origin,
-        locale: LOCALES[lang] || "en",
-      }),
-    });
+    const mode = accountStripeMode(account);
+    let customerId = mode === (live ? "live" : "test") ? (account?.stripe_customer_id || "") : "";
+    if (customerId) customerId = await findCurrentCustomer({ env, fetchImpl, customerId });
+    if (!customerId) customerId = await createStripeCustomer({ env, fetchImpl, email, userId: user.id });
+    if (store && customerId && customerId !== account?.stripe_customer_id) {
+      try {
+        await store.update(user.id, (current) => ({
+          write: true,
+          account: accountWithStripeCustomer(current, customerId, live),
+        }));
+      } catch {
+        console.error("stripe customer was not saved");
+      }
+    }
+    const sessionParams = {
+      priceId: price.id,
+      plan,
+      currency: price.presentment,
+      userId: user.id,
+      email,
+      customerId,
+      origin,
+      locale: LOCALES[lang] || "en",
+    };
+    let session;
+    try {
+      session = await stripeRequest({
+        env,
+        path: "/checkout/sessions",
+        method: "POST",
+        fetchImpl,
+        params: checkoutSessionParams(sessionParams),
+      });
+    } catch (err) {
+      if (err?.stripeCode !== "resource_missing" || !customerId) throw err;
+      session = await stripeRequest({
+        env,
+        path: "/checkout/sessions",
+        method: "POST",
+        fetchImpl,
+        params: checkoutSessionParams({ ...sessionParams, customerId: "" }),
+      });
+    }
     if (!session?.url || typeof session.url !== "string") {
       return failure(lang, 502, "pricingFailed", "checkout");
     }

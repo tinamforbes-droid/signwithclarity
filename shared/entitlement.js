@@ -1,3 +1,4 @@
+import { accountStripeMode, projectAccountForStripeMode } from "./stripeMode.js";
 import { MAX_CALLS_PER_COMPARISON, MAX_CALLS_PER_EXPLANATION } from "./usageCopy.js";
 import {
   HOUSEHOLD_CHECKS_PER_PURCHASE,
@@ -20,6 +21,7 @@ export function blankAccount(userId, email = null) {
     period_end: null,
     stripe_customer_id: null,
     stripe_subscription_id: null,
+    stripe_livemode: null,
     explanation_claims: {},
     subscription_synced_at: null,
   };
@@ -333,8 +335,20 @@ function isOlderNotice(account, created) {
   return Number.isFinite(prev) && created * 1000 < prev;
 }
 
-export function applyCheckout(account, notice, now) {
+function rowForNotice(account, notice) {
   const base = account || blankAccount(notice.userId);
+  if (notice.livemode === true && accountStripeMode(base) === "test") {
+    return { ...projectAccountForStripeMode(base, true), stripe_livemode: true };
+  }
+  if (notice.livemode === false && accountStripeMode(base) === "live") {
+    return { ...projectAccountForStripeMode(base, false), stripe_livemode: false };
+  }
+  if (typeof notice.livemode === "boolean") return { ...base, stripe_livemode: notice.livemode };
+  return base;
+}
+
+export function applyCheckout(account, notice, now) {
+  const base = rowForNotice(account, notice);
   if (notice.plan === "household") {
     const { account: migrated } = migrateChecks(base);
     const checks = (migrated.checks_remaining || 0) + HOUSEHOLD_CHECKS_PER_PURCHASE;
@@ -380,7 +394,7 @@ function endYearly(account, synced) {
 }
 
 export function applySubscription(account, notice) {
-  const { account: base } = migrateChecks(account || blankAccount(notice.userId));
+  const { account: base } = migrateChecks(rowForNotice(account, notice));
   if (isOlderNotice(base, notice.created)) return null;
   const synced = syncedAt(notice.created) || base.subscription_synced_at;
   if (notice.deleted || ENDED_SUBSCRIPTION.has(notice.status)) {

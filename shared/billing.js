@@ -28,6 +28,7 @@ export function noticesFromStripeEvent(event, extras = {}) {
       subscriptionId: stripeId(object.subscription),
       periodEnd: extras.periodEnd || "",
       created: event.created,
+      livemode: typeof event.livemode === "boolean" ? event.livemode : undefined,
     }];
   }
   if (type === "customer.subscription.updated" || type === "customer.subscription.deleted") {
@@ -41,6 +42,7 @@ export function noticesFromStripeEvent(event, extras = {}) {
       deleted: type === "customer.subscription.deleted",
       periodEnd: subscriptionPeriodEndIso(object),
       created: event.created,
+      livemode: typeof event.livemode === "boolean" ? event.livemode : undefined,
     }];
   }
   return [];

@@ -12,6 +12,7 @@ const COLUMNS = [
   "period_end",
   "stripe_customer_id",
   "stripe_subscription_id",
+  "stripe_livemode",
   "explanation_claims",
   "subscription_synced_at",
   "updated_at",
@@ -26,6 +27,7 @@ const PATCH_FIELDS = [
   "period_end",
   "stripe_customer_id",
   "stripe_subscription_id",
+  "stripe_livemode",
   "explanation_claims",
   "subscription_synced_at",
 ];
@@ -50,6 +52,7 @@ function normalizeRow(row) {
     period_end: row.period_end || null,
     stripe_customer_id: row.stripe_customer_id || null,
     stripe_subscription_id: row.stripe_subscription_id || null,
+    stripe_livemode: row.stripe_livemode === true ? true : row.stripe_livemode === false ? false : null,
     explanation_claims: claims,
     subscription_synced_at: row.subscription_synced_at || null,
     updated_at: row.updated_at || null,
