@@ -40,10 +40,11 @@ export function withoutPlan(claims, plan) {
   return out;
 }
 
-export function isYearlyActive(account, now) {
+export function isYearlyActive(account, now = new Date()) {
   if (!account || account.plan !== "yearly" || account.paid !== true) return false;
+  const clock = now instanceof Date ? now : new Date();
   const end = Date.parse(account.period_end || "");
-  return Number.isFinite(end) && end > now.getTime();
+  return Number.isFinite(end) && end > clock.getTime();
 }
 
 export function isHouseholdActive(account) {
