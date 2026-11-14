@@ -19,6 +19,13 @@
 [functions."decode"]
   timeout = 26
 
+# Once a day, read one value from the Supabase accounts table.
+# Supabase looks at the past week and expects database requests on
+# those days. A check every two or three days can still look too quiet.
+# This function has no public address. 15:17 UTC is morning in Canada.
+[functions."supabase-keep-alive"]
+  schedule = "17 15 * * *"
+
 # Privacy Policy and Terms of Use are routes in the same app.
 # Netlify serves existing files first, then this rewrite, so the
 # decode function and built assets are left alone.
