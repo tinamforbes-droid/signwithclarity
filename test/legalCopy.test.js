@@ -151,6 +151,9 @@ test("the terms limit the site to education and say the model can be wrong", () 
   assert.match(privacy, /Other country \/ General/);
   assert.match(privacy, /one free explanation/i);
   assert.match(privacy, /does not reset each month/);
+  assert.match(privacy, /not on the internet connection/);
+  assert.match(privacy, /does not use up your free explanation/);
+  assert.match(terms, /not on a shared internet connection/);
   assert.match(privacy, /Netlify, Anthropic, Supabase, and Stripe/);
   assert.match(privacy, /not local legal, financial, or insurance advice/);
   assert.match(privacy, /does not claim to follow every privacy law/);

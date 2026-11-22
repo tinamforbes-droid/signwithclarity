@@ -214,7 +214,7 @@ const en = {
   regionLabelGeneral: "Your country:",
   regionListGeneral: "Countries",
   regionHintGeneral: "Choose your country to continue. The explanation stays general and does not use that country's insurance rules.",
-  decodeSubGeneral: "1 free explanation · Then paid plans in USD",
+  decodeSubGeneral: "1 free explanation on your account · Then paid plans in USD",
   trustPlacesGeneral: "Not tied to one country's rules",
   badgeGeneral: "Worldwide",
   footerTextGeneral: "signwithclarity.ca • A general explanation, not local advice • Not legal, financial, or insurance advice",
@@ -226,8 +226,13 @@ const en = {
   generalFreeRemaining: "You have 1 free explanation. It does not reset each month. After that, the paid plans on this page are in US dollars.",
   generalFreeUsed: "You've used your free explanation. It does not reset each month. The paid plans on this page are in US dollars.",
   pricingLeadGeneral: "One explanation is free. After that, Household Check and Clarity Yearly are in US dollars.",
-  pricingFreeDetailGeneral: "1 free explanation. It does not reset each month. The same account and the same connection share it.",
-  signedInCountGeneral: "Your free explanation is counted on this account and on this connection. It does not reset each month.",
+  pricingFreeDetailGeneral: "1 free explanation, saved on your account. It does not reset. Sign in with your email to use it.",
+  signedInCountGeneral: "Your free explanation is counted on this account. It does not reset.",
+  generalSignInLead: "Sign in with your email to get your free explanation. It stays on your account and does not reset. After that, the paid plans are in US dollars.",
+  generalSignInToTry: "Sign in with your email to use your free explanation. It stays on your account and does not reset.",
+  generalSignInLink: "Sign in",
+  generalSignInUnavailable: "Email sign-in isn't set up on this copy of the site, so a free explanation can't be started here.",
+  generalRateLimited: "A lot of new free explanations were started from this internet connection today. Please try again tomorrow. Your own free explanation has not been used.",
 };
 
 const fr = {
@@ -434,7 +439,7 @@ const fr = {
   regionLabelGeneral: "Votre pays :",
   regionListGeneral: "Pays",
   regionHintGeneral: "Choisissez votre pays pour continuer. L'explication reste générale et n'utilise pas les règles d'assurance de ce pays.",
-  decodeSubGeneral: "1 explication gratuite · Ensuite, forfaits en dollars US",
+  decodeSubGeneral: "1 explication gratuite sur votre compte · Ensuite, forfaits en dollars US",
   trustPlacesGeneral: "Sans les règles d'un seul pays",
   badgeGeneral: "Partout",
   footerTextGeneral: "signwithclarity.ca • Une explication générale, pas un conseil local • Pas un avis juridique, financier ou en assurance",
@@ -446,8 +451,13 @@ const fr = {
   generalFreeRemaining: "Il vous reste 1 explication gratuite. Elle ne recommence pas chaque mois. Après, les forfaits payants de cette page sont en dollars US.",
   generalFreeUsed: "Vous avez utilisé votre explication gratuite. Elle ne recommence pas chaque mois. Les forfaits payants de cette page sont en dollars US.",
   pricingLeadGeneral: "Une explication est gratuite. Ensuite, Household Check et Clarity Yearly sont en dollars US.",
-  pricingFreeDetailGeneral: "1 explication gratuite. Elle ne recommence pas chaque mois. Le même compte et la même connexion la partagent.",
-  signedInCountGeneral: "Votre explication gratuite est comptée sur ce compte et sur cette connexion. Elle ne recommence pas chaque mois.",
+  pricingFreeDetailGeneral: "1 explication gratuite, enregistrée sur votre compte. Elle ne recommence pas. Connectez-vous avec votre courriel pour l'utiliser.",
+  signedInCountGeneral: "Votre explication gratuite est comptée sur ce compte. Elle ne recommence pas.",
+  generalSignInLead: "Connectez-vous avec votre courriel pour obtenir votre explication gratuite. Elle reste sur votre compte et ne recommence pas. Ensuite, les forfaits payants sont en dollars US.",
+  generalSignInToTry: "Connectez-vous avec votre courriel pour utiliser votre explication gratuite. Elle reste sur votre compte et ne recommence pas.",
+  generalSignInLink: "Se connecter",
+  generalSignInUnavailable: "La connexion par courriel n'est pas offerte sur cette copie du site, alors une explication gratuite ne peut pas commencer ici.",
+  generalRateLimited: "Beaucoup de nouvelles explications gratuites ont été commencées depuis cette connexion aujourd'hui. Veuillez réessayer demain. Votre propre explication gratuite n'a pas été utilisée.",
 };
 
 const es = {
@@ -654,7 +664,7 @@ const es = {
   regionLabelGeneral: "Su país:",
   regionListGeneral: "Países",
   regionHintGeneral: "Elija su país para continuar. La explicación sigue siendo general y no usa las reglas de seguros de ese país.",
-  decodeSubGeneral: "1 explicación gratis · Después, planes en dólares de EE. UU.",
+  decodeSubGeneral: "1 explicación gratis en su cuenta · Después, planes en dólares de EE. UU.",
   trustPlacesGeneral: "Sin las reglas de un solo país",
   badgeGeneral: "En todo el mundo",
   footerTextGeneral: "signwithclarity.ca • Una explicación general, no un consejo local • No es asesoría legal, financiera ni de seguros",
@@ -666,8 +676,13 @@ const es = {
   generalFreeRemaining: "Le queda 1 explicación gratuita. No se renueva cada mes. Después, los planes de pago de esta página están en dólares de EE. UU.",
   generalFreeUsed: "Ya usó su explicación gratuita. No se renueva cada mes. Los planes de pago de esta página están en dólares de EE. UU.",
   pricingLeadGeneral: "Una explicación es gratuita. Después, Household Check y Clarity Yearly están en dólares de EE. UU.",
-  pricingFreeDetailGeneral: "1 explicación gratuita. No se renueva cada mes. La misma cuenta y la misma conexión la comparten.",
-  signedInCountGeneral: "Su explicación gratuita se cuenta en esta cuenta y en esta conexión. No se renueva cada mes.",
+  pricingFreeDetailGeneral: "1 explicación gratuita, guardada en su cuenta. No se renueva. Inicie sesión con su correo para usarla.",
+  signedInCountGeneral: "Su explicación gratuita se cuenta en esta cuenta. No se renueva.",
+  generalSignInLead: "Inicie sesión con su correo para obtener su explicación gratuita. Queda en su cuenta y no se renueva. Después, los planes de pago están en dólares de EE. UU.",
+  generalSignInToTry: "Inicie sesión con su correo para usar su explicación gratuita. Queda en su cuenta y no se renueva.",
+  generalSignInLink: "Iniciar sesión",
+  generalSignInUnavailable: "El inicio de sesión por correo no está disponible en esta copia del sitio, así que una explicación gratuita no puede empezar aquí.",
+  generalRateLimited: "Hoy se empezaron muchas explicaciones gratuitas nuevas desde esta conexión. Vuelva a intentarlo mañana. Su propia explicación gratuita no se ha usado.",
 };
 
 export const MESSAGES = { en, fr, es };

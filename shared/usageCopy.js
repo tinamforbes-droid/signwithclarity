@@ -10,6 +10,13 @@ export const FREE_EXPLANATION_LIMIT = 3;
 export const GENERAL_FREE_LIMIT = 1;
 
 /**
+ * How many different signed-in accounts may start a General free
+ * explanation from one connection in a UTC day. This does not spend
+ * anyone's free try. It only slows a burst of new accounts.
+ */
+export const GENERAL_SIGNUPS_PER_IP_PER_DAY = 20;
+
+/**
  * Most model calls one explanation may use, including parts and a retry.
  * A long document is still one explanation. The cap stops one id from
  * being reused for a fresh document over and over.
@@ -23,6 +30,14 @@ export const MAX_CALLS_PER_EXPLANATION = 120;
  * for comparison after comparison.
  */
 export const MAX_CALLS_PER_COMPARISON = 480;
+
+/** UTC calendar day, as YYYY-MM-DD. */
+export function dayKey(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export function monthKey(date) {
   const year = date.getUTCFullYear();

@@ -210,6 +210,8 @@ function readBody(req) {
 }
 
 const usageStore = createMemoryUsageStore();
+const PREVIEW_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwcmV2aWV3In0.previewsig";
+const PREVIEW_USER = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 export function mockDecodePlugin() {
   return {
@@ -260,6 +262,9 @@ export function mockDecodePlugin() {
             payload,
             store: usageStore,
             language: payload.language,
+            verifySession: async ({ token }) => (
+              token === PREVIEW_TOKEN ? { id: PREVIEW_USER, email: "preview@example.com" } : null
+            ),
           });
           if (!gate.allowed) {
             res.statusCode = gate.statusCode;

@@ -118,7 +118,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Si vous choisissez Autre pays / Général, il y a une seule explication gratuite, et non trois par mois. La fonction compte cette explication sur la connexion et, si vous êtes connecté, sur le compte aussi. Si l'une des deux a déjà été utilisée, l'explication gratuite est épuisée. Elle ne recommence pas au début d'un nouveau mois. Se déconnecter, vider le navigateur ou ouvrir un autre compte sur la même connexion ne la remet pas à zéro. Ce dossier est un hachage salé distinct. Il conserve le fait que l'explication gratuite a été utilisée, un identifiant aléatoire, et le nombre de fois que le service a été appelé. Il ne conserve pas le document, les notes, le nom du fichier, le pays que vous avez nommé, ni l'explication. Il n'est pas gardé dans le navigateur.",
+          text: "Si vous choisissez Autre pays / Général, il y a une seule explication gratuite, et non trois par mois. Vous vous connectez avec votre courriel pour l'utiliser. La fonction compte cette explication sur le compte que Supabase confirme, et non sur la connexion Internet. Une autre personne sur la même connexion a sa propre explication gratuite. Elle ne recommence pas au début d'un nouveau mois. Se déconnecter ou vider le navigateur ne la remet pas à zéro. Ce dossier est un hachage salé distinct de l'identifiant de compte. Il conserve le fait que l'explication gratuite a été utilisée, un identifiant aléatoire, et le nombre de fois que le service a été appelé. Il ne conserve pas le document, les notes, le nom du fichier, le pays que vous avez nommé, l'adresse courriel, ni l'explication. Il n'est pas gardé dans le navigateur. La fonction garde aussi un compte quotidien du nombre de comptes différents qui ont commencé une explication gratuite en mode Général depuis la même connexion. Ce compte est seulement une limite de sécurité. Il n'épuise pas votre explication gratuite parce que quelqu'un d'autre sur la connexion a déjà utilisé la sienne. Le compte quotidien conserve un hachage salé de la connexion, le jour civil, et un hachage salé de chaque identifiant de compte. Il ne conserve pas l'adresse IP elle-même. Le jour civil suivant remplace ce compte quotidien.",
         },
         {
           type: "p",
@@ -193,7 +193,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Si vous choisissez Autre pays / Général, nous utilisons un hachage salé distinct pour une seule fin : permettre une explication gratuite, et empêcher que cet essai recommence chaque mois ou quand vous vous déconnectez. Nous ne l'utilisons pas pour trouver votre nom, et nous ne le rattachons pas au document.",
+          text: "Si vous choisissez Autre pays / Général, nous utilisons un hachage salé de l'identifiant de compte pour une seule fin : permettre une explication gratuite sur ce compte, et empêcher que cet essai recommence chaque mois ou quand vous vous déconnectez. Nous utilisons aussi un hachage salé quotidien de la connexion pour compter combien de comptes différents ont commencé une explication gratuite depuis cette connexion aujourd'hui. Nous n'utilisons ni l'un ni l'autre pour trouver votre nom, et nous ne les rattachons pas au document. Le compte quotidien n'épuise pas votre explication gratuite quand une autre personne sur la connexion utilise la sienne.",
         },
         {
           type: "p",
@@ -251,7 +251,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Le dossier du mode Général ne recommence pas chaque mois. Nous gardons ce hachage salé, et la note que l'explication gratuite a été utilisée, jusqu'à ce qu'un changement plus tard le remplace. Un nouveau mois civil ne l'efface pas. Le Canada et les États-Unis utilisent encore le dossier mensuel décrit plus haut. Choisir Général ne change pas ce dossier mensuel, et un dossier mensuel ne donne pas une deuxième explication gratuite en mode Général.",
+          text: "Le dossier du mode Général sur un compte ne recommence pas chaque mois. Nous gardons ce hachage salé, et la note que l'explication gratuite a été utilisée, jusqu'à ce qu'un changement plus tard le remplace. Un nouveau mois civil ne l'efface pas. Le compte quotidien de la connexion est remplacé le jour civil suivant. Le remplacer ne donne pas une deuxième explication gratuite au compte. Le Canada et les États-Unis utilisent encore le dossier mensuel décrit plus haut. Choisir Général ne change pas ce dossier mensuel, et un dossier mensuel ne donne pas une deuxième explication gratuite en mode Général.",
         },
         {
           type: "p",
@@ -344,7 +344,7 @@ export const termsOfUseFr = {
         },
         {
           type: "p",
-          text: "Si vous choisissez Autre pays / Général, vous pouvez demander une explication sans payer. Cette explication gratuite ne recommence pas chaque mois. Ensuite, Household Check coûte 9 $ US et Clarity Yearly coûte 39 $ US par année. Ce sont les mêmes forfaits qu'au Canada et aux États-Unis, facturés en dollars américains. Stripe est le vendeur et ajoute la taxe.",
+          text: "Si vous choisissez Autre pays / Général, vous vous connectez avec votre courriel et vous pouvez demander une explication sans payer. Cette explication gratuite est comptée sur votre compte, et non sur une connexion Internet partagée. Elle ne recommence pas chaque mois. Ensuite, Household Check coûte 9 $ US et Clarity Yearly coûte 39 $ US par année. Ce sont les mêmes forfaits qu'au Canada et aux États-Unis, facturés en dollars américains. Stripe est le vendeur et ajoute la taxe.",
         },
         {
           type: "p",

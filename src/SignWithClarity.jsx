@@ -32,7 +32,7 @@ import ComparisonResult from "./ComparisonResult.jsx";
 import { loadOwnPlan } from "./accountRow.js";
 import { FILE_ACCEPT, readDocumentFiles } from "./readDocumentFile.js";
 import Pricing from "./Pricing.jsx";
-import { currentAccessToken } from "./authClient.js";
+import { currentAccessToken, devPreviewSignedIn } from "./authClient.js";
 import LegalPage from "./LegalPage.jsx";
 import { storageNote } from "./legalCopy.js";
 
@@ -1322,6 +1322,7 @@ export default function SignWithClarity() {
   const [comparison, setComparison] = useState(null);
   const [compareParts, setCompareParts] = useState(1);
   const [account, setAccount] = useState(null);
+  const [signedIn, setSignedIn] = useState(() => devPreviewSignedIn());
   const comparisonIdRef = useRef("");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -1364,8 +1365,12 @@ export default function SignWithClarity() {
       loadOwnPlan().then((row) => {
         if (!active) return;
         setAccount(row?.account || null);
+        setSignedIn(Boolean(row?.signedIn) || devPreviewSignedIn());
       }).catch(() => {
-        if (active) setAccount(null);
+        if (active) {
+          setAccount(null);
+          setSignedIn(devPreviewSignedIn());
+        }
       });
     };
     refresh();
@@ -1478,7 +1483,10 @@ export default function SignWithClarity() {
     blockedNote: compareNote,
     readingName: workMode === "compare" ? readingName : "",
   });
-  const explainReason = explainDisabledReason(lang, {
+  const needsGeneralSignIn = general && !signedIn;
+  const explainReason = needsGeneralSignIn
+    ? t(lang, "generalSignInToTry")
+    : explainDisabledReason(lang, {
     text: docText,
     pages: docPages,
     fileName,
@@ -1786,7 +1794,14 @@ export default function SignWithClarity() {
                     {!error && explainReason && (
                       <p className="block-reason" role="status">
                         {explainReason}
-                        {atLimit && errorCode !== "fair_use" && (
+                        {needsGeneralSignIn && (
+                          <> <a href="#sign-in-email" onClick={(event) => {
+                            event.preventDefault();
+                            document.querySelector(".account-bar")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            document.getElementById("sign-in-email")?.focus();
+                          }}>{t(lang, "generalSignInLink")}</a></>
+                        )}
+                        {atLimit && !needsGeneralSignIn && errorCode !== "fair_use" && (
                           <> <a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></>
                         )}
                       </p>

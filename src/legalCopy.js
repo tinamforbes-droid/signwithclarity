@@ -131,7 +131,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "If you choose Other country / General, there is one free explanation, not three each month. The function counts that one explanation on the connection and, if you are signed in, on the account as well. If either one has already been used, the free explanation is used up. It does not reset when a new month starts. Signing out, clearing the browser, or opening another account on the same connection does not start it over. That record is a separate salted hash. It stores that the free explanation was used, a random id, and how many times the explainer was called. It does not store the document, the notes, the file name, the country you named, or the explanation. It is not kept in the browser.",
+          text: "If you choose Other country / General, there is one free explanation, not three each month. You sign in with your email to use it. The function counts that one explanation on the account Supabase confirms, not on the internet connection. Another person on the same connection has their own free explanation. It does not reset when a new month starts. Signing out or clearing the browser does not start it over. That record is a separate salted hash of the account id. It stores that the free explanation was used, a random id, and how many times the explainer was called. It does not store the document, the notes, the file name, the country you named, the email address, or the explanation. It is not kept in the browser. The function also keeps a daily count of how many different accounts started a free General explanation from the same connection. That count is only a safety limit. It does not use up your free explanation because someone else on the connection already used theirs. The daily count stores a salted hash of the connection, the calendar day, and a salted hash of each account id. It does not store the IP address itself. The next calendar day replaces that daily count.",
         },
         {
           type: "p",
@@ -206,7 +206,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "If you choose Other country / General, we use a separate salted hash for one purpose: to allow one free explanation, and to keep that free try from resetting each month or when you sign out. We do not use it to find your name, and we do not attach it to the document.",
+          text: "If you choose Other country / General, we use a salted hash of the account id for one purpose: to allow one free explanation on that account, and to keep that free try from resetting each month or when you sign out. We also use a daily salted hash of the connection to count how many different accounts started a free explanation from that connection today. We do not use either hash to find your name, and we do not attach them to the document. The daily count does not spend your free explanation when another person on the connection uses theirs.",
         },
         {
           type: "p",
@@ -264,7 +264,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The General-mode record does not reset each month. We keep that salted hash, and the note that the free explanation was used, until a later change replaces it. A new calendar month does not clear it. Canada and the United States still use the monthly record described above. Choosing General does not change that monthly record, and a monthly record does not give a second General free explanation.",
+          text: "The General-mode record on an account does not reset each month. We keep that salted hash, and the note that the free explanation was used, until a later change replaces it. A new calendar month does not clear it. The daily connection count is replaced the next calendar day. Replacing it does not give the account a second free explanation. Canada and the United States still use the monthly record described above. Choosing General does not change that monthly record, and a monthly record does not give a second General free explanation.",
         },
         {
           type: "p",
@@ -357,7 +357,7 @@ export const termsOfUse = {
         },
         {
           type: "p",
-          text: "If you choose Other country / General, you can ask for one explanation without paying. That free explanation does not reset each month. After that, Household Check is US$9 and Clarity Yearly is US$39 a year. Those are the same plans offered in Canada and the United States, charged in US dollars. Stripe is the seller and adds tax.",
+          text: "If you choose Other country / General, you sign in with your email and can ask for one explanation without paying. That free explanation is counted on your account, not on a shared internet connection. It does not reset each month. After that, Household Check is US$9 and Clarity Yearly is US$39 a year. Those are the same plans offered in Canada and the United States, charged in US dollars. Stripe is the seller and adds tax.",
         },
         {
           type: "p",

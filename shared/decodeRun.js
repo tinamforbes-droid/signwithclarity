@@ -192,6 +192,8 @@ export async function postDecode(payload, { fetchImpl = fetch, timeoutMs = 50000
     const code = typeof data.code === "string" && data.code.length <= 40 ? data.code : "server";
     const retryable = code !== "monthly_limit"
       && code !== "general_limit"
+      && code !== "general_sign_in"
+      && code !== "general_rate"
       && code !== "fair_use"
       && code !== "explanation_closed"
       && [429, 502, 503, 504].includes(response.status);

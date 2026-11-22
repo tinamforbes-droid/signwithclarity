@@ -29,8 +29,25 @@ export function getAuthClient() {
   return client;
 }
 
+/**
+ * Local preview only. The production build drops this. It lets a screenshot
+ * show a signed-in General explanation without an email link. The real
+ * server does not accept this token.
+ */
+const DEV_PREVIEW_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwcmV2aWV3In0.previewsig";
+
+export function devPreviewSignedIn() {
+  if (!import.meta.env.DEV) return false;
+  try {
+    return new URLSearchParams(window.location.search).get("previewSignedIn") === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** The current session token, or "" when the person is not signed in. */
 export async function currentAccessToken() {
+  if (import.meta.env.DEV && devPreviewSignedIn()) return DEV_PREVIEW_TOKEN;
   const auth = getAuthClient();
   if (!auth) return "";
   try {

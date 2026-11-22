@@ -118,7 +118,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Si elige Otro país / General, hay una sola explicación gratuita, no tres cada mes. La función cuenta esa explicación en la conexión y, si inició sesión, también en la cuenta. Si alguna de las dos ya se usó, la explicación gratuita está agotada. No se renueva cuando empieza un mes nuevo. Cerrar sesión, borrar el navegador o abrir otra cuenta en la misma conexión no la vuelve a empezar. Ese registro es un hash con sal aparte. Guarda que la explicación gratuita se usó, un identificador al azar y cuántas veces se llamó al servicio. No guarda el documento, las notas, el nombre del archivo, el país que usted nombró ni la explicación. No se guarda en el navegador.",
+          text: "Si elige Otro país / General, hay una sola explicación gratuita, no tres cada mes. Usted inicia sesión con su correo para usarla. La función cuenta esa explicación en la cuenta que Supabase confirma, no en la conexión de internet. Otra persona en la misma conexión tiene su propia explicación gratuita. No se renueva cuando empieza un mes nuevo. Cerrar sesión o borrar el navegador no la vuelve a empezar. Ese registro es un hash con sal aparte del identificador de cuenta. Guarda que la explicación gratuita se usó, un identificador al azar y cuántas veces se llamó al servicio. No guarda el documento, las notas, el nombre del archivo, el país que usted nombró, el correo ni la explicación. No se guarda en el navegador. La función también guarda un conteo diario de cuántas cuentas distintas empezaron una explicación gratuita del modo General desde la misma conexión. Ese conteo es solo un límite de seguridad. No gasta su explicación gratuita porque otra persona en la conexión ya usó la suya. El conteo diario guarda un hash con sal de la conexión, el día calendario y un hash con sal de cada identificador de cuenta. No guarda la dirección IP en sí. El día calendario siguiente reemplaza ese conteo diario.",
         },
         {
           type: "p",
@@ -193,7 +193,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Si elige Otro país / General, usamos un hash con sal aparte para un solo fin: permitir una explicación gratuita, y evitar que esa prueba se renueve cada mes o cuando cierra la sesión. No lo usamos para encontrar su nombre, y no lo unimos al documento.",
+          text: "Si elige Otro país / General, usamos un hash con sal del identificador de cuenta para un solo fin: permitir una explicación gratuita en esa cuenta, y evitar que esa prueba se renueve cada mes o cuando cierra la sesión. También usamos un hash con sal diario de la conexión para contar cuántas cuentas distintas empezaron una explicación gratuita desde esa conexión hoy. No usamos ninguno de los dos para encontrar su nombre, y no los unimos al documento. El conteo diario no gasta su explicación gratuita cuando otra persona en la conexión usa la suya.",
         },
         {
           type: "p",
@@ -251,7 +251,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "El registro del modo General no se renueva cada mes. Guardamos ese hash con sal, y la nota de que la explicación gratuita se usó, hasta que un cambio posterior lo reemplace. Un mes calendario nuevo no lo borra. Canadá y Estados Unidos siguen usando el registro mensual descrito arriba. Elegir General no cambia ese registro mensual, y un registro mensual no da una segunda explicación gratuita en el modo General.",
+          text: "El registro del modo General en una cuenta no se renueva cada mes. Guardamos ese hash con sal, y la nota de que la explicación gratuita se usó, hasta que un cambio posterior lo reemplace. Un mes calendario nuevo no lo borra. El conteo diario de la conexión se reemplaza al día calendario siguiente. Reemplazarlo no da a la cuenta una segunda explicación gratuita. Canadá y Estados Unidos siguen usando el registro mensual descrito arriba. Elegir General no cambia ese registro mensual, y un registro mensual no da una segunda explicación gratuita en el modo General.",
         },
         {
           type: "p",
@@ -344,7 +344,7 @@ export const termsOfUseEs = {
         },
         {
           type: "p",
-          text: "Si elige Otro país / General, puede pedir una explicación sin pagar. Esa explicación gratuita no se renueva cada mes. Después, Household Check cuesta US$9 y Clarity Yearly cuesta US$39 al año. Son los mismos planes que en Canadá y Estados Unidos, cobrados en dólares de Estados Unidos. Stripe es el vendedor y agrega el impuesto.",
+          text: "Si elige Otro país / General, inicia sesión con su correo y puede pedir una explicación sin pagar. Esa explicación gratuita se cuenta en su cuenta, no en una conexión de internet compartida. No se renueva cada mes. Después, Household Check cuesta US$9 y Clarity Yearly cuesta US$39 al año. Son los mismos planes que en Canadá y Estados Unidos, cobrados en dólares de Estados Unidos. Stripe es el vendedor y agrega el impuesto.",
         },
         {
           type: "p",

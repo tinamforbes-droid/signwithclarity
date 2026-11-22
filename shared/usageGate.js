@@ -11,7 +11,9 @@ import { verifySupabaseUser } from "./supabaseUser.js";
 import {
   FREE_EXPLANATION_LIMIT,
   GENERAL_FREE_LIMIT,
+  GENERAL_SIGNUPS_PER_IP_PER_DAY,
   MAX_CALLS_PER_EXPLANATION,
+  dayKey,
   formatResetDate,
   monthKey,
   resetsOnIso,
@@ -320,7 +322,7 @@ async function rollbackOnce(store, keys, explanationId) {
 }
 
 /**
- * One free General explanation, shared by the account and the connection.
+ * One free General explanation on one signed-in account.
  * A later part of the same explanation still goes through. A new month does not.
  */
 async function reserveOnce(store, keys, explanationId) {
@@ -355,13 +357,140 @@ async function reserveOnce(store, keys, explanationId) {
   };
 }
 
-async function enforceOnceLimit({ store, user, headers, env, explanationId, lang }) {
-  const subjects = generalUsageSubjects(user, headers);
-  const keys = subjects.map((subject) => usageStorageKey(subject, usageSalt(env)));
+const RATE_SCOPE = "once-rate";
+
+/** A short code for an account on the daily list. The account id itself is not stored. */
+export function generalAccountMark(userId, salt) {
+  return usageStorageKey(`once-mark:${String(userId || "").trim().toLowerCase()}`, salt);
+}
+
+function currentRateRecord(raw, day) {
+  const accounts = [];
+  if (raw && raw.scope === RATE_SCOPE && raw.day === day && Array.isArray(raw.accounts)) {
+    for (const mark of raw.accounts) {
+      const clean = String(mark || "").trim().toLowerCase();
+      if (!/^[0-9a-f]{64}$/.test(clean) || accounts.includes(clean)) continue;
+      accounts.push(clean);
+      if (accounts.length >= GENERAL_SIGNUPS_PER_IP_PER_DAY) break;
+    }
+  }
+  return { scope: RATE_SCOPE, day, accounts };
+}
+
+function decideRate(raw, day, mark) {
+  const record = currentRateRecord(raw, day);
+  if (record.accounts.includes(mark)) {
+    return { write: false, allowed: true, fresh: false, record };
+  }
+  if (record.accounts.length >= GENERAL_SIGNUPS_PER_IP_PER_DAY) {
+    return { write: false, allowed: false, reason: "rate", fresh: false, record };
+  }
+  return {
+    write: true,
+    allowed: true,
+    fresh: true,
+    record: { scope: RATE_SCOPE, day, accounts: [...record.accounts, mark] },
+  };
+}
+
+async function releaseRateSlot(store, key, mark, day) {
+  try {
+    await commit(store, key, (raw) => {
+      const record = currentRateRecord(raw, day);
+      if (!record.accounts.includes(mark)) return { write: false, record };
+      return {
+        write: true,
+        record: { scope: RATE_SCOPE, day, accounts: record.accounts.filter((item) => item !== mark) },
+      };
+    });
+  } catch {
+    console.error("usage release failed");
+  }
+}
+
+/**
+ * The daily list only counts new accounts that start a free try.
+ * An account already on today's list can try again. A full list does not
+ * write anything on the account, so the person's own try is still waiting.
+ */
+async function reserveRateSlot(store, key, day, mark) {
+  return commit(store, key, (raw) => decideRate(raw, day, mark));
+}
+
+function onceRefusal(outcome, lang) {
+  const usage = onceSnapshot(outcome.records);
+  const closed = outcome.reason === "closed";
+  return {
+    allowed: false,
+    statusCode: closed ? 400 : 402,
+    body: {
+      error: closed ? t(lang, "errorExplanationClosed") : t(lang, "generalFreeUsed"),
+      code: closed ? "explanation_closed" : "general_limit",
+      usage,
+    },
+    release: null,
+  };
+}
+
+async function enforceOnceLimit({ store, user, headers, env, explanationId, lang, now = new Date() }) {
+  const subject = generalAccountSubject(user);
+  if (!subject) {
+    return {
+      allowed: false,
+      statusCode: 401,
+      body: { error: t(lang, "generalSignInToTry"), code: "general_sign_in" },
+      release: null,
+    };
+  }
+
+  const salt = usageSalt(env);
+  const accountKey = usageStorageKey(subject, salt);
+  const mark = generalAccountMark(user.id, salt);
+  const day = dayKey(now instanceof Date ? now : new Date());
+  const rateKey = usageStorageKey(`once-rate:${clientIp(headers)}`, salt);
+
+  const existing = await store.get(accountKey);
+  const open = currentOnceRecord(existing.value);
+  const continuing = Number.isInteger(open.explanations[explanationId]);
+  if (!continuing && open.used >= GENERAL_FREE_LIMIT) {
+    return onceRefusal({ reason: "limit", records: [open] }, lang);
+  }
+  if (continuing && open.explanations[explanationId] >= MAX_CALLS_PER_EXPLANATION) {
+    return onceRefusal({ reason: "closed", records: [open] }, lang);
+  }
+
+  let rateFresh = false;
+  if (!continuing) {
+    let rate;
+    try {
+      rate = await reserveRateSlot(store, rateKey, day, mark);
+    } catch (err) {
+      if (err?.code === "usage_busy" || err?.code === "usage_store") {
+        return {
+          allowed: false,
+          statusCode: 503,
+          body: { error: t(lang, "errorGeneric"), code: err.code },
+          release: null,
+        };
+      }
+      throw err;
+    }
+    if (!rate.allowed) {
+      return {
+        allowed: false,
+        statusCode: 429,
+        body: { error: t(lang, "generalRateLimited"), code: "general_rate" },
+        release: null,
+      };
+    }
+    rateFresh = Boolean(rate.fresh);
+  }
+
   let outcome;
   try {
-    outcome = await reserveOnce(store, keys, explanationId);
+    outcome = await reserveOnce(store, [accountKey], explanationId);
   } catch (err) {
+    if (rateFresh) await releaseRateSlot(store, rateKey, mark, day);
     if (err?.code === "usage_busy" || err?.code === "usage_store") {
       return {
         allowed: false,
@@ -372,21 +501,21 @@ async function enforceOnceLimit({ store, user, headers, env, explanationId, lang
     }
     throw err;
   }
-  const usage = onceSnapshot(outcome.records);
   if (!outcome.allowed) {
-    const closed = outcome.reason === "closed";
-    return {
-      allowed: false,
-      statusCode: closed ? 400 : 402,
-      body: {
-        error: closed ? t(lang, "errorExplanationClosed") : t(lang, "generalFreeUsed"),
-        code: closed ? "explanation_closed" : "general_limit",
-        usage,
-      },
-      release: null,
-    };
+    if (rateFresh) await releaseRateSlot(store, rateKey, mark, day);
+    return onceRefusal(outcome, lang);
   }
-  return { allowed: true, usage, release: outcome.release };
+  const releaseAccount = outcome.release;
+  return {
+    allowed: true,
+    usage: onceSnapshot(outcome.records),
+    release: releaseAccount || rateFresh
+      ? async () => {
+        await releaseAccount?.();
+        if (rateFresh) await releaseRateSlot(store, rateKey, mark, day);
+      }
+      : null,
+  };
 }
 
 async function releaseReservation(store, key, explanationId, month) {
@@ -419,16 +548,13 @@ export function usageSubject(user, headers) {
 
 /**
  * Who the one General free explanation belongs to.
- * The connection is always included. A signed-in account is included as well.
- * Using either one uses up the free try, so signing out or opening another
- * account on the same connection does not start it over.
- * The prefix keeps this record separate from the monthly Canada and US count.
+ * Only a confirmed account. The connection is not part of this count.
+ * The prefix keeps it separate from the monthly Canada and US count.
  */
-export function generalUsageSubjects(user, headers) {
-  const subjects = [`once:${clientIp(headers)}`];
+export function generalAccountSubject(user) {
   const id = String(user?.id ?? "").trim().toLowerCase();
-  if (isUserId(id)) subjects.unshift(`once:user:${id}`);
-  return subjects;
+  if (!isUserId(id)) return "";
+  return `once:user:${id}`;
 }
 
 function confirmedUser(user) {
@@ -536,6 +662,7 @@ export async function enforceUsageLimit({
       env,
       explanationId,
       lang,
+      now,
     });
   }
 

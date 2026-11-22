@@ -23,9 +23,11 @@
 // a salted hash of the IP address. If the request includes a Supabase
 // session, this function checks that session with the secret key and counts
 // the three on that account instead.
-// Outside those countries, General mode allows one free explanation. That
-// try is counted on the connection and, when the person is signed in, on
-// the account as well. It does not reset each month.
+// Outside those countries, General mode allows one free explanation on a
+// signed-in account. It does not reset each month, and it is not shared
+// with other people on the same connection. A signed-out visitor is asked
+// to sign in first. One connection may start that free try for many
+// different accounts in a day. That daily cap does not spend a person's try.
 // The document itself is not stored. A paid account is read from Supabase
 // in shared/access.js. One Household Check pays for one comparison of up
 // to 4 policies. Clarity Yearly counts that comparison as one explanation.

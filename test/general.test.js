@@ -14,12 +14,14 @@ import {
 } from "../shared/regions.js";
 import {
   GENERAL_FREE_LIMIT,
+  GENERAL_SIGNUPS_PER_IP_PER_DAY,
   usageAppliesHere,
   usageStatusMessage,
 } from "../shared/usageCopy.js";
 import {
   createMemoryUsageStore,
-  generalUsageSubjects,
+  generalAccountMark,
+  generalAccountSubject,
   usageSalt,
   usageStorageKey,
 } from "../shared/usageGate.js";
@@ -87,6 +89,25 @@ function eventFor({
       explanationId: id,
     }),
   };
+}
+
+function signedContext(store, extra = {}) {
+  return {
+    usageStore: store,
+    verifySession: async ({ token }) => {
+      if (token === TOKEN_A) return { id: USER_A, email: "ada@example.com" };
+      if (token === TOKEN_B) return { id: USER_B, email: "bea@example.com" };
+      const match = /^eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJ1c2VyIn0\.sig(\d+)$/.exec(String(token || ""));
+      if (!match) return null;
+      const n = Number(match[1]);
+      return { id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}` };
+    },
+    ...extra,
+  };
+}
+
+function crowdToken(n) {
+  return `eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.sig${String(n).padStart(4, "0")}`;
 }
 
 test("General is a country list, not a set of local rules", () => {
@@ -182,9 +203,15 @@ test("one General explanation is free, a new month does not reset it, and Canada
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
   const november = new Date("2026-11-15T12:00:00Z");
-  const context = { usageStore: store, now: november };
+  const context = signedContext(store, { now: november });
 
-  const first = await handler(eventFor(), context);
+  const signedOut = await handler(eventFor(), context);
+  assert.equal(signedOut.statusCode, 401);
+  assert.equal(JSON.parse(signedOut.body).code, "general_sign_in");
+  assert.match(JSON.parse(signedOut.body).error, /Sign in with your email/);
+  assert.deepEqual(store.snapshot(), {});
+
+  const first = await handler(eventFor({ token: TOKEN_A }), context);
   assert.equal(first.statusCode, 200, first.body);
   const body = JSON.parse(first.body);
   assert.equal(body.usage.once, true);
@@ -197,7 +224,7 @@ test("one General explanation is free, a new month does not reset it, and Canada
   assert.match(prompt.messages[0].content, /Country named by the person: Kenya/);
   assert.equal(String(prompt.messages[0].content).includes("Province:"), false);
 
-  const second = await handler(eventFor({ language: "fr" }), context);
+  const second = await handler(eventFor({ token: TOKEN_A, language: "fr" }), context);
   assert.equal(second.statusCode, 402);
   const blocked = JSON.parse(second.body);
   assert.equal(blocked.code, "general_limit");
@@ -207,8 +234,8 @@ test("one General explanation is free, a new month does not reset it, and Canada
   assert.equal(anthropic.calls.length, 1);
 
   const december = await handler(
-    eventFor(),
-    { usageStore: store, now: new Date("2026-12-20T12:00:00Z") },
+    eventFor({ token: TOKEN_A }),
+    signedContext(store, { now: new Date("2026-12-20T12:00:00Z") }),
   );
   assert.equal(december.statusCode, 402);
   assert.equal(JSON.parse(december.body).code, "general_limit");
@@ -251,50 +278,47 @@ test("a failed General reading does not use the try, and parts of one document s
     globalThis.fetch = original;
   });
   const store = createMemoryUsageStore();
-  const failed = await handler(eventFor(), { usageStore: store });
+  const context = signedContext(store);
+  const failed = await handler(eventFor({ token: TOKEN_A }), context);
   assert.equal(failed.statusCode, 502);
-  const rolled = Object.values(store.snapshot());
-  assert.equal(rolled.length > 0, true);
-  assert.ok(rolled.every((record) => record.used === 0));
+  const accountKey = usageStorageKey(generalAccountSubject({ id: USER_A }), usageSalt());
+  assert.equal(store.snapshot()[accountKey].used, 0);
+  const rateRecords = Object.values(store.snapshot()).filter((record) => record.scope === "once-rate");
+  assert.ok(rateRecords.every((record) => record.accounts.length === 0));
 
   status = 200;
   const id = randomUUID();
   const november = new Date("2026-11-02T00:00:00Z");
   for (const mode of ["extract", "synthesize"]) {
     const response = await handler(eventFor({
+      token: TOKEN_A,
       id,
       mode,
       notes: mode === "synthesize" ? "Notes about a deductible." : undefined,
-    }), { usageStore: store, now: november });
+    }), signedContext(store, { now: november }));
     assert.equal(response.statusCode, 200, response.body);
     assert.equal(JSON.parse(response.body).usage.used, 1);
   }
-  const again = await handler(eventFor(), { usageStore: store, now: new Date("2027-01-01T00:00:00Z") });
+  const again = await handler(eventFor({ token: TOKEN_A }), signedContext(store, { now: new Date("2027-01-01T00:00:00Z") }));
   assert.equal(again.statusCode, 402);
   const still = await handler(eventFor({
+    token: TOKEN_A,
     id,
     mode: "synthesize",
     notes: "More notes.",
-  }), { usageStore: store });
+  }), signedContext(store));
   assert.equal(still.statusCode, 200, still.body);
 });
 
-test("the General try sticks to the account and the connection", async (t) => {
+test("the General try belongs to the account, and another person on the same connection keeps theirs", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
-  const verifySession = async ({ token }) => {
-    if (token === TOKEN_A) return { id: USER_A, email: "ada@example.com" };
-    if (token === TOKEN_B) return { id: USER_B, email: "bea@example.com" };
-    return null;
-  };
-  const context = { usageStore: store, verifySession };
-  assert.deepEqual(generalUsageSubjects(null, { "x-nf-client-connection-ip": IP }), [`once:${IP}`]);
-  assert.deepEqual(
-    generalUsageSubjects({ id: USER_A }, { "x-nf-client-connection-ip": IP }),
-    [`once:user:${USER_A}`, `once:${IP}`],
-  );
+  const context = signedContext(store);
+  assert.equal(generalAccountSubject(null), "");
+  assert.equal(generalAccountSubject({ id: USER_A }), `once:user:${USER_A}`);
+  assert.equal(generalAccountMark(USER_A, usageSalt()).includes(USER_A), false);
 
   const first = await handler(eventFor({ token: TOKEN_A }), context);
   assert.equal(first.statusCode, 200, first.body);
@@ -303,24 +327,57 @@ test("the General try sticks to the account and the connection", async (t) => {
   assert.equal(JSON.parse(otherNetwork.body).code, "general_limit");
 
   const otherAccount = await handler(eventFor({ token: TOKEN_B, ip: IP }), context);
-  assert.equal(otherAccount.statusCode, 402);
+  assert.equal(otherAccount.statusCode, 200, otherAccount.body);
+  assert.equal(JSON.parse(otherAccount.body).usage.used, 1);
 
   const signedOut = await handler(eventFor({ ip: IP }), context);
-  assert.equal(signedOut.statusCode, 402);
-
-  const freshNetwork = await handler(eventFor({ ip: "203.0.113.77" }), context);
-  assert.equal(freshNetwork.statusCode, 200, freshNetwork.body);
-  const sameNetworkNewAccount = await handler(eventFor({ token: TOKEN_B, ip: "203.0.113.77" }), context);
-  assert.equal(sameNetworkNewAccount.statusCode, 402);
+  assert.equal(signedOut.statusCode, 401);
+  assert.equal(JSON.parse(signedOut.body).code, "general_sign_in");
 
   const dumped = JSON.stringify(store.snapshot());
+  assert.equal(dumped.includes(MARKER), false);
   assert.equal(dumped.includes(USER_A), false);
+  assert.equal(dumped.includes(USER_B), false);
   assert.equal(dumped.includes("ada@example.com"), false);
   assert.equal(dumped.includes(IP), false);
-  const accountKey = usageStorageKey(`once:user:${USER_A}`, usageSalt());
+  const accountKey = usageStorageKey(generalAccountSubject({ id: USER_A }), usageSalt());
   assert.equal(store.snapshot()[accountKey].used, 1);
   assert.equal(store.snapshot()[accountKey].scope, "once");
-  assert.equal(store.snapshot()[usageStorageKey(`once:${IP}`, usageSalt())].used, 1);
+  assert.equal(store.snapshot()[usageStorageKey(`once:${IP}`, usageSalt())], undefined);
+});
+
+test("one connection can start many General free tries in a day, and the next account is not charged", async (t) => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const anthropic = mockAnthropic();
+  t.after(() => anthropic.restore());
+  const store = createMemoryUsageStore();
+  const today = new Date("2026-11-22T08:00:00Z");
+  assert.equal(GENERAL_SIGNUPS_PER_IP_PER_DAY >= 20, true);
+
+  for (let n = 1; n <= GENERAL_SIGNUPS_PER_IP_PER_DAY; n++) {
+    const response = await handler(eventFor({ token: crowdToken(n), ip: IP }), signedContext(store, { now: today }));
+    assert.equal(response.statusCode, 200, `account ${n} ${response.body}`);
+  }
+  const blocked = await handler(
+    eventFor({ token: crowdToken(GENERAL_SIGNUPS_PER_IP_PER_DAY + 1), ip: IP }),
+    signedContext(store, { now: today }),
+  );
+  assert.equal(blocked.statusCode, 429);
+  assert.equal(JSON.parse(blocked.body).code, "general_rate");
+  assert.match(JSON.parse(blocked.body).error, /has not been used/);
+  const heldBack = usageStorageKey(
+    generalAccountSubject({ id: `00000000-0000-4000-8000-${String(GENERAL_SIGNUPS_PER_IP_PER_DAY + 1).padStart(12, "0")}` }),
+    usageSalt(),
+  );
+  assert.equal(store.snapshot()[heldBack], undefined);
+
+  const tomorrow = await handler(
+    eventFor({ token: crowdToken(GENERAL_SIGNUPS_PER_IP_PER_DAY + 1), ip: IP }),
+    signedContext(store, { now: new Date("2026-11-23T08:00:00Z") }),
+  );
+  assert.equal(tomorrow.statusCode, 200, tomorrow.body);
+  assert.equal(store.snapshot()[heldBack].used, 1);
+  assert.equal(anthropic.calls.length, GENERAL_SIGNUPS_PER_IP_PER_DAY + 1);
 });
 
 test("a named country other than Canada or the US is General, and a paid plan is not capped at one", async (t) => {
@@ -328,11 +385,11 @@ test("a named country other than Canada or the US is General, and a paid plan is
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
-  const named = await handler(eventFor({ country: "France", region: "Not specified" }), { usageStore: store });
+  const named = await handler(eventFor({ token: TOKEN_A, country: "France", region: "Not specified" }), signedContext(store));
   assert.equal(named.statusCode, 200, named.body);
   assert.match(anthropic.calls[0].body.system, /general explanation/);
   assert.match(anthropic.calls[0].body.messages[0].content, /Country named by the person: France/);
-  const second = await handler(eventFor({ country: "France", region: "Not specified" }), { usageStore: store });
+  const second = await handler(eventFor({ token: TOKEN_A, country: "France", region: "Not specified" }), signedContext(store));
   assert.equal(second.statusCode, 402);
 
   const user = USER_A;
@@ -365,7 +422,7 @@ test("parallel General explanations cannot slip past the one free try", async (t
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
   const responses = await Promise.all(
-    Array.from({ length: 6 }, () => handler(eventFor(), { usageStore: store })),
+    Array.from({ length: 6 }, () => handler(eventFor({ token: TOKEN_A }), signedContext(store))),
   );
   const allowed = responses.filter((response) => response.statusCode === 200);
   const blocked = responses.filter((response) => response.statusCode === 402);
