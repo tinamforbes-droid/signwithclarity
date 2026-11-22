@@ -44,6 +44,25 @@ export const US_STATES = US_STATE_NAMES.map((value) => ({
 export const GENERAL_COUNTRY = "General";
 
 /**
+ * Places Stripe Managed Payments will not sell to.
+ * https://docs.stripe.com/payments/managed-payments/eligibility
+ * Change this list if Stripe's restricted customer countries change.
+ * Crimea, Donetsk, and Luhansk are not separate rows. Ukraine stays.
+ * Saint Helena stays. Ascension Island and Tristan da Cunha are the restricted parts.
+ */
+export const MANAGED_PAYMENTS_BLOCKED_COUNTRY_CODES = [
+  "AC", // Ascension Island
+  "CN", // China
+  "CU", // Cuba
+  "IR", // Iran
+  "XK", // Kosovo
+  "KP", // North Korea
+  "RU", // Russia
+  "SY", // Syria
+  "TA", // Tristan da Cunha
+];
+
+/**
  * ISO country and territory codes for the General picker.
  * Canada and the United States are not in this list. They keep their own modes.
  * The code is only used to look up a name. Nothing else depends on which code it is.
@@ -99,9 +118,11 @@ export function generalCountryOptions(lang) {
   const code = lang === "fr" || lang === "es" ? lang : "en";
   const local = displayNames(code);
   const english = displayNames("en");
+  const blocked = new Set(MANAGED_PAYMENTS_BLOCKED_COUNTRY_CODES);
   const seen = new Set();
   const options = [];
   for (const iso of GENERAL_COUNTRY_CODES) {
+    if (blocked.has(iso)) continue;
     const value = english.of(iso);
     const label = local.of(iso);
     if (!value || !label || value === iso || label === iso) continue;

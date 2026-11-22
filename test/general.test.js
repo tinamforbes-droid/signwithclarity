@@ -8,6 +8,7 @@ import { currencyForCountry, selectPrice } from "../shared/plans.js";
 import { locationBlock, systemFor } from "../shared/prompts.js";
 import {
   GENERAL_COUNTRY,
+  MANAGED_PAYMENTS_BLOCKED_COUNTRY_CODES,
   commitRegion,
   generalCountryOptions,
   isGeneralCountry,
@@ -91,12 +92,28 @@ test("General is a country list, not a set of local rules", () => {
     assert.equal(options.some((option) => option.value === "Canada" || option.value === "United States"), false);
     assert.equal(options.some((option) => option.value === "Kenya"), true);
     assert.equal(options.some((option) => option.value === "Germany"), true);
+    assert.equal(options.some((option) => option.value === "Ukraine"), true);
+    assert.equal(options.some((option) => option.value === "St. Helena"), true);
+    assert.equal(options.some((option) => option.value === "Hong Kong SAR China"), true);
+    assert.equal(options.some((option) => option.value === "South Korea"), true);
+    for (const blocked of [
+      "China", "Cuba", "Iran", "North Korea", "Russia", "Syria",
+      "Ascension Island", "Kosovo", "Tristan da Cunha",
+      "Crimea", "Donetsk", "Luhansk",
+    ]) {
+      assert.equal(options.some((option) => option.value === blocked || option.label === blocked), false, `${lang} ${blocked}`);
+    }
     const germany = options.find((option) => option.value === "Germany");
     if (lang === "en") assert.equal(germany.label, "Germany");
     if (lang === "fr") assert.equal(germany.label, "Allemagne");
     if (lang === "es") assert.equal(germany.label, "Alemania");
     assert.equal(commitRegion(options, "kenya"), "Kenya");
   }
+
+  assert.deepEqual(
+    [...MANAGED_PAYMENTS_BLOCKED_COUNTRY_CODES].sort(),
+    ["AC", "CN", "CU", "IR", "KP", "RU", "SY", "TA", "XK"],
+  );
 
   const french = generalCountryOptions("fr");
   assert.equal(commitRegion(french, "allemagne"), "Germany");
