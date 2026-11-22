@@ -237,6 +237,14 @@ const en = {
   exampleBefore: "Example document",
   exampleAfter: "Example explanation",
   exampleLink: "See an example",
+  exampleShotsCaption: "Real result, personal details hidden",
+  exampleShotsHint: "Tap a picture to see it larger.",
+  exampleShotsEnglishNote: "The pictures show the English version.",
+  exampleShotAltSummary: "Screenshot of a real result: the plain language summary. Personal details are hidden.",
+  exampleShotAltFlags: "Screenshot of a real result: things to watch out for. Personal details are hidden.",
+  exampleShotAltQuestions: "Screenshot of a real result: questions to ask the insurer. Personal details are hidden.",
+  exampleShotAltTerms: "Screenshot of a real result: key terms and the note that this is not legal advice. Personal details are hidden.",
+  exampleShotClose: "Close",
 };
 
 const fr = {
@@ -466,6 +474,14 @@ const fr = {
   exampleBefore: "Document d'exemple",
   exampleAfter: "Explication d'exemple",
   exampleLink: "Voir un exemple",
+  exampleShotsCaption: "Résultat réel, renseignements personnels cachés",
+  exampleShotsHint: "Touchez une image pour l'agrandir.",
+  exampleShotsEnglishNote: "Les images montrent la version anglaise.",
+  exampleShotAltSummary: "Capture d'un résultat réel : le résumé en langage clair. Les renseignements personnels sont cachés. Version anglaise.",
+  exampleShotAltFlags: "Capture d'un résultat réel : les points à surveiller. Les renseignements personnels sont cachés. Version anglaise.",
+  exampleShotAltQuestions: "Capture d'un résultat réel : les questions à poser à l'assureur. Les renseignements personnels sont cachés. Version anglaise.",
+  exampleShotAltTerms: "Capture d'un résultat réel : les termes importants et la note que ce n'est pas un avis juridique. Les renseignements personnels sont cachés. Version anglaise.",
+  exampleShotClose: "Fermer",
 };
 
 const es = {
@@ -695,6 +711,14 @@ const es = {
   exampleBefore: "Documento de ejemplo",
   exampleAfter: "Explicación de ejemplo",
   exampleLink: "Ver un ejemplo",
+  exampleShotsCaption: "Resultado real, datos personales ocultos",
+  exampleShotsHint: "Toque una imagen para verla más grande.",
+  exampleShotsEnglishNote: "Las imágenes muestran la versión en inglés.",
+  exampleShotAltSummary: "Captura de un resultado real: el resumen en lenguaje claro. Los datos personales están ocultos. Versión en inglés.",
+  exampleShotAltFlags: "Captura de un resultado real: lo que hay que vigilar. Los datos personales están ocultos. Versión en inglés.",
+  exampleShotAltQuestions: "Captura de un resultado real: preguntas para la aseguradora. Los datos personales están ocultos. Versión en inglés.",
+  exampleShotAltTerms: "Captura de un resultado real: los términos importantes y la nota de que esto no es asesoría legal. Los datos personales están ocultos. Versión en inglés.",
+  exampleShotClose: "Cerrar",
 };
 
 export const MESSAGES = { en, fr, es };
