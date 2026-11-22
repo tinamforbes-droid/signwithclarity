@@ -28,11 +28,11 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: `Sign With Clarity is a website at signwithclarity.ca. It explains insurance documents in plain language for people in Canada and the United States. Three explanations a month are free. Paid plans are described in the terms of use. It is run by ${name}.`,
+          text: `Sign With Clarity is a website at signwithclarity.ca. It explains insurance documents in plain language. An explanation is paid. There is no free explanation. Paid plans are described in the terms of use. It is run by ${name}.`,
         },
         {
           type: "p",
-          text: "People outside Canada and the United States can use the site by choosing Other country / General. One explanation is free. It does not reset each month. After that, the paid plans are in US dollars. A General explanation is a general explanation. It is not local legal, financial, or insurance advice.",
+          text: "People in Canada and the United States use the site too, and so do people who choose Other country / General. Every explanation is paid. Household Check and Clarity Yearly are the plans. Canada is priced in Canadian dollars. The United States and Other country / General are priced in US dollars. A General explanation is a general explanation. It is not local legal, financial, or insurance advice.",
         },
         {
           type: "p",
@@ -69,7 +69,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "You do not need an account. Sign-in is optional, and you can ask for an explanation without one. If you choose to sign in, the site asks for an email address and emails you a link. There is no password. The site does not ask for your name or your phone number. Card numbers are typed on Stripe's page, not on this site. The paid flag stays false until the server sets it after Stripe confirms a payment.",
+          text: "An explanation needs a paid plan. Sign in with your email to buy one. The site asks for an email address and emails you a link. There is no password. The site does not ask for your name or your phone number. Card numbers are typed on Stripe's page, not on this site. The paid flag stays false until the server sets it after Stripe confirms a payment.",
         },
       ],
     },
@@ -86,7 +86,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "If you are signed in, the browser also sends the sign-in token with that request. The function checks the token with Supabase before it decides whose monthly count to use. The token is not sent to Anthropic. A name, an email address, or an account id typed into the document request is ignored. The function uses only the account id that Supabase confirms.",
+          text: "If you are signed in, the browser also sends the sign-in token with that request. The function checks the token with Supabase before it decides whether that account has a paid plan. The token is not sent to Anthropic. A name, an email address, or an account id typed into the document request is ignored. The function uses only the account id that Supabase confirms.",
         },
         {
           type: "p",
@@ -123,15 +123,15 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "To count the three free explanations in each calendar month, the function reads the IP address of the connection and turns it into a salted hash. A salted hash is a scrambled code. It is made from the IP address mixed with an extra value called a salt, so the address is not stored as itself. We store the scrambled code, not the address. The same record stores the calendar month, the number of explanations started this month, a random id for each of those explanations, and how many times the explainer was called for that explanation. We do not store the document, the notes, the file name, the place you chose, or the explanation in that record. The hash and the count are not sent to Anthropic. People who are not signed in, and who use the same internet connection, share the three free explanations, because the hash stands for the connection, not for a name. This limit is not kept in the browser. The site does not set a cookie for it, and it does not put it in localStorage. Clearing the browser does not start the count over.",
+          text: "There is no free explanation, in Canada, in the United States, or in Other country / General. We do not read the IP address to count free explanations, and we do not keep a monthly free-use record. An explanation is allowed when the account has a paid plan. The site does not set a cookie for a free count, and it does not put a free count in localStorage.",
         },
         {
           type: "p",
-          text: "If you are signed in, those three free explanations are counted on the account instead of on the connection. The function checks the sign-in token with Supabase and reads the account id Supabase confirms. It stores a salted hash of that account id, the calendar month, how many explanations were started, the random id for each explanation, and how many times the explainer was called. It does not store the email address in that record. It does not store the document, the notes, the file name, the place you chose, or the explanation there. The same account has one count of three, including from another connection. A different signed-in person on the same connection has their own three. Clearing the browser does not start this count over.",
+          text: "If you are signed in, the function checks the sign-in token with Supabase and reads the account id Supabase confirms. It uses that account to see whether a paid plan allows the explanation. It does not keep a separate free-explanation count on the account. It does not store the document, the notes, the file name, the place you chose, or the explanation on that check.",
         },
         {
           type: "p",
-          text: "If you choose Other country / General, there is one free explanation, not three each month. You sign in with your email to use it. The function counts that one explanation on the account Supabase confirms, not on the internet connection. Another person on the same connection has their own free explanation. It does not reset when a new month starts. Signing out or clearing the browser does not start it over. That record is a separate salted hash of the account id. It stores that the free explanation was used, a random id, and how many times the explainer was called. It does not store the document, the notes, the file name, the country you named, the email address, or the explanation. It is not kept in the browser. The function also keeps a daily count of how many different accounts started a free General explanation from the same connection. That count is only a safety limit. It does not use up your free explanation because someone else on the connection already used theirs. The daily count stores a salted hash of the connection, the calendar day, and a salted hash of each account id. It does not store the IP address itself. The next calendar day replaces that daily count.",
+          text: "Canada, the United States, and Other country / General all require a paid plan before an explanation. The function does not keep a free-try record, and it does not keep a daily connection count.",
         },
         {
           type: "p",
@@ -156,7 +156,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The function reads the IP address only to make the salted hash described above. It does not write the IP address into the usage record. It does not write the IP address into the server log. It does not write the sign-in token or the email address into the server log.",
+          text: "The function does not read the IP address to decide whether an explanation is allowed. It does not write an IP address into a free-use record. It does not write the sign-in token or the email address into the server log.",
         },
         {
           type: "p",
@@ -177,7 +177,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The site and the function that writes the explanation are hosted by Netlify. The explanation request goes to Netlify because that is where the function at /.netlify/functions/decode runs. The function does not save the body of the request. It does save the usage record in Netlify Blobs, which is storage that comes with this site's Netlify hosting. That record is the salted hash and the counts described above, not the document.",
+          text: "The site and the function that writes the explanation are hosted by Netlify. The explanation request goes to Netlify because that is where the function at /.netlify/functions/decode runs. The function does not save the body of the request. It does not save a free-use record in Netlify Blobs. The document is not stored there.",
         },
         {
           type: "p",
@@ -202,15 +202,15 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "We use the salted hash and the monthly count for one purpose: to allow three free explanations on a connection each calendar month, and to tell you when they reset. We do not use the hash to find your name, and we do not attach it to the document.",
+          text: "We do not keep a free-use count. We do not use a connection hash to decide how many explanations you can ask for.",
         },
         {
           type: "p",
-          text: "If you choose Other country / General, we use a salted hash of the account id for one purpose: to allow one free explanation on that account, and to keep that free try from resetting each month or when you sign out. We also use a daily salted hash of the connection to count how many different accounts started a free explanation from that connection today. We do not use either hash to find your name, and we do not attach them to the document. The daily count does not spend your free explanation when another person on the connection uses theirs.",
+          text: "If you choose Other country / General, the same rule applies. There is no free explanation and no daily connection count. An explanation is allowed when the account has a paid plan.",
         },
         {
           type: "p",
-          text: "If you sign in, we use the email address to send the sign-in link and to show which account is signed in on this device. We use the account id to give that account its own three free explanations each calendar month, instead of using the connection's count, and to attach a payment to that account. We keep the paid flag, the plan, the remaining Household Checks, any single explanations left from an earlier Household Check, the Clarity Yearly count, and the Stripe customer id so the server can allow the explanations that were paid for and open the customer portal. The paid flag stays false until Stripe confirms a payment. We do not use the email address for marketing, and we do not sell it. We do not store the card number.",
+          text: "If you sign in, we use the email address to send the sign-in link and to show which account is signed in on this device. We use the account id to attach a payment to that account. We keep the paid flag, the plan, the remaining Household Checks, any single explanations left from an earlier Household Check, the Clarity Yearly count, and the Stripe customer id so the server can allow the explanations that were paid for and open the customer portal. The paid flag stays false until Stripe confirms a payment. We do not use the email address for marketing, and we do not sell it. We do not store the card number.",
         },
         {
           type: "p",
@@ -260,11 +260,11 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "We keep the usage record for the current calendar month, using Coordinated Universal Time (UTC). When you start an explanation in a new month, we replace the record with that new month. We do not keep the earlier months. If you do not come back, the last month's hash and count can stay in Netlify Blobs until a later visit replaces them. A record from a past month does not change the count for the new month.",
+          text: "We do not keep a monthly free-use record. A new month does not create a free explanation.",
         },
         {
           type: "p",
-          text: "The General-mode record on an account does not reset each month. We keep that salted hash, and the note that the free explanation was used, until a later change replaces it. A new calendar month does not clear it. The daily connection count is replaced the next calendar day. Replacing it does not give the account a second free explanation. Canada and the United States still use the monthly record described above. Choosing General does not change that monthly record, and a monthly record does not give a second General free explanation.",
+          text: "Other country / General does not add a free-explanation record or a daily connection count. Canada and the United States do not add one either.",
         },
         {
           type: "p",
@@ -294,7 +294,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, the random explanation id, the salted hash of the connection's IP address, the monthly count, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation. If you sign in, it also includes the email address, the account id, the sign-in session kept on this device, and the paid flag, which stays false until Stripe confirms a payment. If you buy a plan, Stripe also handles the card details, as this policy describes.",
+          text: "If you use the site from the United States, we handle information the same way. We do not sell personal information. We do not share it for advertising. We do not build an advertising profile. The information the site handles is the text you submit, the location you select, the language you choose, the random explanation id, and the requests your browser makes to load the page, the fonts, pdf.js, and the explanation. If you sign in, it also includes the email address, the account id, the sign-in session kept on this device, and the paid flag, which stays false until Stripe confirms a payment. If you buy a plan, Stripe also handles the card details, as this policy describes.",
         },
         {
           type: "p",
@@ -353,11 +353,11 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: `These terms are between you and ${name} for your use of Sign With Clarity at signwithclarity.ca. You can ask for three explanations a month without paying. Sign-in by email is optional. Buying more explanations requires an account.`,
+          text: `These terms are between you and ${name} for your use of Sign With Clarity at signwithclarity.ca. An explanation is paid. There is no free explanation. Sign in with your email to buy a plan.`,
         },
         {
           type: "p",
-          text: "If you choose Other country / General, you sign in with your email and can ask for one explanation without paying. That free explanation is counted on your account, not on a shared internet connection. It does not reset each month. After that, Household Check is US$9 and Clarity Yearly is US$39 a year. Those are the same plans offered in Canada and the United States, charged in US dollars. Stripe is the seller and adds tax.",
+          text: "If you choose Other country / General, you sign in and pay before an explanation. There is no free explanation. Household Check is US$9 and Clarity Yearly is US$39 a year. Those are the same plans offered in Canada and the United States, charged in US dollars. Stripe is the seller and adds tax.",
         },
         {
           type: "p",
@@ -425,11 +425,11 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: "Three explanations each calendar month are free. Household Check is a one-time purchase of one comparison of up to four policies, including a short explanation of each, at the price shown for Canada or the United States. The comparison notes gaps and overlaps. It does not expire. Clarity Yearly is a yearly subscription at the price shown. It includes up to 100 explanations in that year. A comparison counts as one of those explanations. Stripe is the seller and adds tax at checkout. A yearly plan renews each year until you cancel it in Stripe's customer portal. After you cancel, you can keep using it until the year you already paid for ends. Household Check is not a subscription. Paying does not change what an explanation is: it is still not insurance, legal, or financial advice.",
+          text: "There is no free explanation. Household Check is a one-time purchase of one comparison of up to four policies, including a short explanation of each, at the price shown for Canada in Canadian dollars or for the United States in US dollars. The comparison notes gaps and overlaps. It does not expire. Clarity Yearly is a yearly subscription at the price shown. It includes up to 100 explanations in that year. A comparison counts as one of those explanations. Stripe is the seller and adds tax at checkout. A yearly plan renews each year until you cancel it in Stripe's customer portal. After you cancel, you can keep using it until the year you already paid for ends. Household Check is not a subscription. Paying does not change what an explanation is: it is still not insurance, legal, or financial advice.",
         },
         {
           type: "p",
-          text: "Outside Canada and the United States, Other country / General includes one free explanation, not three a month. Household Check is then a one-time purchase at US$9. Clarity Yearly is US$39 a year and includes up to 100 explanations in that year. A comparison counts as one explanation and is not part of the free explanation. Stripe is the seller and adds tax. Paying does not make the explanation local advice.",
+          text: "Outside Canada and the United States, Other country / General does not include a free explanation. Household Check is a one-time purchase at US$9. Clarity Yearly is US$39 a year and includes up to 100 explanations in that year. A comparison counts as one explanation. Stripe is the seller and adds tax. Paying does not make the explanation local advice.",
         },
       ],
     },
@@ -473,7 +473,7 @@ export const termsOfUse = {
       blocks: [
         {
           type: "p",
-          text: "These terms are for a free educational site used in Canada and the United States. They do not choose a court for you. Rights you have under the law of your province, territory, or state stay in place.",
+          text: "These terms are for an educational site used in Canada, the United States, and other countries. They do not choose a court for you. Rights you have under the law of your province, territory, or state stay in place.",
         },
         {
           type: "p",

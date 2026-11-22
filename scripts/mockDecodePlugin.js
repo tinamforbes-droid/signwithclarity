@@ -2,9 +2,9 @@
 // Loaded only when SWC_MOCK=1, and only for the Vite dev server.
 // Production builds do not include it.
 
-import { isComparisonRequest } from "../shared/comparePolicy.js";
 import { asLanguage } from "../shared/messages.js";
 import { buildSamplePolicy } from "../shared/samplePolicy.js";
+import { createMemoryAccountStore } from "../shared/accountStore.js";
 import { createMemoryUsageStore, enforceUsageLimit } from "../shared/usageGate.js";
 
 const END_PHRASE = "volcanic glass shed collapse is excluded unless building 7 is listed on the declarations";
@@ -212,6 +212,14 @@ function readBody(req) {
 const usageStore = createMemoryUsageStore();
 const PREVIEW_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwcmV2aWV3In0.previewsig";
 const PREVIEW_USER = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const accountStore = createMemoryAccountStore({
+  [PREVIEW_USER]: {
+    paid: true,
+    plan: "yearly",
+    yearly_used: 0,
+    period_end: "2027-11-07T00:10:00.000Z",
+  },
+});
 
 export function mockDecodePlugin() {
   return {
@@ -255,23 +263,22 @@ export function mockDecodePlugin() {
         if (!headers["x-nf-client-connection-ip"]) {
           headers["x-nf-client-connection-ip"] = req.socket?.remoteAddress || "local";
         }
-        let gate = { allowed: true, usage: null, release: null };
-        if (!isComparisonRequest(payload)) {
-          gate = await enforceUsageLimit({
-            headers,
-            payload,
-            store: usageStore,
-            language: payload.language,
-            verifySession: async ({ token }) => (
-              token === PREVIEW_TOKEN ? { id: PREVIEW_USER, email: "preview@example.com" } : null
-            ),
-          });
-          if (!gate.allowed) {
-            res.statusCode = gate.statusCode;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(gate.body));
-            return;
-          }
+        const gate = await enforceUsageLimit({
+          headers,
+          payload,
+          store: usageStore,
+          accountStore,
+          language: payload.language,
+          country: payload.country,
+          verifySession: async ({ token }) => (
+            token === PREVIEW_TOKEN ? { id: PREVIEW_USER, email: "preview@example.com" } : null
+          ),
+        });
+        if (!gate.allowed) {
+          res.statusCode = gate.statusCode;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(gate.body));
+          return;
         }
 
         const { status, body } = mockResult(payload);

@@ -18,20 +18,14 @@
 // function time limit. This function does not cut a document down to the
 // first few thousand characters.
 //
-// In Canada and the United States, a free connection may start three
-// explanations per calendar month. The count is kept in Netlify Blobs under
-// a salted hash of the IP address. If the request includes a Supabase
-// session, this function checks that session with the secret key and counts
-// the three on that account instead.
-// Outside those countries, General mode allows one free explanation on a
-// signed-in account. It does not reset each month, and it is not shared
-// with other people on the same connection. A signed-out visitor is asked
-// to sign in first. One connection may start that free try for many
-// different accounts in a day. That daily cap does not spend a person's try.
-// The document itself is not stored. A paid account is read from Supabase
-// in shared/access.js. One Household Check pays for one comparison of up
-// to 4 policies. Clarity Yearly counts that comparison as one explanation.
-// A comparison is not free. A flag in the request body cannot turn this on.
+// There is no free explanation, in Canada, in the United States, or in
+// Other country / General. A paid plan is required before the model is
+// called. Canada is charged in Canadian dollars. The United States and
+// General use the existing US dollar prices. This function does not create
+// Stripe prices. The document itself is not stored. A paid account is read
+// from Supabase in shared/access.js. One Household Check pays for one
+// comparison of up to 4 policies. Clarity Yearly counts that comparison as
+// one explanation. A flag in the request body cannot turn access on.
 
 import { cleanComparisonPolicies } from "../../shared/comparePolicy.js";
 import { cleanImage, isJpegData, photoInstruction } from "../../shared/images.js";

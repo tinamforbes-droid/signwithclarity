@@ -15,11 +15,11 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: `Sign With Clarity es un sitio en signwithclarity.ca. Explica documentos de seguro en lenguaje claro para personas en Canadá y Estados Unidos. Tres explicaciones al mes son gratuitas. Los planes de pago se describen en las condiciones de uso. Lo opera ${name}.`,
+          text: `Sign With Clarity es un sitio en signwithclarity.ca. Explica documentos de seguro en lenguaje claro. Una explicación es de pago. No hay una explicación gratuita. Los planes de pago se describen en las condiciones de uso. Lo opera ${name}.`,
         },
         {
           type: "p",
-          text: "Las personas fuera de Canadá y Estados Unidos pueden usar el sitio eligiendo Otro país / General. Una explicación es gratuita. No se renueva cada mes. Después, los planes de pago están en dólares de Estados Unidos. Una explicación general es una explicación general. No es asesoría legal, financiera ni de seguros para su país.",
+          text: "Las personas fuera de Canadá y Estados Unidos pueden usar el sitio eligiendo Otro país / General. Las explicaciones en ese modo son de pago. Household Check cuesta US$9 y Clarity Yearly cuesta US$39 al año. No hay una explicación gratuita. Una explicación general es una explicación general. No es asesoría legal, financiera ni de seguros para su país.",
         },
         {
           type: "p",
@@ -56,7 +56,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "No necesita una cuenta. Iniciar sesión es opcional, y puede pedir una explicación sin una. Si elige iniciar sesión, el sitio pide un correo electrónico y le envía un enlace. No hay contraseña. El sitio no pide su nombre ni su número de teléfono. Los números de tarjeta se escriben en la página de Stripe, no en este sitio. El indicador de pago se queda en falso hasta que el servidor lo cambia después de que Stripe confirma un pago.",
+          text: "Una explicación necesita un plan de pago. Inicie sesión con su correo para comprar uno. El sitio pide un correo electrónico y le envía un enlace. No hay contraseña. El sitio no pide su nombre ni su número de teléfono. Los números de tarjeta se escriben en la página de Stripe, no en este sitio. El indicador de pago se queda en falso hasta que el servidor lo cambia después de que Stripe confirma un pago.",
         },
       ],
     },
@@ -73,7 +73,7 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Si inició sesión, el navegador también envía el token de acceso con esa solicitud. La función comprueba el token con Supabase antes de decidir de quién es el conteo del mes. El token no se envía a Anthropic. Un nombre, un correo electrónico o un identificador de cuenta escrito en la solicitud del documento se ignora. La función usa solo el identificador de cuenta que Supabase confirma.",
+          text: "Si inició sesión, el navegador también envía el token de acceso con esa solicitud. La función comprueba el token con Supabase antes de decidir si esa cuenta tiene un plan de pago. El token no se envía a Anthropic. Un nombre, un correo electrónico o un identificador de cuenta escrito en la solicitud del documento se ignora. La función usa solo el identificador de cuenta que Supabase confirma.",
         },
         {
           type: "p",
@@ -110,15 +110,15 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Para contar las tres explicaciones gratuitas de cada mes calendario, la función lee la dirección IP de la conexión y la convierte en un hash con sal. Un hash con sal es un código revuelto. Se hace a partir de la dirección IP, mezclada con un valor extra llamado sal, para que la dirección no se guarde tal cual. Guardamos el código revuelto, no la dirección. El mismo registro guarda el mes calendario, la cantidad de explicaciones empezadas este mes, un identificador al azar para cada una de esas explicaciones y cuántas veces se llamó al servicio para esa explicación. No guardamos el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación en ese registro. El hash y la cuenta no se envían a Anthropic. Las personas que no iniciaron sesión, y que usan la misma conexión a internet, comparten las tres explicaciones gratuitas, porque el hash representa la conexión, no un nombre. Este límite no se guarda en el navegador. El sitio no coloca una cookie para eso, y no lo pone en localStorage. Borrar los datos del navegador no vuelve a poner la cuenta en cero.",
+          text: "No hay una explicación gratuita, ni en Canadá, ni en Estados Unidos, ni en Otro país / General. No leemos la dirección IP para contar explicaciones gratuitas, y no guardamos un registro mensual de uso gratuito. Una explicación se permite cuando la cuenta tiene un plan de pago. El sitio no coloca una cookie para un conteo gratuito, y no pone un conteo gratuito en localStorage.",
         },
         {
           type: "p",
-          text: "Si inició sesión, esas tres explicaciones gratuitas se cuentan en la cuenta, y no en la conexión. La función comprueba el token de acceso con Supabase y lee el identificador de cuenta que Supabase confirma. Guarda un hash con sal de ese identificador, el mes calendario, cuántas explicaciones se empezaron, el identificador al azar de cada explicación y cuántas veces se llamó al servicio. No guarda el correo electrónico en ese registro. No guarda allí el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación. La misma cuenta tiene un solo grupo de tres, incluso desde otra conexión. Otra persona que inició sesión en la misma conexión tiene sus propias tres. Borrar los datos del navegador no vuelve a poner este conteo en cero.",
+          text: "Si inició sesión, la función comprueba el token de acceso con Supabase y lee el identificador de cuenta que Supabase confirma. Usa esa cuenta para ver si un plan de pago permite la explicación. No guarda un conteo aparte de explicaciones gratuitas. No guarda allí el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación.",
         },
         {
           type: "p",
-          text: "Si elige Otro país / General, hay una sola explicación gratuita, no tres cada mes. Usted inicia sesión con su correo para usarla. La función cuenta esa explicación en la cuenta que Supabase confirma, no en la conexión de internet. Otra persona en la misma conexión tiene su propia explicación gratuita. No se renueva cuando empieza un mes nuevo. Cerrar sesión o borrar el navegador no la vuelve a empezar. Ese registro es un hash con sal aparte del identificador de cuenta. Guarda que la explicación gratuita se usó, un identificador al azar y cuántas veces se llamó al servicio. No guarda el documento, las notas, el nombre del archivo, el país que usted nombró, el correo ni la explicación. No se guarda en el navegador. La función también guarda un conteo diario de cuántas cuentas distintas empezaron una explicación gratuita del modo General desde la misma conexión. Ese conteo es solo un límite de seguridad. No gasta su explicación gratuita porque otra persona en la conexión ya usó la suya. El conteo diario guarda un hash con sal de la conexión, el día calendario y un hash con sal de cada identificador de cuenta. No guarda la dirección IP en sí. El día calendario siguiente reemplaza ese conteo diario.",
+          text: "Canadá, Estados Unidos y Otro país / General exigen un plan de pago antes de una explicación. La función no guarda un registro de prueba gratuita, y no guarda un conteo diario de la conexión.",
         },
         {
           type: "p",
@@ -189,15 +189,15 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Usamos el hash con sal y la cuenta del mes para un solo fin: permitir tres explicaciones gratuitas por conexión en cada mes calendario, y decirle cuándo se renuevan. No usamos el hash para encontrar su nombre, y no lo unimos al documento.",
+          text: "No guardamos un conteo de uso gratuito. No usamos un hash de la conexión para decidir cuántas explicaciones puede pedir.",
         },
         {
           type: "p",
-          text: "Si elige Otro país / General, usamos un hash con sal del identificador de cuenta para un solo fin: permitir una explicación gratuita en esa cuenta, y evitar que esa prueba se renueve cada mes o cuando cierra la sesión. También usamos un hash con sal diario de la conexión para contar cuántas cuentas distintas empezaron una explicación gratuita desde esa conexión hoy. No usamos ninguno de los dos para encontrar su nombre, y no los unimos al documento. El conteo diario no gasta su explicación gratuita cuando otra persona en la conexión usa la suya.",
+          text: "Si elige Otro país / General, no guardamos un conteo de explicaciones gratuitas y no guardamos un conteo diario de la conexión. Una explicación se permite cuando la cuenta tiene un plan de pago. No usamos esa elección para crear un registro de uso aparte.",
         },
         {
           type: "p",
-          text: "Si inicia sesión, usamos el correo electrónico para enviar el enlace de acceso y para mostrar qué cuenta está conectada en este dispositivo. Usamos el identificador de cuenta para dar a esa cuenta sus propias tres explicaciones gratuitas en cada mes calendario, en lugar de usar el conteo de la conexión, y para unir un pago a esa cuenta. Guardamos el indicador de pago, el plan, los Household Checks que quedan, las explicaciones individuales que quedan de un Household Check anterior, el conteo de Clarity Yearly y el identificador de cliente de Stripe para que el servidor pueda permitir las explicaciones que se pagaron y abrir el portal del cliente. El indicador de pago se queda en falso hasta que Stripe confirma un pago. No usamos el correo electrónico para publicidad, y no lo vendemos. No guardamos el número de tarjeta.",
+          text: "Si inicia sesión, usamos el correo electrónico para enviar el enlace de acceso y para mostrar qué cuenta está conectada en este dispositivo. Usamos el identificador de cuenta para unir un pago a esa cuenta. Guardamos el indicador de pago, el plan, los Household Checks que quedan, las explicaciones individuales que quedan de un Household Check anterior, el conteo de Clarity Yearly y el identificador de cliente de Stripe para que el servidor pueda permitir las explicaciones que se pagaron y abrir el portal del cliente. El indicador de pago se queda en falso hasta que Stripe confirma un pago. No usamos el correo electrónico para publicidad, y no lo vendemos. No guardamos el número de tarjeta.",
         },
         {
           type: "p",
@@ -247,11 +247,11 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
-          text: "Guardamos ese registro de uso durante el mes calendario en curso, según el Tiempo Universal Coordinado (UTC). Cuando usted empieza una explicación en un mes nuevo, reemplazamos el registro con ese mes nuevo. No guardamos los meses anteriores. Si usted no vuelve, el hash y la cuenta del último mes pueden quedar en Netlify Blobs hasta que una visita posterior los reemplace. Un registro de un mes pasado no cambia la cuenta del mes nuevo.",
+          text: "No guardamos un registro mensual de uso gratuito. Un mes nuevo no crea una explicación gratuita.",
         },
         {
           type: "p",
-          text: "El registro del modo General en una cuenta no se renueva cada mes. Guardamos ese hash con sal, y la nota de que la explicación gratuita se usó, hasta que un cambio posterior lo reemplace. Un mes calendario nuevo no lo borra. El conteo diario de la conexión se reemplaza al día calendario siguiente. Reemplazarlo no da a la cuenta una segunda explicación gratuita. Canadá y Estados Unidos siguen usando el registro mensual descrito arriba. Elegir General no cambia ese registro mensual, y un registro mensual no da una segunda explicación gratuita en el modo General.",
+          text: "Otro país / General no agrega un registro de explicación gratuita ni un conteo diario de la conexión. Canadá y Estados Unidos tampoco agregan uno.",
         },
         {
           type: "p",
@@ -281,7 +281,7 @@ export const privacyPolicyEs = {
       blocks: [
         {
           type: "p",
-          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige, el identificador al azar de la explicación, el hash con sal de la dirección IP de la conexión, la cuenta del mes y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación. Si inicia sesión, también incluye el correo electrónico, el identificador de cuenta, la sesión de acceso guardada en este dispositivo y el indicador de pago, que se queda en falso hasta que Stripe confirma un pago. Si compra un plan, Stripe también maneja los datos de la tarjeta, como describe esta política.",
+          text: "Si usa el sitio desde Estados Unidos, tratamos la información de la misma manera. No vendemos información personal. No la compartimos para publicidad. No creamos un perfil publicitario. La información que el sitio maneja es el texto que usted envía, la ubicación que selecciona, el idioma que elige, el identificador al azar de la explicación y las solicitudes que su navegador hace para cargar la página, los tipos de letra, pdf.js y la explicación. Si inicia sesión, también incluye el correo electrónico, el identificador de cuenta, la sesión de acceso guardada en este dispositivo y el indicador de pago, que se queda en falso hasta que Stripe confirma un pago. Si compra un plan, Stripe también maneja los datos de la tarjeta, como describe esta política.",
         },
         {
           type: "p",
@@ -340,11 +340,11 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: `Estas condiciones son entre usted y ${name} por el uso de Sign With Clarity en signwithclarity.ca. Puede pedir tres explicaciones al mes sin pagar. Iniciar sesión por correo electrónico es opcional. Comprar más explicaciones requiere una cuenta.`,
+          text: `Estas condiciones son entre usted y ${name} por el uso de Sign With Clarity en signwithclarity.ca. Una explicación es de pago. No hay una explicación gratuita. Inicie sesión con su correo para comprar un plan.`,
         },
         {
           type: "p",
-          text: "Si elige Otro país / General, inicia sesión con su correo y puede pedir una explicación sin pagar. Esa explicación gratuita se cuenta en su cuenta, no en una conexión de internet compartida. No se renueva cada mes. Después, Household Check cuesta US$9 y Clarity Yearly cuesta US$39 al año. Son los mismos planes que en Canadá y Estados Unidos, cobrados en dólares de Estados Unidos. Stripe es el vendedor y agrega el impuesto.",
+          text: "Si elige Otro país / General, inicia sesión y paga antes de una explicación. No hay una explicación gratuita. Household Check cuesta US$9 y Clarity Yearly cuesta US$39 al año. Son los mismos planes que en Canadá y Estados Unidos, cobrados en dólares de Estados Unidos. Stripe es el vendedor y agrega el impuesto.",
         },
         {
           type: "p",
@@ -412,11 +412,11 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: "Tres explicaciones cada mes calendario son gratuitas. Household Check es una compra única de una comparación de hasta cuatro pólizas, con una explicación breve de cada una, al precio que se muestra para Canadá o Estados Unidos. La comparación señala lagunas y duplicaciones. No vence. Clarity Yearly es una suscripción anual al precio que se muestra. Incluye hasta 100 explicaciones en ese año. Una comparación cuenta como una de esas explicaciones. Stripe es el vendedor y agrega el impuesto al pagar. Un plan anual se renueva cada año hasta que usted lo cancele en el portal de clientes de Stripe. Después de cancelar, puede seguir usándolo hasta que termine el año que ya pagó. Household Check no es una suscripción. Pagar no cambia lo que es una explicación: sigue sin ser asesoría de seguros, asesoría legal ni asesoría financiera.",
+          text: "No hay una explicación gratuita. Household Check es una compra única de una comparación de hasta cuatro pólizas, con una explicación breve de cada una, al precio que se muestra para Canadá en dólares canadienses o para Estados Unidos en dólares de Estados Unidos. La comparación señala lagunas y duplicaciones. No vence. Clarity Yearly es una suscripción anual al precio que se muestra. Incluye hasta 100 explicaciones en ese año. Una comparación cuenta como una de esas explicaciones. Stripe es el vendedor y agrega el impuesto al pagar. Un plan anual se renueva cada año hasta que usted lo cancele en el portal de clientes de Stripe. Después de cancelar, puede seguir usándolo hasta que termine el año que ya pagó. Household Check no es una suscripción. Pagar no cambia lo que es una explicación: sigue sin ser asesoría de seguros, asesoría legal ni asesoría financiera.",
         },
         {
           type: "p",
-          text: "Fuera de Canadá y Estados Unidos, Otro país / General incluye una explicación gratuita, no tres al mes. Household Check es entonces una compra única de US$9. Clarity Yearly cuesta US$39 al año e incluye hasta 100 explicaciones en ese año. Una comparación cuenta como una explicación y no forma parte de la explicación gratuita. Stripe es el vendedor y agrega el impuesto. Pagar no convierte la explicación en asesoría local.",
+          text: "Fuera de Canadá y Estados Unidos, Otro país / General no incluye una explicación gratuita. Household Check es una compra única de US$9. Clarity Yearly cuesta US$39 al año e incluye hasta 100 explicaciones en ese año. Una comparación cuenta como una explicación. Stripe es el vendedor y agrega el impuesto. Pagar no convierte la explicación en asesoría local.",
         },
       ],
     },
@@ -460,7 +460,7 @@ export const termsOfUseEs = {
       blocks: [
         {
           type: "p",
-          text: "Estas condiciones son para un sitio educativo gratuito usado en Canadá y Estados Unidos. No eligen un tribunal para usted. Los derechos que usted tiene según la ley de su provincia, territorio o estado siguen en pie.",
+          text: "Estas condiciones son para un sitio educativo usado en Canadá, Estados Unidos y otros países. No eligen un tribunal para usted. Los derechos que usted tiene según la ley de su provincia, territorio o estado siguen en pie.",
         },
         {
           type: "p",

@@ -15,11 +15,11 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: `Sign With Clarity est un site à signwithclarity.ca. Il explique des documents d'assurance en langage clair pour les personnes au Canada et aux États-Unis. Trois explications par mois sont gratuites. Les forfaits payants sont décrits dans les conditions d'utilisation. Il est tenu par ${name}.`,
+          text: `Sign With Clarity est un site à signwithclarity.ca. Il explique des documents d'assurance en langage clair. Une explication est payante. Il n'y a pas d'explication gratuite. Les forfaits payants sont décrits dans les conditions d'utilisation. Il est tenu par ${name}.`,
         },
         {
           type: "p",
-          text: "Les personnes à l'extérieur du Canada et des États-Unis peuvent utiliser le site en choisissant Autre pays / Général. Une explication est gratuite. Elle ne recommence pas chaque mois. Ensuite, les forfaits payants sont en dollars américains. Une explication générale est une explication générale. Ce n'est pas un avis juridique, financier ou en assurance pour votre pays.",
+          text: "Les personnes à l'extérieur du Canada et des États-Unis peuvent utiliser le site en choisissant Autre pays / Général. Les explications dans ce mode sont payantes. Household Check coûte 9 $ US et Clarity Yearly coûte 39 $ US par année. Il n'y a pas d'explication gratuite. Une explication générale est une explication générale. Ce n'est pas un avis juridique, financier ou en assurance pour votre pays.",
         },
         {
           type: "p",
@@ -56,7 +56,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Vous n'avez pas besoin d'un compte. La connexion est facultative, et vous pouvez demander une explication sans compte. Si vous choisissez de vous connecter, le site demande une adresse courriel et vous envoie un lien. Il n'y a pas de mot de passe. Le site ne demande pas votre nom ni votre numéro de téléphone. Les numéros de carte sont saisis sur la page de Stripe, pas sur ce site. L'indicateur payé reste faux jusqu'à ce que le serveur le change après une confirmation de paiement de Stripe.",
+          text: "Une explication demande un forfait payant. Connectez-vous avec votre courriel pour en acheter un. Le site demande une adresse courriel et vous envoie un lien. Il n'y a pas de mot de passe. Le site ne demande pas votre nom ni votre numéro de téléphone. Les numéros de carte sont saisis sur la page de Stripe, pas sur ce site. L'indicateur payé reste faux jusqu'à ce que le serveur le change après une confirmation de paiement de Stripe.",
         },
       ],
     },
@@ -73,7 +73,7 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Si vous êtes connecté, le navigateur envoie aussi le jeton de connexion avec cette demande. La fonction vérifie le jeton auprès de Supabase avant de décider quel compte du mois utiliser. Le jeton n'est pas envoyé à Anthropic. Un nom, une adresse courriel ou un identifiant de compte ajouté à la demande du document est ignoré. La fonction utilise seulement l'identifiant de compte que Supabase confirme.",
+          text: "Si vous êtes connecté, le navigateur envoie aussi le jeton de connexion avec cette demande. La fonction vérifie le jeton auprès de Supabase avant de décider si ce compte a un forfait payant. Le jeton n'est pas envoyé à Anthropic. Un nom, une adresse courriel ou un identifiant de compte ajouté à la demande du document est ignoré. La fonction utilise seulement l'identifiant de compte que Supabase confirme.",
         },
         {
           type: "p",
@@ -110,15 +110,15 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Pour compter les trois explications gratuites de chaque mois civil, la fonction lit l'adresse IP de la connexion et la transforme en un hachage salé. Un hachage salé est un code brouillé. Il est fait à partir de l'adresse IP, mélangée avec une valeur ajoutée appelée sel, pour que l'adresse ne soit pas conservée telle quelle. Nous conservons le code brouillé, pas l'adresse. Le même dossier conserve le mois civil, le nombre d'explications commencées ce mois-ci, un identifiant aléatoire pour chacune de ces explications, et le nombre de fois que le service a été appelé pour cette explication. Nous ne conservons pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication dans ce dossier. Le hachage et le compte ne sont pas envoyés à Anthropic. Les personnes qui ne sont pas connectées, et qui utilisent la même connexion Internet, partagent les trois explications gratuites, parce que le hachage représente la connexion, pas un nom. Cette limite n'est pas gardée dans le navigateur. Le site ne dépose pas de témoin (cookie) pour elle, et il ne la met pas dans localStorage. Vider le navigateur ne remet pas le compte à zéro.",
+          text: "Il n'y a pas d'explication gratuite, ni au Canada, ni aux États-Unis, ni pour Autre pays / Général. Nous ne lisons pas l'adresse IP pour compter des explications gratuites, et nous ne gardons pas de dossier mensuel d'utilisation gratuite. Une explication est permise quand le compte a un forfait payant. Le site ne dépose pas de témoin pour un compte gratuit, et il ne met pas un compte gratuit dans localStorage.",
         },
         {
           type: "p",
-          text: "Si vous êtes connecté, ces trois explications gratuites sont comptées sur le compte, et non sur la connexion. La fonction vérifie le jeton de connexion auprès de Supabase et lit l'identifiant de compte que Supabase confirme. Elle conserve un hachage salé de cet identifiant, le mois civil, le nombre d'explications commencées, l'identifiant aléatoire de chaque explication, et le nombre de fois que le service a été appelé. Elle ne conserve pas l'adresse courriel dans ce dossier. Elle n'y conserve pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication. Le même compte a droit à trois explications, même depuis une autre connexion. Une autre personne connectée sur la même connexion a ses propres trois. Vider le navigateur ne remet pas ce compte à zéro.",
+          text: "Si vous êtes connecté, la fonction vérifie le jeton auprès de Supabase et lit l'identifiant de compte que Supabase confirme. Elle utilise ce compte pour voir si un forfait payant permet l'explication. Elle ne garde pas un compte séparé d'explications gratuites. Elle ne conserve pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication dans cette vérification.",
         },
         {
           type: "p",
-          text: "Si vous choisissez Autre pays / Général, il y a une seule explication gratuite, et non trois par mois. Vous vous connectez avec votre courriel pour l'utiliser. La fonction compte cette explication sur le compte que Supabase confirme, et non sur la connexion Internet. Une autre personne sur la même connexion a sa propre explication gratuite. Elle ne recommence pas au début d'un nouveau mois. Se déconnecter ou vider le navigateur ne la remet pas à zéro. Ce dossier est un hachage salé distinct de l'identifiant de compte. Il conserve le fait que l'explication gratuite a été utilisée, un identifiant aléatoire, et le nombre de fois que le service a été appelé. Il ne conserve pas le document, les notes, le nom du fichier, le pays que vous avez nommé, l'adresse courriel, ni l'explication. Il n'est pas gardé dans le navigateur. La fonction garde aussi un compte quotidien du nombre de comptes différents qui ont commencé une explication gratuite en mode Général depuis la même connexion. Ce compte est seulement une limite de sécurité. Il n'épuise pas votre explication gratuite parce que quelqu'un d'autre sur la connexion a déjà utilisé la sienne. Le compte quotidien conserve un hachage salé de la connexion, le jour civil, et un hachage salé de chaque identifiant de compte. Il ne conserve pas l'adresse IP elle-même. Le jour civil suivant remplace ce compte quotidien.",
+          text: "Le Canada, les États-Unis et Autre pays / Général exigent un forfait payant avant une explication. La fonction ne garde pas de dossier d'essai gratuit, et elle ne garde pas de compte quotidien de la connexion.",
         },
         {
           type: "p",
@@ -189,15 +189,15 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Nous utilisons le hachage salé et le compte du mois pour une seule fin : permettre trois explications gratuites par connexion à chaque mois civil, et vous dire quand elles recommencent. Nous n'utilisons pas le hachage pour trouver votre nom, et nous ne le rattachons pas au document.",
+          text: "Nous ne gardons pas de compte d'utilisation gratuite. Nous n'utilisons pas un hachage de connexion pour décider combien d'explications vous pouvez demander.",
         },
         {
           type: "p",
-          text: "Si vous choisissez Autre pays / Général, nous utilisons un hachage salé de l'identifiant de compte pour une seule fin : permettre une explication gratuite sur ce compte, et empêcher que cet essai recommence chaque mois ou quand vous vous déconnectez. Nous utilisons aussi un hachage salé quotidien de la connexion pour compter combien de comptes différents ont commencé une explication gratuite depuis cette connexion aujourd'hui. Nous n'utilisons ni l'un ni l'autre pour trouver votre nom, et nous ne les rattachons pas au document. Le compte quotidien n'épuise pas votre explication gratuite quand une autre personne sur la connexion utilise la sienne.",
+          text: "Si vous choisissez Autre pays / Général, nous ne gardons pas de compte d'explications gratuites et nous ne gardons pas de compte quotidien de la connexion. Une explication est permise quand le compte a un forfait payant. Nous n'utilisons pas ce choix pour bâtir un dossier d'utilisation à part.",
         },
         {
           type: "p",
-          text: "Si vous vous connectez, nous utilisons l'adresse courriel pour envoyer le lien de connexion et pour montrer quel compte est connecté sur cet appareil. Nous utilisons l'identifiant de compte pour donner à ce compte ses trois explications gratuites à chaque mois civil, au lieu de les compter sur la connexion, et pour rattacher un paiement à ce compte. Nous gardons l'indicateur payé, le forfait, les Household Checks restants, les explications individuelles restantes d'un Household Check plus ancien, le compte Clarity Yearly et l'identifiant client Stripe pour que le serveur puisse permettre les explications qui ont été payées et ouvrir le portail client. L'indicateur payé reste faux jusqu'à ce que Stripe confirme un paiement. Nous n'utilisons pas l'adresse courriel pour des messages publicitaires, et nous ne la vendons pas. Nous ne conservons pas le numéro de carte.",
+          text: "Si vous vous connectez, nous utilisons l'adresse courriel pour envoyer le lien de connexion et pour montrer quel compte est connecté sur cet appareil. Nous utilisons l'identifiant de compte pour rattacher un paiement à ce compte. Nous gardons l'indicateur payé, le forfait, les Household Checks restants, les explications individuelles restantes d'un Household Check plus ancien, le compte Clarity Yearly et l'identifiant client Stripe pour que le serveur puisse permettre les explications qui ont été payées et ouvrir le portail client. L'indicateur payé reste faux jusqu'à ce que Stripe confirme un paiement. Nous n'utilisons pas l'adresse courriel pour des messages publicitaires, et nous ne la vendons pas. Nous ne conservons pas le numéro de carte.",
         },
         {
           type: "p",
@@ -247,11 +247,11 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
-          text: "Nous gardons ce dossier d'utilisation pour le mois civil en cours, selon le temps universel coordonné (UTC). Quand vous commencez une explication dans un nouveau mois, nous remplaçons le dossier par ce nouveau mois. Nous ne gardons pas les mois précédents. Si vous ne revenez pas, le hachage et le compte du dernier mois peuvent rester dans Netlify Blobs jusqu'à ce qu'une visite plus tard les remplace. Un dossier d'un mois passé ne change pas le compte du nouveau mois.",
+          text: "Nous ne gardons pas de dossier mensuel d'utilisation gratuite. Un nouveau mois ne crée pas une explication gratuite.",
         },
         {
           type: "p",
-          text: "Le dossier du mode Général sur un compte ne recommence pas chaque mois. Nous gardons ce hachage salé, et la note que l'explication gratuite a été utilisée, jusqu'à ce qu'un changement plus tard le remplace. Un nouveau mois civil ne l'efface pas. Le compte quotidien de la connexion est remplacé le jour civil suivant. Le remplacer ne donne pas une deuxième explication gratuite au compte. Le Canada et les États-Unis utilisent encore le dossier mensuel décrit plus haut. Choisir Général ne change pas ce dossier mensuel, et un dossier mensuel ne donne pas une deuxième explication gratuite en mode Général.",
+          text: "Autre pays / Général n'ajoute pas de dossier d'explication gratuite ni de compte quotidien de la connexion. Le Canada et les États-Unis n'en ajoutent pas non plus.",
         },
         {
           type: "p",
@@ -281,7 +281,7 @@ export const privacyPolicyFr = {
       blocks: [
         {
           type: "p",
-          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, l'identifiant aléatoire de l'explication, le hachage salé de l'adresse IP de la connexion, le compte du mois, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication. Si vous vous connectez, ils comprennent aussi l'adresse courriel, l'identifiant de compte, la session de connexion gardée sur cet appareil, et l'indicateur payé, qui reste faux jusqu'à ce que Stripe confirme un paiement. Si vous achetez un forfait, Stripe traite aussi les renseignements de carte, comme cette politique le décrit.",
+          text: "Si vous utilisez le site depuis les États-Unis, nous traitons les renseignements de la même façon. Nous ne vendons pas de renseignements personnels. Nous ne les partageons pas pour la publicité. Nous ne bâtissons pas de profil publicitaire. Les renseignements que le site traite sont le texte que vous envoyez, le lieu que vous sélectionnez, la langue que vous choisissez, l'identifiant aléatoire de l'explication, et les demandes que votre navigateur fait pour charger la page, les polices de caractères, pdf.js et l'explication. Si vous vous connectez, ils comprennent aussi l'adresse courriel, l'identifiant de compte, la session de connexion gardée sur cet appareil, et l'indicateur payé, qui reste faux jusqu'à ce que Stripe confirme un paiement. Si vous achetez un forfait, Stripe traite aussi les renseignements de carte, comme cette politique le décrit.",
         },
         {
           type: "p",
@@ -340,11 +340,11 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: `Ces conditions sont entre vous et ${name} pour votre utilisation de Sign With Clarity à signwithclarity.ca. Vous pouvez demander trois explications par mois sans payer. La connexion par courriel est facultative. Acheter d'autres explications exige un compte.`,
+          text: `Ces conditions sont entre vous et ${name} pour votre utilisation de Sign With Clarity à signwithclarity.ca. Une explication est payante. Il n'y a pas d'explication gratuite. Connectez-vous avec votre courriel pour acheter un forfait.`,
         },
         {
           type: "p",
-          text: "Si vous choisissez Autre pays / Général, vous vous connectez avec votre courriel et vous pouvez demander une explication sans payer. Cette explication gratuite est comptée sur votre compte, et non sur une connexion Internet partagée. Elle ne recommence pas chaque mois. Ensuite, Household Check coûte 9 $ US et Clarity Yearly coûte 39 $ US par année. Ce sont les mêmes forfaits qu'au Canada et aux États-Unis, facturés en dollars américains. Stripe est le vendeur et ajoute la taxe.",
+          text: "Si vous choisissez Autre pays / Général, vous vous connectez et vous payez avant une explication. Il n'y a pas d'explication gratuite. Household Check coûte 9 $ US et Clarity Yearly coûte 39 $ US par année. Ce sont les mêmes forfaits qu'au Canada et aux États-Unis, facturés en dollars américains. Stripe est le vendeur et ajoute la taxe.",
         },
         {
           type: "p",
@@ -412,11 +412,11 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: "Trois explications par mois civil sont gratuites. Household Check est un achat unique d'une comparaison d'au plus quatre polices, avec une courte explication de chacune, au prix affiché pour le Canada ou les États-Unis. La comparaison note les lacunes et les chevauchements. Elle n'expire pas. Clarity Yearly est un abonnement annuel au prix affiché. Il comprend jusqu'à 100 explications dans cette année. Une comparaison compte pour une de ces explications. Stripe est le vendeur et ajoute la taxe au paiement. Un forfait annuel se renouvelle chaque année jusqu'à ce que vous l'annuliez dans le portail client de Stripe. Après l'annulation, vous pouvez continuer à l'utiliser jusqu'à la fin de l'année déjà payée. Household Check n'est pas un abonnement. Payer ne change pas ce qu'est une explication : ce n'est toujours pas un conseil en assurance, un avis juridique ni un conseil financier.",
+          text: "Il n'y a pas d'explication gratuite. Household Check est un achat unique d'une comparaison d'au plus quatre polices, avec une courte explication de chacune, au prix affiché pour le Canada en dollars canadiens ou pour les États-Unis en dollars américains. La comparaison note les lacunes et les chevauchements. Elle n'expire pas. Clarity Yearly est un abonnement annuel au prix affiché. Il comprend jusqu'à 100 explications dans cette année. Une comparaison compte pour une de ces explications. Stripe est le vendeur et ajoute la taxe au paiement. Un forfait annuel se renouvelle chaque année jusqu'à ce que vous l'annuliez dans le portail client de Stripe. Après l'annulation, vous pouvez continuer à l'utiliser jusqu'à la fin de l'année déjà payée. Household Check n'est pas un abonnement. Payer ne change pas ce qu'est une explication : ce n'est toujours pas un conseil en assurance, un avis juridique ni un conseil financier.",
         },
         {
           type: "p",
-          text: "À l'extérieur du Canada et des États-Unis, Autre pays / Général comprend une explication gratuite, et non trois par mois. Household Check est alors un achat unique à 9 $ US. Clarity Yearly coûte 39 $ US par année et comprend jusqu'à 100 explications dans cette année. Une comparaison compte pour une explication et ne fait pas partie de l'explication gratuite. Stripe est le vendeur et ajoute la taxe. Payer ne fait pas de l'explication un conseil local.",
+          text: "À l'extérieur du Canada et des États-Unis, Autre pays / Général ne comprend pas d'explication gratuite. Household Check est un achat unique à 9 $ US. Clarity Yearly coûte 39 $ US par année et comprend jusqu'à 100 explications dans cette année. Une comparaison compte pour une explication. Stripe est le vendeur et ajoute la taxe. Payer ne fait pas de l'explication un conseil local.",
         },
       ],
     },
@@ -460,7 +460,7 @@ export const termsOfUseFr = {
       blocks: [
         {
           type: "p",
-          text: "Ces conditions visent un site éducatif gratuit utilisé au Canada et aux États-Unis. Elles ne choisissent pas un tribunal pour vous. Les droits que vous avez selon la loi de votre province, de votre territoire ou de votre État restent en place.",
+          text: "Ces conditions visent un site éducatif utilisé au Canada, aux États-Unis et dans d'autres pays. Elles ne choisissent pas un tribunal pour vous. Les droits que vous avez selon la loi de votre province, de votre territoire ou de votre État restent en place.",
         },
         {
           type: "p",

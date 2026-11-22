@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { compareDisabledReason, explainDisabledReason, showRunError } from "../shared/readiness.js";
 import { runComparison } from "../shared/compareRun.js";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
-import { canCompareAccount, isYearlyActive, isoDate, visibleChecks } from "../shared/entitlement.js";
+import { canCompareAccount, hasGeneralPaidAccess, isYearlyActive, isoDate, visibleChecks } from "../shared/entitlement.js";
 import { longDocumentNote, planDocument } from "../shared/limits.js";
 import {
   LANGUAGE_CHOICES,
@@ -32,6 +32,7 @@ import ComparisonResult from "./ComparisonResult.jsx";
 import { loadOwnPlan } from "./accountRow.js";
 import { FILE_ACCEPT, readDocumentFiles } from "./readDocumentFile.js";
 import Pricing from "./Pricing.jsx";
+import ExampleSection from "./ExampleSection.jsx";
 import { currentAccessToken, devPreviewSignedIn } from "./authClient.js";
 import LegalPage from "./LegalPage.jsx";
 import { storageNote } from "./legalCopy.js";
@@ -661,6 +662,39 @@ const STYLES = `
     border-color: var(--gold);
   }
   .disclaimer-general .disclaimer-text { color: var(--navy); font-size: 13px; }
+  .example { margin: 28px auto 8px; max-width: 860px; }
+  .example-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--navy);
+    text-align: center;
+  }
+  .example-placeholder {
+    margin: 12px auto 16px;
+    max-width: 640px;
+    text-align: center;
+    color: var(--navy);
+    background: rgba(201, 169, 110, 0.2);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .example-card {
+    background: var(--white);
+    border: 1px solid var(--cream-dark);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .example-card h3 { color: var(--navy); font-size: 16px; margin-bottom: 8px; }
+  .example-card p, .example-extra { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+  .example-extra { margin-top: 10px; color: var(--text); }
+  @media (max-width: 700px) {
+    .example-grid { grid-template-columns: 1fr; }
+  }
 
   /* NEW DECODE BTN */
   .new-decode-btn {
@@ -1346,8 +1380,10 @@ export default function SignWithClarity() {
   const error = errorKey ? t(lang, errorKey) : errorText;
   const general = country === GENERAL_COUNTRY;
   const shownUsage = usageAppliesHere(usage, general) ? usage : null;
+  const needsPlan = !hasGeneralPaidAccess(account) && !devPreviewSignedIn();
   const atLimit = errorCode === "fair_use"
-    || (general && errorCode === "general_limit")
+    || errorCode === "needs_plan"
+    || errorCode === "general_needs_plan"
     || (!general && errorCode === "monthly_limit")
     || (shownUsage?.limited && shownUsage.plan !== "household" && (shownUsage.remaining ?? 0) <= 0);
   const usageMessage = usageStatusMessage(lang, atLimit && shownUsage ? { ...shownUsage, remaining: 0 } : shownUsage);
@@ -1400,7 +1436,7 @@ export default function SignWithClarity() {
     setErrorKey("");
     setErrorText("");
     setErrorCode((code) => (
-      code === "monthly_limit" || code === "general_limit" || code === "fair_use" ? code : ""
+      code === "monthly_limit" || code === "needs_plan" || code === "general_needs_plan" || code === "fair_use" ? code : ""
     ));
   }
 
@@ -1483,9 +1519,8 @@ export default function SignWithClarity() {
     blockedNote: compareNote,
     readingName: workMode === "compare" ? readingName : "",
   });
-  const needsGeneralSignIn = general && !signedIn;
-  const explainReason = needsGeneralSignIn
-    ? t(lang, "generalSignInToTry")
+  const explainReason = needsPlan
+    ? t(lang, country === "Canada" ? "needsPlanCad" : "needsPlanUsd")
     : explainDisabledReason(lang, {
     text: docText,
     pages: docPages,
@@ -1790,19 +1825,22 @@ export default function SignWithClarity() {
                     <button className="decode-btn" onClick={decode} disabled={Boolean(explainReason)}>
                       ✨ {t(lang, "decodeButton")}
                     </button>
-                    <span className="decode-btn-sub">{t(lang, general ? "decodeSubGeneral" : "decodeSub")}</span>
+                    <span className="decode-btn-sub">{t(lang, "decodeSub")}</span>
                     {!error && explainReason && (
                       <p className="block-reason" role="status">
                         {explainReason}
-                        {needsGeneralSignIn && (
+                        {needsPlan && !signedIn && (
                           <> <a href="#sign-in-email" onClick={(event) => {
                             event.preventDefault();
                             document.querySelector(".account-bar")?.scrollIntoView({ behavior: "smooth", block: "center" });
                             document.getElementById("sign-in-email")?.focus();
                           }}>{t(lang, "generalSignInLink")}</a></>
                         )}
-                        {atLimit && !needsGeneralSignIn && errorCode !== "fair_use" && (
+                        {(needsPlan || (atLimit && errorCode !== "fair_use")) && (
                           <> <a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></>
+                        )}
+                        {(needsPlan || atLimit) && (
+                          <> <a href="#example">{t(lang, "exampleLink")}</a></>
                         )}
                       </p>
                     )}
@@ -1951,6 +1989,7 @@ export default function SignWithClarity() {
               </div>
             </div>
           )}
+          <ExampleSection lang={lang} />
           <Pricing lang={lang} country={country} />
         </main>
         </>

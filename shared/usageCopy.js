@@ -1,21 +1,5 @@
 import { t } from "./messages.js";
 
-/** Free document explanations in one UTC calendar month, in Canada and the United States. */
-export const FREE_EXPLANATION_LIMIT = 3;
-
-/**
- * Free explanations for someone outside Canada and the United States.
- * One try in total. It does not reset when the month changes.
- */
-export const GENERAL_FREE_LIMIT = 1;
-
-/**
- * How many different signed-in accounts may start a General free
- * explanation from one connection in a UTC day. This does not spend
- * anyone's free try. It only slows a burst of new accounts.
- */
-export const GENERAL_SIGNUPS_PER_IP_PER_DAY = 20;
-
 /**
  * Most model calls one explanation may use, including parts and a retry.
  * A long document is still one explanation. The cap stops one id from
@@ -30,14 +14,6 @@ export const MAX_CALLS_PER_EXPLANATION = 120;
  * for comparison after comparison.
  */
 export const MAX_CALLS_PER_COMPARISON = 480;
-
-/** UTC calendar day, as YYYY-MM-DD. */
-export function dayKey(date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 export function monthKey(date) {
   const year = date.getUTCFullYear();
@@ -68,31 +44,21 @@ export function formatResetDate(iso, lang) {
 }
 
 export function usageSnapshot(record, resetsOn, options = {}) {
-  const limit = Number.isInteger(options.limit) ? options.limit : FREE_EXPLANATION_LIMIT;
+  const limit = Number.isInteger(options.limit) ? options.limit : 0;
   const used = Number.isInteger(record?.used) && record.used > 0 ? record.used : 0;
-  const snapshot = {
+  return {
     limited: true,
     limit,
     used,
     remaining: Math.max(0, limit - used),
+    resetsOn,
   };
-  if (options.once) {
-    snapshot.once = true;
-    return snapshot;
-  }
-  snapshot.resetsOn = resetsOn;
-  return snapshot;
 }
 
-/**
- * A free General try and the Canada/US monthly count are separate.
- * A paid plan still shows in either place.
- */
-export function usageAppliesHere(usage, general) {
+/** A paid plan's remaining count is shown. A free count is not. */
+export function usageAppliesHere(usage) {
   if (!usage?.limited) return false;
-  if (usage.plan === "yearly" || usage.plan === "household") return true;
-  if (general) return usage.once === true;
-  return usage.once !== true;
+  return usage.plan === "yearly" || usage.plan === "household";
 }
 
 /** Calm line for the page. Empty when this visitor is not on a counted plan. */
@@ -108,10 +74,6 @@ export function usageStatusMessage(lang, usage) {
     if (count === 1) return t(lang, "householdRemainingOne");
     return t(lang, "householdRemaining", { count });
   }
-  if (usage.once) {
-    if ((usage.remaining ?? 0) <= 0) return t(lang, "generalFreeUsed");
-    return t(lang, "generalFreeRemaining");
-  }
   const date = formatResetDate(usage.resetsOn, lang);
   if (!date) return "";
   if (usage.plan === "yearly") {
@@ -119,7 +81,5 @@ export function usageStatusMessage(lang, usage) {
     if (usage.remaining === 1) return t(lang, "yearlyRemainingOne", { date });
     return t(lang, "yearlyRemaining", { count: usage.remaining, date });
   }
-  if ((usage.remaining ?? 0) <= 0) return t(lang, "freeLimitReached", { date });
-  if (usage.remaining === 1) return t(lang, "freeRemainingOne", { date });
-  return t(lang, "freeRemaining", { count: usage.remaining, date });
+  return t(lang, "freeLimitReached");
 }

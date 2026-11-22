@@ -13,7 +13,11 @@ import {
   OPENING_MARKER,
   buildSamplePolicy,
 } from "../shared/samplePolicy.js";
-import { handler } from "../netlify/functions/decode.js";
+import { handler as decodeHandler } from "../netlify/functions/decode.js";
+
+async function handler(event, context = {}) {
+  return decodeHandler(event, { hasUnlimitedAccess: async () => true, ...context });
+}
 
 const sleep = async () => {};
 
