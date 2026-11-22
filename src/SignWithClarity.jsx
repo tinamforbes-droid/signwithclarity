@@ -682,6 +682,13 @@ const STYLES = `
     font-size: 14px;
     line-height: 1.5;
   }
+  .example-note {
+    margin: 8px auto 16px;
+    max-width: 640px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 14px;
+  }
   .example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .example-card {
     background: var(--white);
@@ -690,6 +697,13 @@ const STYLES = `
     padding: 16px;
   }
   .example-card h3 { color: var(--navy); font-size: 16px; margin-bottom: 8px; }
+  .example-card h4 { color: var(--navy); font-size: 14px; margin: 14px 0 6px; }
+  .example-disclaimer {
+    margin-top: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-light);
+  }
   .example-card p, .example-extra { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
   .example-extra { margin-top: 10px; color: var(--text); }
   @media (max-width: 700px) {
