@@ -10,6 +10,10 @@
  *   STRIPE_PRICE_HOUSEHOLD_CAD, STRIPE_PRICE_HOUSEHOLD_USD
  *   STRIPE_PRICE_YEARLY_CAD, STRIPE_PRICE_YEARLY_USD
  * Each value is a Stripe price id (price_...).
+ *
+ * General mode, for people outside Canada and the United States, uses the
+ * US dollar prices already on these products. It does not add a product
+ * or a price.
  */
 
 export const HOUSEHOLD_PRODUCT_ID = "prod_VYa35DVVX8zzUK";
@@ -53,7 +57,8 @@ export function priceEnvName(plan, currency) {
 }
 
 export function currencyForCountry(country) {
-  return country === "United States" ? "usd" : "cad";
+  if (country === "United States" || country === "General") return "usd";
+  return "cad";
 }
 
 export function isCurrency(value) {

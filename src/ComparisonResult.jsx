@@ -8,7 +8,7 @@ const FIELDS = [
   ["renewal", "compareRenewal"],
 ];
 
-export default function ComparisonResult({ lang, comparison, parts, usageMessage, onAgain }) {
+export default function ComparisonResult({ lang, comparison, parts, usageMessage, onAgain, general = false }) {
   if (!comparison) return null;
   return (
     <div className="results compare-results">
@@ -92,6 +92,14 @@ export default function ComparisonResult({ lang, comparison, parts, usageMessage
         </div>
       </section>
 
+      {general && (
+        <div className="disclaimer disclaimer-general">
+          <span className="disclaimer-icon">⚖️</span>
+          <p className="disclaimer-text">
+            <strong>{t(lang, "disclaimerStrongGeneral")}</strong> {t(lang, "disclaimerRestGeneral")}
+          </p>
+        </div>
+      )}
       <div className="disclaimer">
         <span className="disclaimer-icon">⚖️</span>
         <p className="disclaimer-text">

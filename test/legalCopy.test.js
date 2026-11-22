@@ -28,7 +28,7 @@ test("both pages name the operator, the contact email, and the effective date", 
   }
   assert.equal(OWNER_LEGAL_NAME, "Tina Forbes, operating as Quiet Clarity Within");
   assert.equal(CONTACT_EMAIL, "hello@quietclaritywithin.com");
-  assert.equal(EFFECTIVE_DATE, "November 2, 2026");
+  assert.equal(EFFECTIVE_DATE, "November 22, 2026");
 });
 
 test("the privacy policy describes only the collection the code performs", () => {
@@ -47,7 +47,7 @@ test("the privacy policy describes only the collection the code performs", () =>
   assert.match(privacy, /localStorage to remember the language/);
   assert.equal(privacy.includes("does not use localStorage"), false);
   assert.match(privacy, /does not store your document in localStorage/);
-  assert.match(privacy, /Sign-in is optional/);
+  assert.match(privacy, /Sign in with your email to buy one/);
   assert.match(privacy, /email address/);
   assert.match(privacy, /ldhkqqhlztsaljccazti\.supabase\.co/);
   assert.match(privacy, /row level security/i);
@@ -62,11 +62,11 @@ test("the privacy policy describes only the collection the code performs", () =>
   assert.match(privacy, /swc-auth/);
   assert.match(privacy, /There is no password/);
   assert.equal(privacy.includes("There is no account to attach"), false);
-  assert.match(privacy, /salted hash/);
-  assert.match(privacy, /calendar month/);
+  assert.match(privacy, /no free explanation/i);
+  assert.match(privacy, /do not read the IP address to count free explanations/i);
   assert.match(privacy, /Netlify Blobs/);
-  assert.match(privacy, /not the address/);
-  assert.match(privacy, /Clearing the browser does not start the count over/);
+  assert.match(privacy, /does not write an IP address/);
+  assert.match(privacy, /do not keep a monthly free-use record/i);
   assert.equal(privacy.includes("does not read or save your IP address"), false);
   assert.match(privacy, /analytics/);
   assert.match(privacy, /HTTP status code/);
@@ -120,17 +120,15 @@ test("French and Spanish legal pages match the English shape and describe the la
   assert.match(documentPlainText(legalDocument("privacy", "es")), /correo electrónico/);
   assert.match(documentPlainText(legalDocument("privacy", "es")), /SUPABASE_SECRET_KEY/);
   assert.match(documentPlainText(legalDocument("privacy", "es")), /indicador de pago/);
-  assert.match(documentPlainText(legalDocument("privacy", "fr")), /hachage salé/);
-  assert.match(documentPlainText(legalDocument("privacy", "fr")), /mois civil/);
-  assert.match(documentPlainText(legalDocument("privacy", "fr")), /ne remet pas le compte à zéro/);
-  assert.match(documentPlainText(legalDocument("privacy", "es")), /hash con sal/);
-  assert.match(documentPlainText(legalDocument("privacy", "es")), /mes calendario/);
-  assert.match(documentPlainText(legalDocument("privacy", "es")), /no vuelve a poner la cuenta en cero/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /pas d'explication gratuite/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /ne lisons pas l'adresse IP/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /No hay una explicación gratuita/);
+  assert.match(documentPlainText(legalDocument("privacy", "es")), /No leemos la dirección IP/);
   assert.equal(documentPlainText(legalDocument("privacy", "fr")).includes("ne lit pas et ne sauvegarde pas votre adresse IP"), false);
   assert.equal(documentPlainText(legalDocument("privacy", "es")).includes("no lee ni guarda su dirección IP"), false);
-  assert.equal(effectiveDateLine("en"), "Effective date: November 2, 2026");
-  assert.match(effectiveDateLine("fr"), /2 novembre 2026/);
-  assert.match(effectiveDateLine("es"), /2 de noviembre de 2026/);
+  assert.equal(effectiveDateLine("en"), "Effective date: November 22, 2026");
+  assert.match(effectiveDateLine("fr"), /22 novembre 2026/);
+  assert.match(effectiveDateLine("es"), /22 de noviembre de 2026/);
   assert.match(storageNote("fr"), /ne sont pas conservés/);
   assert.match(storageNote("es"), /no se guardan/);
   assert.equal(storageNote("en"), STORAGE_NOTE);
@@ -148,6 +146,22 @@ test("the terms limit the site to education and say the model can be wrong", () 
   assert.match(terms, /Clarity Yearly/);
   assert.match(terms, /100 explanations/);
   assert.match(terms, /Stripe is the seller/);
+  assert.match(privacy, /Other country \/ General/);
+  assert.match(privacy, /no free explanation/i);
+  assert.match(terms, /no free explanation/i);
+  assert.match(terms, /US\$9/);
+  assert.match(terms, /US\$39 a year/);
+  assert.match(privacy, /Netlify, Anthropic, Supabase, and Stripe/);
+  assert.match(privacy, /not local legal, financial, or insurance advice/);
+  assert.match(privacy, /does not claim to follow every privacy law/);
+  assert.match(terms, /US\$9/);
+  assert.match(terms, /US\$39 a year/);
+  assert.match(terms, /not local legal, financial, or insurance advice/);
+  assert.match(terms, /People outside Canada and the United States/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /Autre pays \/ Général/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /explication générale/);
+  assert.match(documentPlainText(legalDocument("terms", "es")), /Otro país \/ General/);
+  assert.match(documentPlainText(legalDocument("terms", "es")), /explicación general/);
   assert.match(terms, /insurer or broker/);
   assert.match(terms, /Documents aren't stored/);
   assert.match(STORAGE_NOTE, /Documents aren't stored/);

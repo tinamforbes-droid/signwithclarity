@@ -162,9 +162,8 @@ test("the decode function verifies the session before it counts, and still refus
     },
   });
 
-  assert.equal(response.statusCode, 200);
-  assert.equal(JSON.parse(response.body).usage.limited, true);
-  assert.equal(JSON.parse(response.body).usage.used, 1);
+  assert.equal(response.statusCode, 402);
+  assert.equal(JSON.parse(response.body).code, "needs_plan");
   assert.equal(await hasUnlimitedAccess({ user: { id: USER_ID }, payload: { paid: true } }), false);
 
   const supabaseCall = seen.find((call) => call.url.includes("/auth/v1/user"));
@@ -173,9 +172,7 @@ test("the decode function verifies the session before it counts, and still refus
   assert.equal(supabaseCall.headers.Authorization, `Bearer ${TOKEN}`);
   assert.equal(supabaseCall.body, undefined);
   assert.equal(JSON.stringify(supabaseCall).includes(MARKER), false);
-  assert.equal(JSON.stringify(modelCall.body).includes(TOKEN), false);
-  assert.equal(JSON.stringify(modelCall.body).includes("sb_secret_server"), false);
-  assert.equal(JSON.stringify(modelCall.body).includes("ada@example.com"), false);
+  assert.equal(modelCall, undefined);
   const dumped = JSON.stringify(store.snapshot());
   assert.equal(dumped.includes(MARKER), false);
   assert.equal(dumped.includes(USER_ID), false);

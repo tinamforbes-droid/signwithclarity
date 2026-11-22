@@ -2,9 +2,9 @@
 // Loaded only when SWC_MOCK=1, and only for the Vite dev server.
 // Production builds do not include it.
 
-import { isComparisonRequest } from "../shared/comparePolicy.js";
 import { asLanguage } from "../shared/messages.js";
 import { buildSamplePolicy } from "../shared/samplePolicy.js";
+import { createMemoryAccountStore } from "../shared/accountStore.js";
 import { createMemoryUsageStore, enforceUsageLimit } from "../shared/usageGate.js";
 
 const END_PHRASE = "volcanic glass shed collapse is excluded unless building 7 is listed on the declarations";
@@ -160,7 +160,38 @@ function mockResult(payload) {
 
   const sawEnd = combined.toLowerCase().includes(END_PHRASE);
   const language = asLanguage(payload.language) || "en";
+  const general = payload.country === "General"
+    || (payload.country && payload.country !== "Canada" && payload.country !== "United States");
+  if (general) {
+    return { status: 200, body: { text: JSON.stringify(generalSections(language, payload.region, doc)) } };
+  }
   return { status: 200, body: { text: JSON.stringify(sections({ sawEnd, language })) } };
+}
+
+function generalSections(language, region, doc) {
+  const place = String(region || "").trim() || "the country you named";
+  const mentionsDeductible = /deductible|franchise|deducible/i.test(String(doc || ""));
+  const copy = {
+    en: {
+      summary: `This is a general explanation, not local legal, financial, or insurance advice. The wording describes what the policy says in plain language${mentionsDeductible ? ", including a deductible you pay before a claim" : ""}. Naming ${place} does not apply the insurance law of ${place}.`,
+      flags: "• An exclusion can change what is paid. Whether that exclusion is usual varies by country.\n• A deadline to report a loss is worth reading twice. The number of days often varies by country.",
+      questions: "• What does this exclusion mean where I live?\n• What do I have to do, and by when, after a loss?\n• Please ask a local insurer or broker to confirm the deductible.",
+      terms: "Deductible: the amount you pay first. The name for this, and how it works, varies by country.\nExclusion: something the wording says is not paid. What is excluded varies by country.\nEndorsement: an extra page that adds or changes the wording. Local insurers use different names for this.",
+    },
+    fr: {
+      summary: `Ceci est une explication générale, pas un avis juridique, financier ou en assurance pour votre pays. Le texte décrit ce que dit la police en langage clair${mentionsDeductible ? ", y compris une franchise que vous payez avant une réclamation" : ""}. Nommer ${place} n'applique pas le droit des assurances de ${place}.`,
+      flags: "• Une exclusion peut changer ce qui est payé. Que cette exclusion soit courante varie selon le pays.\n• Un délai pour déclarer un sinistre mérite d'être lu deux fois. Le nombre de jours varie souvent selon le pays.",
+      questions: "• Que veut dire cette exclusion là où j'habite?\n• Que dois-je faire, et dans quel délai, après un sinistre?\n• Demandez à un assureur ou à un courtier de chez vous de confirmer la franchise.",
+      terms: "Franchise : le montant que vous payez en premier. Le nom de ceci, et son fonctionnement, varient selon le pays.\nExclusion : quelque chose que le texte dit ne pas payer. Ce qui est exclu varie selon le pays.\nAvenant : une page ajoutée qui change le texte. Les assureurs locaux n'utilisent pas tous le même mot.",
+    },
+    es: {
+      summary: `Esta es una explicación general, no asesoría legal, financiera ni de seguros para su país. El texto describe lo que dice la póliza en lenguaje claro${mentionsDeductible ? ", incluido un deducible que usted paga antes de un reclamo" : ""}. Nombrar ${place} no aplica la ley de seguros de ${place}.`,
+      flags: "• Una exclusión puede cambiar lo que se paga. Si esa exclusión es habitual varía según el país.\n• Un plazo para avisar un siniestro merece leerse dos veces. La cantidad de días a menudo varía según el país.",
+      questions: "• ¿Qué significa esta exclusión donde yo vivo?\n• ¿Qué debo hacer, y en qué plazo, después de un siniestro?\n• Pregunte a una aseguradora o a un corredor de su lugar para confirmar el deducible.",
+      terms: "Deducible: la cantidad que usted paga primero. El nombre de esto, y cómo funciona, varía según el país.\nExclusión: algo que el texto dice que no se paga. Lo que queda excluido varía según el país.\nEndoso: una página extra que cambia el texto. Las aseguradoras locales no usan todas la misma palabra.",
+    },
+  };
+  return copy[language] || copy.en;
 }
 
 function delayFor(payload) {
@@ -179,6 +210,16 @@ function readBody(req) {
 }
 
 const usageStore = createMemoryUsageStore();
+const PREVIEW_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwcmV2aWV3In0.previewsig";
+const PREVIEW_USER = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const accountStore = createMemoryAccountStore({
+  [PREVIEW_USER]: {
+    paid: true,
+    plan: "yearly",
+    yearly_used: 0,
+    period_end: "2027-11-07T00:10:00.000Z",
+  },
+});
 
 export function mockDecodePlugin() {
   return {
@@ -222,20 +263,22 @@ export function mockDecodePlugin() {
         if (!headers["x-nf-client-connection-ip"]) {
           headers["x-nf-client-connection-ip"] = req.socket?.remoteAddress || "local";
         }
-        let gate = { allowed: true, usage: null, release: null };
-        if (!isComparisonRequest(payload)) {
-          gate = await enforceUsageLimit({
-            headers,
-            payload,
-            store: usageStore,
-            language: payload.language,
-          });
-          if (!gate.allowed) {
-            res.statusCode = gate.statusCode;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(gate.body));
-            return;
-          }
+        const gate = await enforceUsageLimit({
+          headers,
+          payload,
+          store: usageStore,
+          accountStore,
+          language: payload.language,
+          country: payload.country,
+          verifySession: async ({ token }) => (
+            token === PREVIEW_TOKEN ? { id: PREVIEW_USER, email: "preview@example.com" } : null
+          ),
+        });
+        if (!gate.allowed) {
+          res.statusCode = gate.statusCode;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(gate.body));
+          return;
         }
 
         const { status, body } = mockResult(payload);

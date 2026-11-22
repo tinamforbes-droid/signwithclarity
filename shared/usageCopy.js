@@ -1,8 +1,5 @@
 import { t } from "./messages.js";
 
-/** Free document explanations in one UTC calendar month. */
-export const FREE_EXPLANATION_LIMIT = 3;
-
 /**
  * Most model calls one explanation may use, including parts and a retry.
  * A long document is still one explanation. The cap stops one id from
@@ -46,15 +43,22 @@ export function formatResetDate(iso, lang) {
   }).format(date);
 }
 
-export function usageSnapshot(record, resetsOn) {
+export function usageSnapshot(record, resetsOn, options = {}) {
+  const limit = Number.isInteger(options.limit) ? options.limit : 0;
   const used = Number.isInteger(record?.used) && record.used > 0 ? record.used : 0;
   return {
     limited: true,
-    limit: FREE_EXPLANATION_LIMIT,
+    limit,
     used,
-    remaining: Math.max(0, FREE_EXPLANATION_LIMIT - used),
+    remaining: Math.max(0, limit - used),
     resetsOn,
   };
+}
+
+/** A paid plan's remaining count is shown. A free count is not. */
+export function usageAppliesHere(usage) {
+  if (!usage?.limited) return false;
+  return usage.plan === "yearly" || usage.plan === "household";
 }
 
 /** Calm line for the page. Empty when this visitor is not on a counted plan. */
@@ -77,7 +81,5 @@ export function usageStatusMessage(lang, usage) {
     if (usage.remaining === 1) return t(lang, "yearlyRemainingOne", { date });
     return t(lang, "yearlyRemaining", { count: usage.remaining, date });
   }
-  if ((usage.remaining ?? 0) <= 0) return t(lang, "freeLimitReached", { date });
-  if (usage.remaining === 1) return t(lang, "freeRemainingOne", { date });
-  return t(lang, "freeRemaining", { count: usage.remaining, date });
+  return t(lang, "freeLimitReached");
 }

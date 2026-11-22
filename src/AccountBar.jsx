@@ -4,22 +4,28 @@ import { isPlausibleEmail, magicLinkRequest } from "../shared/session.js";
 import { t } from "../shared/messages.js";
 import { loadOwnPlan } from "./accountRow.js";
 import { planHintText } from "./planHints.js";
-import { authConfigured, getAuthClient } from "./authClient.js";
+import { authConfigured, devPreviewSignedIn, getAuthClient } from "./authClient.js";
 
 function sessionEmail(session) {
   const email = session?.user?.email;
   return typeof email === "string" ? email : "";
 }
 
-export default function AccountBar({ lang }) {
-  const [phase, setPhase] = useState(() => (authConfigured() ? "loading" : "unavailable"));
+export default function AccountBar({ lang, general = false }) {
+  const [phase, setPhase] = useState(() => {
+    if (devPreviewSignedIn()) return "signedIn";
+    return authConfigured() ? "loading" : "unavailable";
+  });
   const [email, setEmail] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
-  const [signedInEmail, setSignedInEmail] = useState("");
+  const [signedInEmail, setSignedInEmail] = useState(() => (
+    devPreviewSignedIn() ? "preview@example.com" : ""
+  ));
   const [errorKey, setErrorKey] = useState("");
   const [planHint, setPlanHint] = useState("");
 
   useEffect(() => {
+    if (devPreviewSignedIn()) return undefined;
     const client = getAuthClient();
     if (!client) return undefined;
 
@@ -125,11 +131,11 @@ export default function AccountBar({ lang }) {
     <section className="account-bar" aria-label={t(lang, "signInEmailLabel")}>
       <div className="account-inner">
         {phase !== "signedIn" && phase !== "checkEmail" && (
-          <p className="account-lead">{t(lang, "signInOptional")}</p>
+          <p className="account-lead">{t(lang, general ? "generalSignInLead" : "signInOptional")}</p>
         )}
 
         {phase === "unavailable" && (
-          <p className="account-hint">{t(lang, "signInUnavailable")}</p>
+          <p className="account-hint">{t(lang, general ? "generalSignInUnavailable" : "signInUnavailable")}</p>
         )}
 
         {showForm && (
@@ -178,7 +184,7 @@ export default function AccountBar({ lang }) {
             <button className="account-btn" type="button" onClick={onSignOut}>
               {t(lang, "signOutButton")}
             </button>
-            <p className="account-hint">{phase === "signedIn" ? (planHint || t(lang, "signedInCount")) : ""}</p>
+            <p className="account-hint">{phase === "signedIn" ? (planHint || t(lang, general ? "signedInCountGeneral" : "signedInCount")) : ""}</p>
           </div>
         )}
 

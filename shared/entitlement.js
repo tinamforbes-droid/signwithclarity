@@ -120,6 +120,19 @@ function claimPlan(entry) {
  * explanation. The policies inside that comparison share the id.
  * Older single-explanation credits are spent only by a single explanation.
  */
+/**
+ * A single General explanation uses a paid plan the same way Canada and
+ * the United States do, without the free monthly allowance.
+ * Clarity Yearly covers it. An older Household Check balance covers it.
+ * A Household Check that is only a comparison does not.
+ */
+export function hasGeneralPaidAccess(account, now = new Date()) {
+  if (!account || account.paid !== true) return false;
+  if (isYearlyActive(account, now) && (account.yearly_used || 0) < YEARLY_FAIR_USE_LIMIT) return true;
+  if ((account.credits_remaining || 0) > 0) return true;
+  return false;
+}
+
 export function decideConsume(account, explanationId, now, limits = {}) {
   const yearlyCap = limits.yearlyCap || YEARLY_FAIR_USE_LIMIT;
   const purpose = limits.purpose === "compare" ? "compare" : "explain";

@@ -682,7 +682,7 @@ test("the customer portal opens only for a yearly plan", async () => {
   assert.equal(JSON.parse(refused.body).code, "no_subscription");
 });
 
-test("decode spends a household credit once per explanation, then the free limit", async (t) => {
+test("decode spends a household credit once per explanation, then asks for a plan", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const original = globalThis.fetch;
   globalThis.fetch = async (_url, _options) => ({
@@ -756,9 +756,9 @@ test("decode spends a household credit once per explanation, then the free limit
       paid: true,
     }),
   }, context);
-  assert.equal(free.statusCode, 200);
-  assert.equal(JSON.parse(free.body).usage.plan, undefined);
-  assert.equal(JSON.parse(free.body).usage.used, 1);
+  assert.equal(free.statusCode, 402);
+  assert.equal(JSON.parse(free.body).code, "needs_plan");
+  assert.equal(accounts.snapshot()[USER].credits_remaining, 0);
 });
 
 test("a failed reading gives the household credit back, and the yearly cap stops the model", async (t) => {

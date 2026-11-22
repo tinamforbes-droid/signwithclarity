@@ -40,6 +40,101 @@ export const US_STATES = US_STATE_NAMES.map((value) => ({
   ...(US_STATE_LABELS[value] || {}),
 }));
 
+/** Sent as the country when the person is outside Canada and the United States. */
+export const GENERAL_COUNTRY = "General";
+
+/**
+ * Places Stripe Managed Payments will not sell to.
+ * https://docs.stripe.com/payments/managed-payments/eligibility
+ * Change this list if Stripe's restricted customer countries change.
+ * Crimea, Donetsk, and Luhansk are not separate rows. Ukraine stays.
+ * Saint Helena stays. Ascension Island and Tristan da Cunha are the restricted parts.
+ */
+export const MANAGED_PAYMENTS_BLOCKED_COUNTRY_CODES = [
+  "AC", // Ascension Island
+  "CN", // China
+  "CU", // Cuba
+  "IR", // Iran
+  "XK", // Kosovo
+  "KP", // North Korea
+  "RU", // Russia
+  "SY", // Syria
+  "TA", // Tristan da Cunha
+];
+
+/**
+ * ISO country and territory codes for the General picker.
+ * Canada and the United States are not in this list. They keep their own modes.
+ * The code is only used to look up a name. Nothing else depends on which code it is.
+ */
+const GENERAL_COUNTRY_CODES = `
+AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ
+BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ
+CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ
+DE DJ DK DM DO DZ
+EC EE EG EH ER ES ET
+FI FJ FK FM FO FR
+GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY
+HK HM HN HR HT HU
+ID IE IL IM IN IO IQ IR IS IT
+JE JM JO JP
+KE KG KH KI KM KN KP KR KW KY KZ
+LA LB LC LI LK LR LS LT LU LV LY
+MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ
+NA NC NE NF NG NI NL NO NP NR NU NZ
+OM
+PA PE PF PG PH PK PL PM PN PR PS PT PW PY
+QA
+RE RO RS RU RW
+SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ
+TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ
+UA UG UM UY UZ
+VA VC VE VG VI VN VU
+WF WS
+YE YT
+ZA ZM ZW
+`.trim().split(/\s+/);
+
+export function isGeneralCountry(country) {
+  const value = String(country ?? "").trim();
+  return value !== "" && value !== "Canada" && value !== "United States";
+}
+
+function displayNames(lang) {
+  const locales = lang === "fr" ? ["fr-CA", "fr"] : lang === "es" ? ["es-419", "es"] : ["en"];
+  try {
+    return new Intl.DisplayNames(locales, { type: "region" });
+  } catch {
+    return new Intl.DisplayNames(["en"], { type: "region" });
+  }
+}
+
+/**
+ * Country names for General mode. The value stays the English name, so the
+ * explanation does not change when the page language changes. French and
+ * Spanish change only the label. No country in this list has its own rules.
+ */
+export function generalCountryOptions(lang) {
+  const code = lang === "fr" || lang === "es" ? lang : "en";
+  const local = displayNames(code);
+  const english = displayNames("en");
+  const blocked = new Set(MANAGED_PAYMENTS_BLOCKED_COUNTRY_CODES);
+  const seen = new Set();
+  const options = [];
+  for (const iso of GENERAL_COUNTRY_CODES) {
+    if (blocked.has(iso)) continue;
+    const value = english.of(iso);
+    const label = local.of(iso);
+    if (!value || !label || value === iso || label === iso) continue;
+    if (value === "Canada" || value === "United States") continue;
+    if (seen.has(value)) continue;
+    seen.add(value);
+    options.push({ value, label });
+  }
+  options.sort((a, b) => a.label.localeCompare(b.label, code === "en" ? "en" : code === "fr" ? "fr" : "es"));
+  return options;
+}
+
 const DC_ALIASES = [
   "dc",
   "d.c.",

@@ -145,7 +145,7 @@ test("a text policy does not use vision, and a broken photo names a code", async
 
   const context = {
     accountStore: createMemoryAccountStore({
-      [USER]: { paid: true, plan: "household", credits_remaining: 0, checks_remaining: 2 },
+      [USER]: { paid: true, plan: "household", credits_remaining: 1, checks_remaining: 2 },
     }),
     now: NOW,
     verifySession: async () => ({ id: USER, email: "ada@example.com" }),
@@ -217,7 +217,7 @@ test("a vision failure logs the status and Anthropic message, not the page", asy
   console.error = (...args) => logs.push(args.map(String).join(" "));
   const context = {
     accountStore: createMemoryAccountStore({
-      [USER]: { paid: true, plan: "household", credits_remaining: 0, checks_remaining: 2 },
+      [USER]: { paid: true, plan: "household", credits_remaining: 2, checks_remaining: 2 },
     }),
     now: NOW,
     verifySession: async () => ({ id: USER, email: "ada@example.com" }),

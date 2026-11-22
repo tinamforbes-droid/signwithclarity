@@ -7,7 +7,6 @@ import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
 import { hasUnlimitedAccess } from "../shared/access.js";
 import { buildSamplePolicy } from "../shared/samplePolicy.js";
 import {
-  FREE_EXPLANATION_LIMIT,
   formatResetDate,
   monthKey,
   resetsOnIso,
@@ -22,7 +21,6 @@ import {
   resolveUsageStore,
   usageSalt,
   usageStorageKey,
-  usageSubject,
 } from "../shared/usageGate.js";
 import { handler } from "../netlify/functions/decode.js";
 
@@ -89,25 +87,28 @@ function contextFor(store, extra = {}) {
   return { usageStore: store, ...extra };
 }
 
-test("the free allowance is three explanations, and the reset date is the next UTC month", () => {
-  assert.equal(FREE_EXPLANATION_LIMIT, 3);
+
+test("reset dates stay available for a yearly plan, and a free count is not offered", () => {
   const midMonth = new Date("2026-11-15T23:30:00Z");
   assert.equal(monthKey(midMonth), "2026-11");
   assert.equal(resetsOnIso(midMonth), "2026-12-01");
   assert.equal(resetsOnIso(new Date("2026-12-31T23:59:00Z")), "2027-01-01");
   assert.match(formatResetDate("2026-12-01", "en"), /December/);
-  assert.match(formatResetDate("2026-12-01", "en"), /2026/);
   assert.match(formatResetDate("2026-12-01", "fr"), /décembre/);
   assert.match(formatResetDate("2026-12-01", "es"), /diciembre/);
 
-  const usage = { limited: true, remaining: 2, resetsOn: "2026-12-01" };
-  assert.match(usageStatusMessage("en", usage), /2 free explanations left/);
-  assert.match(usageStatusMessage("en", usage), /December/);
-  assert.match(usageStatusMessage("fr", { ...usage, remaining: 1 }), /1 explication gratuite/);
-  assert.match(usageStatusMessage("es", { ...usage, remaining: 0 }), /3 explicaciones gratuitas/);
-  assert.match(usageStatusMessage("es", { ...usage, remaining: 0 }), /explicaciones de pago/);
-  assert.match(usageStatusMessage("fr", { ...usage, remaining: 0 }), /explications payantes/);
+  const leftover = { limited: true, remaining: 2, resetsOn: "2026-12-01" };
+  assert.match(usageStatusMessage("en", leftover), /no free explanation/i);
+  assert.match(usageStatusMessage("fr", { ...leftover, remaining: 1 }), /pas d'explication gratuite/);
+  assert.match(usageStatusMessage("es", { ...leftover, remaining: 0 }), /explicación gratuita/);
+  assert.match(usageStatusMessage("es", leftover), /de pago/);
   assert.equal(usageStatusMessage("en", { limited: false }), "");
+  assert.match(usageStatusMessage("en", {
+    limited: true,
+    plan: "yearly",
+    remaining: 4,
+    resetsOn: "2027-01-01",
+  }), /4 explanations left/);
 });
 
 test("the storage key is a salted hash, and a forwarded header cannot pick a new one", () => {
@@ -141,12 +142,11 @@ test("outside Netlify, tests do not open the blob store", async () => {
   assert.equal(await resolveUsageStore({ usageStore: passed }, { NETLIFY: "true" }), passed);
 });
 
-test("a paid comparison does not need blobs, and a lambda event connects the free store", async (t) => {
+test("a paid comparison does not need blobs, and an unpaid explanation does not open them", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const previousBlobs = process.env.NETLIFY_BLOBS_CONTEXT;
   const original = globalThis.fetch;
   const urls = [];
-  const puts = [];
   globalThis.fetch = async (url, options = {}) => {
     const address = String(url);
     urls.push(address);
@@ -157,7 +157,6 @@ test("a paid comparison does not need blobs, and a lambda event connects the fre
         text: async () => JSON.stringify({ content: [{ text: sections() }] }),
       };
     }
-    puts.push(options.body ? String(options.body) : "");
     const method = String(options.method || "get").toLowerCase();
     return {
       status: method === "put" ? 200 : 404,
@@ -202,11 +201,10 @@ test("a paid comparison does not need blobs, and a lambda event connects the fre
   assert.equal(urls.some((url) => url.includes("edge.example")), false);
 
   urls.length = 0;
-  const site = "9a003659-aaaa-0000-aaaa-63d3720d8621";
-  const free = await handler({
+  const unpaid = await handler({
     httpMethod: "POST",
     headers: {
-      "X-Nf-Site-Id": site,
+      "X-Nf-Site-Id": "9a003659-aaaa-0000-aaaa-63d3720d8621",
       "X-Nf-Deploy-Id": "deploy-1",
       "x-nf-client-connection-ip": IP,
     },
@@ -221,234 +219,71 @@ test("a paid comparison does not need blobs, and a lambda event connects the fre
       country: "Canada",
       region: "Alberta",
       explanationId: randomUUID(),
+      paid: true,
+      unlimited: true,
     }),
   }, { env: { NETLIFY: "true" } });
-  assert.equal(free.statusCode, 200, free.body);
-  assert.equal(JSON.parse(free.body).usage.used, 1);
-  assert.equal(JSON.parse(free.body).usage.remaining, 2);
-  const blobCall = urls.find((url) => url.startsWith("https://edge.example/"));
-  assert.equal(blobCall.startsWith(`https://edge.example/${site}/site:swc-usage/`), true);
-  assert.equal(puts.some((body) => body.includes(MARKER)), false);
-  assert.equal(urls.some((url) => url.includes("api.anthropic.com")), true);
-
-  urls.length = 0;
-  delete process.env.NETLIFY_BLOBS_CONTEXT;
-  const blocked = await handler(eventFor(), { env: { NETLIFY: "true" } });
-  assert.equal(blocked.statusCode, 503);
-  assert.equal(JSON.parse(blocked.body).code, "usage_store");
+  assert.equal(unpaid.statusCode, 402, unpaid.body);
+  assert.equal(JSON.parse(unpaid.body).code, "needs_plan");
+  assert.match(JSON.parse(unpaid.body).error, /\$9 CAD/);
+  assert.equal(urls.some((url) => url.includes("edge.example")), false);
   assert.equal(urls.some((url) => url.includes("api.anthropic.com")), false);
 });
 
-test("a signed-in or paid visitor is not unlimited until a later step says so", async () => {
+test("a signed-in or paid flag in the body is not unlimited", async () => {
   assert.equal(await hasUnlimitedAccess({ payload: { unlimited: true, paid: true } }), false);
 });
 
-test("three explanations are allowed, the fourth is refused, and the document is not stored", async (t) => {
+test("an unpaid explanation is refused, and the document is not stored", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
   const now = new Date("2026-11-02T15:00:00Z");
 
-  for (let n = 1; n <= 3; n++) {
-    const response = await handler(eventFor({ id: randomUUID() }), contextFor(store, { now }));
-    assert.equal(response.statusCode, 200, `explanation ${n}`);
-    const body = JSON.parse(response.body);
-    assert.equal(body.usage.limited, true);
-    assert.equal(body.usage.used, n);
-    assert.equal(body.usage.remaining, 3 - n);
-    assert.equal(body.usage.resetsOn, "2026-12-01");
+  for (const country of ["Canada", "United States"]) {
+    const response = await handler(eventFor({ extra: { country, region: country === "Canada" ? "Alberta" : "Texas" } }), contextFor(store, { now }));
+    assert.equal(response.statusCode, 402, country);
+    assert.equal(JSON.parse(response.body).code, "needs_plan");
   }
-  assert.equal(anthropic.calls.length, 3);
+  const french = await handler(eventFor({ language: "fr" }), contextFor(store, { now }));
+  assert.match(JSON.parse(french.body).error, /explication gratuite/);
+  const spanish = await handler(eventFor({ language: "es", extra: { country: "United States", region: "Texas" } }), contextFor(store, { now }));
+  assert.match(JSON.parse(spanish.body).error, /US\$9/);
+  assert.match(JSON.parse(spanish.body).error, /explicación gratuita/);
+  assert.equal(anthropic.calls.length, 0);
+  assert.deepEqual(store.snapshot(), {});
 
-  const blocked = await handler(
-    eventFor({ id: randomUUID(), language: "fr", extra: { unlimited: true, paid: true, skipLimit: true } }),
-    contextFor(store, { now }),
+  const responses = await Promise.all(
+    Array.from({ length: 8 }, () => handler(eventFor(), contextFor(store, { now }))),
   );
-  assert.equal(blocked.statusCode, 402);
-  const body = JSON.parse(blocked.body);
-  assert.equal(body.code, "monthly_limit");
-  assert.match(body.error, /3 explications gratuites/);
-  assert.match(body.error, /explications payantes/);
-  assert.match(body.error, /décembre/);
-  assert.equal(body.usage.remaining, 0);
-  assert.equal(anthropic.calls.length, 3);
-
-  const spanish = await handler(eventFor({ language: "es" }), contextFor(store, { now }));
-  assert.equal(spanish.statusCode, 402);
-  assert.match(JSON.parse(spanish.body).error, /explicaciones gratuitas/);
-  assert.match(JSON.parse(spanish.body).error, /explicaciones de pago/);
-
-  const dumped = JSON.stringify(store.snapshot());
-  assert.equal(dumped.includes(MARKER), false);
-  assert.equal(dumped.includes(IP), false);
-  assert.equal(dumped.includes("Alberta"), false);
-  assert.match(dumped, /"used":3/);
+  assert.equal(responses.every((response) => response.statusCode === 402), true);
+  assert.equal(anthropic.calls.length, 0);
 });
 
-test("parts of one document share one explanation, and a new month starts again", async (t) => {
+test("an unlimited access hook skips the paywall, and a body flag does not", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
-  const id = randomUUID();
-  const november = new Date("2026-11-20T00:00:00Z");
-
-  for (const mode of ["extract", "extract", "synthesize"]) {
-    const response = await handler(
-      eventFor({
-        id,
-        mode,
-        doc: mode === "synthesize" ? "" : `Part text. ${MARKER}`,
-        notes: mode === "synthesize" ? "Notes about a deductible." : undefined,
-      }),
-      contextFor(store, { now: november }),
-    );
-    assert.equal(response.statusCode, 200, mode);
-    assert.equal(JSON.parse(response.body).usage.used, 1);
-  }
-
-  const fourthDocument = await handler(eventFor(), contextFor(store, { now: november }));
-  assert.equal(fourthDocument.statusCode, 200);
-  await handler(eventFor(), contextFor(store, { now: november }));
-  const blocked = await handler(eventFor(), contextFor(store, { now: november }));
-  assert.equal(blocked.statusCode, 402);
-
-  const stillFinishing = await handler(
-    eventFor({ id, mode: "synthesize", notes: "More notes." }),
-    contextFor(store, { now: november }),
-  );
-  assert.equal(stillFinishing.statusCode, 200);
-  assert.equal(JSON.parse(stillFinishing.body).usage.used, 3);
-
-  const december = await handler(
-    eventFor(),
-    contextFor(store, { now: new Date("2026-12-01T00:00:00Z") }),
-  );
-  assert.equal(december.statusCode, 200);
-  assert.equal(JSON.parse(december.body).usage.used, 1);
-  assert.equal(JSON.parse(december.body).usage.resetsOn, "2027-01-01");
-  assert.equal(JSON.stringify(store.snapshot()).includes(MARKER), false);
-});
-
-test("a failed reading does not use up an explanation, and a later failure keeps one already counted", async (t) => {
-  process.env.ANTHROPIC_API_KEY = "test-key";
-  const anthropic = mockAnthropic(500);
-  t.after(() => anthropic.restore());
-  const store = createMemoryUsageStore();
-  const failed = await handler(eventFor(), contextFor(store));
-  assert.equal(failed.statusCode, 502);
-  const rolledBack = Object.values(store.snapshot())[0];
-  assert.equal(rolledBack.used, 0);
-  assert.deepEqual(rolledBack.explanations, {});
-
-  anthropic.restore();
-  const ok = mockAnthropic(200);
-  t.after(() => ok.restore());
-  const first = await handler(eventFor({ id: randomUUID() }), contextFor(store));
-  assert.equal(first.statusCode, 200);
-  const id = randomUUID();
-  const started = await handler(eventFor({ id }), contextFor(store));
-  assert.equal(JSON.parse(started.body).usage.used, 2);
-
-  ok.restore();
-  const again = mockAnthropic(500);
-  t.after(() => again.restore());
-  const continuation = await handler(eventFor({ id, mode: "synthesize", notes: "notes" }), contextFor(store));
-  assert.equal(continuation.statusCode, 502);
-  const saved = Object.values(store.snapshot())[0];
-  assert.equal(saved.used, 2);
-  assert.equal(saved.explanations[id] > 1, true);
-});
-
-test("a different connection has its own three, and a spoofed forwarded header does not", async (t) => {
-  process.env.ANTHROPIC_API_KEY = "test-key";
-  const anthropic = mockAnthropic();
-  t.after(() => anthropic.restore());
-  const store = createMemoryUsageStore();
-
   for (let n = 0; n < 3; n++) {
-    assert.equal((await handler(eventFor({ ip: IP }), contextFor(store))).statusCode, 200);
-  }
-  assert.equal((await handler(eventFor({ ip: IP }), contextFor(store))).statusCode, 402);
-  assert.equal((await handler(eventFor({ ip: "203.0.113.20" }), contextFor(store))).statusCode, 200);
-
-  const spoofed = await handler(eventFor({
-    headers: {
-      "x-nf-client-connection-ip": IP,
-      "x-forwarded-for": "198.51.100.50",
-    },
-  }), contextFor(store));
-  assert.equal(spoofed.statusCode, 402);
-
-  const forwardedOnly = await handler(eventFor({
-    headers: { "x-forwarded-for": "198.51.100.77" },
-  }), contextFor(store));
-  const forwardedOther = await handler(eventFor({
-    headers: { "x-forwarded-for": "198.51.100.88" },
-  }), contextFor(store));
-  assert.equal(forwardedOnly.statusCode, 200);
-  assert.equal(forwardedOther.statusCode, 200);
-  const thirdShared = await handler(eventFor({
-    headers: { "x-forwarded-for": "203.0.113.99" },
-  }), contextFor(store));
-  assert.equal(thirdShared.statusCode, 200);
-  const fourthShared = await handler(eventFor({
-    headers: { "x-forwarded-for": "192.0.2.1" },
-  }), contextFor(store));
-  assert.equal(fourthShared.statusCode, 402);
-});
-
-test("an unlimited access hook skips the store, and a body flag does not", async (t) => {
-  process.env.ANTHROPIC_API_KEY = "test-key";
-  const anthropic = mockAnthropic();
-  t.after(() => anthropic.restore());
-  const store = createMemoryUsageStore();
-  for (let n = 0; n < 5; n++) {
     const response = await handler(eventFor({ extra: { unlimited: true } }), contextFor(store, {
       hasUnlimitedAccess: async () => true,
     }));
     assert.equal(response.statusCode, 200);
     assert.equal(JSON.parse(response.body).usage.limited, false);
   }
+  const blocked = await handler(eventFor({ extra: { unlimited: true, paid: true } }), contextFor(store));
+  assert.equal(blocked.statusCode, 402);
   assert.deepEqual(store.snapshot(), {});
-  assert.equal(anthropic.calls.length, 5);
-});
-
-test("parallel explanations cannot slip past the monthly cap", async (t) => {
-  process.env.ANTHROPIC_API_KEY = "test-key";
-  const anthropic = mockAnthropic();
-  t.after(() => anthropic.restore());
-  const store = createMemoryUsageStore();
-  const responses = await Promise.all(
-    Array.from({ length: 8 }, () => handler(eventFor(), contextFor(store))),
-  );
-  const allowed = responses.filter((response) => response.statusCode === 200);
-  const blocked = responses.filter((response) => response.statusCode === 402);
-  assert.equal(allowed.length, 3);
-  assert.equal(blocked.length, 5);
   assert.equal(anthropic.calls.length, 3);
 });
 
-test("a store that cannot record the count does not call the model", async (t) => {
+test("a broken usage store is not required, and an empty document is still refused first", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
-
   const busy = {
-    async get() {
-      return { value: null, etag: null };
-    },
-    async compareAndSet() {
-      return false;
-    },
-  };
-  const busyResponse = await handler(eventFor(), contextFor(busy));
-  assert.equal(busyResponse.statusCode, 503);
-  assert.equal(JSON.parse(busyResponse.body).code, "usage_busy");
-  assert.equal(anthropic.calls.length, 0);
-
-  const down = {
     async get() {
       throw new Error("blobs down");
     },
@@ -456,79 +291,45 @@ test("a store that cannot record the count does not call the model", async (t) =
       return false;
     },
   };
-  const downResponse = await handler(eventFor(), contextFor(down));
-  assert.equal(downResponse.statusCode, 500);
+  const down = await handler(eventFor(), contextFor(busy));
+  assert.equal(down.statusCode, 402);
+  assert.equal(JSON.parse(down.body).code, "needs_plan");
   assert.equal(anthropic.calls.length, 0);
-});
 
-test("an empty document and a closed explanation do not spend a new credit", async (t) => {
-  process.env.ANTHROPIC_API_KEY = "test-key";
-  const anthropic = mockAnthropic();
-  t.after(() => anthropic.restore());
-  const store = createMemoryUsageStore();
-  const empty = await handler(eventFor({ doc: "   " }), contextFor(store));
+  const empty = await handler(eventFor({ doc: "   " }), contextFor(createMemoryUsageStore()));
   assert.equal(empty.statusCode, 400);
-  assert.deepEqual(store.snapshot(), {});
-
-  const id = randomUUID();
-  const key = usageStorageKey(IP, usageSalt());
-  await store.compareAndSet(key, {
-    month: monthKey(new Date()),
-    used: 1,
-    explanations: { [id]: 120 },
-  }, null);
-  const closed = await handler(eventFor({ id }), contextFor(store));
-  assert.equal(closed.statusCode, 400);
-  assert.equal(JSON.parse(closed.body).code, "explanation_closed");
-  assert.equal(anthropic.calls.length, 0);
-  assert.equal(Object.values(store.snapshot())[0].used, 1);
 });
 
-test("without a usage store the function still explains, so local tests stay open", async (t) => {
+test("without a usage store an unpaid explanation is still refused", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
-  for (let n = 0; n < 4; n++) {
-    const response = await handler(eventFor());
-    assert.equal(response.statusCode, 200);
-    assert.equal(JSON.parse(response.body).usage, undefined);
-  }
+  const response = await handler(eventFor());
+  assert.equal(response.statusCode, 402);
+  assert.equal(JSON.parse(response.body).code, "needs_plan");
+  assert.equal(anthropic.calls.length, 0);
 });
 
-test("the browser treats the monthly limit as final and keeps one explanation id for every part", async () => {
-  const usage = { limited: true, limit: 3, used: 3, remaining: 0, resetsOn: "2026-12-01" };
+test("the browser treats a paywall as final and keeps one explanation id for every part", async () => {
   await assert.rejects(
     () => postDecode({ language: "en" }, {
       fetchImpl: async () => ({
         ok: false,
         status: 402,
         text: async () => JSON.stringify({
-          error: "You've used your 3 free explanations this month. They reset on December 1, 2026. Paid explanations are listed on this page.",
-          code: "monthly_limit",
-          usage,
+          error: "This explanation is paid. There is no free explanation.",
+          code: "needs_plan",
         }),
       }),
     }),
     (err) => {
       assert.equal(err instanceof DecodeError, true);
       assert.equal(err.retryable, false);
-      assert.equal(err.code, "monthly_limit");
-      assert.equal(err.usage.remaining, 0);
-      assert.match(err.message, /Paid explanations are listed on this page/);
+      assert.equal(err.code, "needs_plan");
+      assert.match(err.message, /no free explanation/i);
       return true;
     },
   );
-
-  const seen = [];
-  await postDecode({ language: "fr" }, {
-    fetchImpl: async () => ({
-      ok: true,
-      status: 200,
-      text: async () => JSON.stringify({ text: "note", usage: { limited: true, remaining: 2, resetsOn: "2026-12-01" } }),
-    }),
-    onUsage: (next) => seen.push(next),
-  });
-  assert.equal(seen[0].remaining, 2);
 
   const policy = buildSamplePolicy({ pages: 18 });
   const calls = [];
@@ -579,113 +380,80 @@ test("the blob adapter writes only when the previous version still matches", asy
 });
 
 const USER_A = "11111111-1111-4111-8111-111111111111";
-const USER_B = "22222222-2222-4222-8222-222222222222";
 const TOKEN_A = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhIn0.sigAaaaa";
-const TOKEN_B = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiIn0.sigBbbbb";
 
-function accountVerifier(map) {
-  return async ({ token }) => {
-    const id = map[token];
-    if (!id) return null;
-    return { id, email: "should-not-be-stored@example.com", paid: true };
-  };
-}
-
-function signedEvent(token, ip = IP, extra = {}) {
-  return eventFor({
-    ip,
-    headers: {
-      "x-nf-client-connection-ip": ip,
-      authorization: `Bearer ${token}`,
-    },
-    extra,
-  });
-}
-
-test("a signed-in person has their own three, separate from the connection", async (t) => {
+test("a signed-in person without a plan is refused, and a yearly plan still explains", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
-  const verifySession = accountVerifier({ [TOKEN_A]: USER_A, [TOKEN_B]: USER_B });
-  const context = contextFor(store, { verifySession });
+  const accounts = createMemoryAccountStore();
+  const verifySession = async ({ token }) => {
+    if (token !== TOKEN_A) return null;
+    return { id: USER_A, email: "should-not-be-stored@example.com", paid: true };
+  };
 
-  assert.equal(usageSubject(null, { "x-nf-client-connection-ip": IP }), IP);
-  assert.equal(usageSubject({ id: USER_A.toUpperCase(), email: "a@b.c" }, {}), `user:${USER_A}`);
-  assert.equal(
-    usageStorageKey(usageSubject(null, { "x-nf-client-connection-ip": IP }), usageSalt()),
-    usageStorageKey(IP, usageSalt()),
-  );
+  const unpaid = await handler(eventFor({
+    headers: {
+      "x-nf-client-connection-ip": IP,
+      authorization: `Bearer ${TOKEN_A}`,
+    },
+    extra: { userId: USER_A, paid: true },
+  }), contextFor(store, { verifySession, accountStore: accounts }));
+  assert.equal(unpaid.statusCode, 402);
+  assert.equal(anthropic.calls.length, 0);
+  assert.deepEqual(store.snapshot(), {});
 
-  for (let n = 0; n < 3; n++) {
-    const response = await handler(signedEvent(TOKEN_A, IP), context);
-    assert.equal(response.statusCode, 200, `account explanation ${n + 1}`);
-    assert.equal(JSON.parse(response.body).usage.used, n + 1);
-  }
-  const sameAccountOtherConnection = await handler(signedEvent(TOKEN_A, "203.0.113.20"), context);
-  assert.equal(sameAccountOtherConnection.statusCode, 402);
-
-  const otherAccount = await handler(signedEvent(TOKEN_B, IP, { userId: USER_A, paid: true }), context);
-  assert.equal(otherAccount.statusCode, 200);
-  assert.equal(JSON.parse(otherAccount.body).usage.used, 1);
-
-  const anonymous = await handler(eventFor({ ip: IP, extra: { userId: USER_A, paid: true } }), context);
-  assert.equal(anonymous.statusCode, 200);
-  assert.equal(JSON.parse(anonymous.body).usage.used, 1);
-
-  const dumped = JSON.stringify(store.snapshot());
+  const paidAccounts = createMemoryAccountStore({
+    [USER_A]: { paid: true, plan: "yearly", yearly_used: 0, period_end: "2027-11-07T00:10:00.000Z" },
+  });
+  const paid = await handler(eventFor({
+    headers: {
+      "x-nf-client-connection-ip": IP,
+      authorization: `Bearer ${TOKEN_A}`,
+    },
+  }), contextFor(store, {
+    verifySession,
+    accountStore: paidAccounts,
+    now: new Date("2026-11-02T15:00:00Z"),
+  }));
+  assert.equal(paid.statusCode, 200, paid.body);
+  assert.equal(JSON.parse(paid.body).usage.plan, "yearly");
+  assert.equal(paidAccounts.snapshot()[USER_A].yearly_used, 1);
+  const dumped = JSON.stringify(store.snapshot()) + JSON.stringify(paidAccounts.snapshot());
   assert.equal(dumped.includes(MARKER), false);
-  assert.equal(dumped.includes(USER_A), false);
-  assert.equal(dumped.includes(USER_B), false);
   assert.equal(dumped.includes("should-not-be-stored@example.com"), false);
-  assert.equal(dumped.includes(TOKEN_A), false);
-  assert.equal(dumped.includes(IP), false);
-  const accountKey = usageStorageKey(`user:${USER_A}`, usageSalt());
-  assert.equal(store.snapshot()[accountKey].used, 3);
-  assert.equal(store.snapshot()[usageStorageKey(IP, usageSalt())].used, 1);
 });
 
-test("a rejected or broken session does not open a new count, and the free explanation still works", async (t) => {
+test("a rejected or broken session does not explain", async (t) => {
   process.env.ANTHROPIC_API_KEY = "test-key";
   const anthropic = mockAnthropic();
   t.after(() => anthropic.restore());
   const store = createMemoryUsageStore();
-
-  for (let n = 0; n < 3; n++) {
-    assert.equal((await handler(eventFor({ ip: "198.51.100.10" }), contextFor(store))).statusCode, 200);
-  }
-  const pretending = await handler(
-    eventFor({
-      ip: "198.51.100.10",
-      headers: {
-        "x-nf-client-connection-ip": "198.51.100.10",
-        authorization: "Bearer not-a-session",
-      },
-      extra: { userId: USER_A, email: "person@example.com", paid: true },
-    }),
-    contextFor(store, {
-      verifySession: async () => {
-        throw new Error("should not be called for a token that is not a session");
-      },
-    }),
-  );
+  const pretending = await handler(eventFor({
+    headers: {
+      "x-nf-client-connection-ip": IP,
+      authorization: "Bearer not-a-session",
+    },
+    extra: { userId: USER_A, paid: true, unlimited: true },
+  }), contextFor(store, {
+    verifySession: async () => {
+      throw new Error("should not be called for a token that is not a session");
+    },
+  }));
   assert.equal(pretending.statusCode, 402);
 
-  const rejected = await handler(
-    signedEvent("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJub3BlIn0.notValid", "198.51.100.11"),
-    contextFor(store, { verifySession: async () => null }),
-  );
-  assert.equal(rejected.statusCode, 200);
-  assert.equal(JSON.parse(rejected.body).usage.used, 1);
-
-  const broken = await handler(
-    signedEvent(TOKEN_A, "198.51.100.12"),
-    contextFor(store, {
-      verifySession: async () => {
-        throw new Error("supabase down");
-      },
-    }),
-  );
-  assert.equal(broken.statusCode, 200);
-  assert.equal(store.snapshot()[usageStorageKey(`user:${USER_A}`, usageSalt())], undefined);
+  const broken = await handler(eventFor({
+    headers: {
+      "x-nf-client-connection-ip": IP,
+      authorization: `Bearer ${TOKEN_A}`,
+    },
+  }), contextFor(store, {
+    verifySession: async () => {
+      throw new Error("supabase down");
+    },
+  }));
+  assert.equal(broken.statusCode, 402);
+  assert.equal(anthropic.calls.length, 0);
+  assert.deepEqual(store.snapshot(), {});
 });

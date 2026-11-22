@@ -80,7 +80,7 @@ test("every short string exists in French and Spanish, with the same placeholder
   assert.match(t("en", "signInCheckEmail", { email: "ada@example.com" }), /ada@example.com/);
   assert.match(t("fr", "signInCheckEmail", { email: "ada@example.com" }), /courriel/i);
   assert.match(t("es", "signInCheckEmail", { email: "ada@example.com" }), /correo/);
-  assert.match(t("en", "signInOptional"), /optional/i);
+  assert.match(t("en", "signInOptional"), /no free explanation/i);
   assert.match(t("fr", "signOutButton"), /déconnecter/);
   assert.match(t("es", "signOutButton"), /Cerrar sesión/);
   assert.equal(LANGUAGE_CHOICES.map((choice) => choice.label).join(","), "English,Français,Español");

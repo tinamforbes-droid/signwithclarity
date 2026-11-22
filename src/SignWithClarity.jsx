@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { compareDisabledReason, explainDisabledReason, showRunError } from "../shared/readiness.js";
 import { runComparison } from "../shared/compareRun.js";
 import { DecodeError, postDecode, runDecode } from "../shared/decodeRun.js";
-import { canCompareAccount, isYearlyActive, isoDate, visibleChecks } from "../shared/entitlement.js";
+import { canCompareAccount, hasGeneralPaidAccess, isYearlyActive, isoDate, visibleChecks } from "../shared/entitlement.js";
 import { longDocumentNote, planDocument } from "../shared/limits.js";
 import {
   LANGUAGE_CHOICES,
@@ -18,11 +18,13 @@ import {
   commitRegion,
   filterRegionOptions,
   foldRegion,
+  GENERAL_COUNTRY,
+  generalCountryOptions,
   normalizeRegionQuery,
   regionOptions,
 } from "../shared/regions.js";
 import { YEARLY_FAIR_USE_LIMIT } from "../shared/plans.js";
-import { formatResetDate, usageStatusMessage } from "../shared/usageCopy.js";
+import { formatResetDate, usageAppliesHere, usageStatusMessage } from "../shared/usageCopy.js";
 import AccountBar from "./AccountBar.jsx";
 import ComparePanel from "./ComparePanel.jsx";
 import { devCompareSample, emptyPolicy } from "./policyDraft.js";
@@ -30,7 +32,8 @@ import ComparisonResult from "./ComparisonResult.jsx";
 import { loadOwnPlan } from "./accountRow.js";
 import { FILE_ACCEPT, readDocumentFiles } from "./readDocumentFile.js";
 import Pricing from "./Pricing.jsx";
-import { currentAccessToken } from "./authClient.js";
+import ExampleSection from "./ExampleSection.jsx";
+import { currentAccessToken, devPreviewSignedIn } from "./authClient.js";
 import LegalPage from "./LegalPage.jsx";
 import { storageNote } from "./legalCopy.js";
 
@@ -654,6 +657,58 @@ const STYLES = `
   }
   .disclaimer-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
   .disclaimer-text { font-size: 12px; color: var(--text-light); line-height: 1.5; }
+  .disclaimer-general {
+    background: rgba(201, 169, 110, 0.22);
+    border-color: var(--gold);
+  }
+  .disclaimer-general .disclaimer-text { color: var(--navy); font-size: 13px; }
+  .example { margin: 28px auto 8px; max-width: 860px; }
+  .example-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--navy);
+    text-align: center;
+  }
+  .example-placeholder {
+    margin: 12px auto 16px;
+    max-width: 640px;
+    text-align: center;
+    color: var(--navy);
+    background: rgba(201, 169, 110, 0.2);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .example-note {
+    margin: 8px auto 16px;
+    max-width: 640px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 14px;
+  }
+  .example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .example-card {
+    background: var(--white);
+    border: 1px solid var(--cream-dark);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .example-card h3 { color: var(--navy); font-size: 16px; margin-bottom: 8px; }
+  .example-card h4 { color: var(--navy); font-size: 14px; margin: 14px 0 6px; }
+  .example-disclaimer {
+    margin-top: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-light);
+  }
+  .example-card p, .example-extra { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+  .example-extra { margin-top: 10px; color: var(--text); }
+  @media (max-width: 700px) {
+    .example-grid { grid-template-columns: 1fr; }
+  }
 
   /* NEW DECODE BTN */
   .new-decode-btn {
@@ -1315,6 +1370,7 @@ export default function SignWithClarity() {
   const [comparison, setComparison] = useState(null);
   const [compareParts, setCompareParts] = useState(1);
   const [account, setAccount] = useState(null);
+  const [signedIn, setSignedIn] = useState(() => devPreviewSignedIn());
   const comparisonIdRef = useRef("");
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -1336,12 +1392,17 @@ export default function SignWithClarity() {
   const fileRef = useRef();
   const plan = useMemo(() => (docText.trim() ? planDocument(docText) : null), [docText]);
   const error = errorKey ? t(lang, errorKey) : errorText;
-  const atLimit = errorCode === "monthly_limit"
-    || errorCode === "fair_use"
-    || (usage?.limited && usage.plan !== "household" && (usage.remaining ?? 0) <= 0);
-  const usageMessage = usageStatusMessage(lang, atLimit && usage ? { ...usage, remaining: 0 } : usage);
+  const general = country === GENERAL_COUNTRY;
+  const shownUsage = usageAppliesHere(usage, general) ? usage : null;
+  const needsPlan = !hasGeneralPaidAccess(account) && !devPreviewSignedIn();
+  const atLimit = errorCode === "fair_use"
+    || errorCode === "needs_plan"
+    || errorCode === "general_needs_plan"
+    || (!general && errorCode === "monthly_limit")
+    || (shownUsage?.limited && shownUsage.plan !== "household" && (shownUsage.remaining ?? 0) <= 0);
+  const usageMessage = usageStatusMessage(lang, atLimit && shownUsage ? { ...shownUsage, remaining: 0 } : shownUsage);
   const regionHint = needsRegion
-    ? t(lang, country === "Canada" ? "regionHintCanada" : "regionHintUS")
+    ? t(lang, general ? "regionHintGeneral" : country === "Canada" ? "regionHintCanada" : "regionHintUS")
     : "";
 
   useEffect(() => {
@@ -1354,8 +1415,12 @@ export default function SignWithClarity() {
       loadOwnPlan().then((row) => {
         if (!active) return;
         setAccount(row?.account || null);
+        setSignedIn(Boolean(row?.signedIn) || devPreviewSignedIn());
       }).catch(() => {
-        if (active) setAccount(null);
+        if (active) {
+          setAccount(null);
+          setSignedIn(devPreviewSignedIn());
+        }
       });
     };
     refresh();
@@ -1384,7 +1449,9 @@ export default function SignWithClarity() {
   function clearError() {
     setErrorKey("");
     setErrorText("");
-    setErrorCode((code) => (code === "monthly_limit" || code === "fair_use" ? code : ""));
+    setErrorCode((code) => (
+      code === "monthly_limit" || code === "needs_plan" || code === "general_needs_plan" || code === "fair_use" ? code : ""
+    ));
   }
 
   // Dev-only samples for local checks. Vite removes this block from production builds.
@@ -1441,7 +1508,10 @@ export default function SignWithClarity() {
     handleFiles(e.dataTransfer.files);
   };
 
-  const places = regionOptions(country, lang);
+  const places = useMemo(
+    () => (general ? generalCountryOptions(lang) : regionOptions(country, lang)),
+    [general, country, lang],
+  );
   const comparePreview = import.meta.env.DEV && (() => {
     try {
       return new URLSearchParams(window.location.search).get("sample") === "compare";
@@ -1463,7 +1533,9 @@ export default function SignWithClarity() {
     blockedNote: compareNote,
     readingName: workMode === "compare" ? readingName : "",
   });
-  const explainReason = explainDisabledReason(lang, {
+  const explainReason = needsPlan
+    ? t(lang, country === "Canada" ? "needsPlanCad" : "needsPlanUsd")
+    : explainDisabledReason(lang, {
     text: docText,
     pages: docPages,
     fileName,
@@ -1473,8 +1545,8 @@ export default function SignWithClarity() {
     limitMessage: usageMessage,
     readingName: workMode === "single" ? readingName : "",
   });
-  const regionLabel = t(lang, country === "Canada" ? "regionLabelCanada" : "regionLabelUS");
-  const regionListLabel = t(lang, country === "Canada" ? "regionListCanada" : "regionListUS");
+  const regionLabel = t(lang, general ? "regionLabelGeneral" : country === "Canada" ? "regionLabelCanada" : "regionLabelUS");
+  const regionListLabel = t(lang, general ? "regionListGeneral" : country === "Canada" ? "regionListCanada" : "regionListUS");
   const copy = loadingCopy(lang, progress);
 
   const decode = async () => {
@@ -1623,11 +1695,11 @@ export default function SignWithClarity() {
                 </button>
               ))}
             </div>
-            <span className="header-badge">{t(lang, "badge")}</span>
+            <span className="header-badge">{t(lang, general ? "badgeGeneral" : "badge")}</span>
           </div>
         </header>
 
-        <AccountBar lang={lang} />
+        <AccountBar lang={lang} general={general} />
 
         {page === "home" ? (
         <>
@@ -1639,7 +1711,7 @@ export default function SignWithClarity() {
           <div className="hero-trust">
             <span className="trust-item"><span className="trust-dot"></span>{t(lang, "trustNotAdvice")}</span>
             <span className="trust-item"><span className="trust-dot"></span>{t(lang, "trustPlain")}</span>
-            <span className="trust-item"><span className="trust-dot"></span>{t(lang, "trustPlaces")}</span>
+            <span className="trust-item"><span className="trust-dot"></span>{t(lang, general ? "trustPlacesGeneral" : "trustPlaces")}</span>
           </div>
         </div>
 
@@ -1725,10 +1797,14 @@ export default function SignWithClarity() {
                       setCountry(e.target.value);
                       setRegion("");
                       setNeedsRegion(false);
+                      setErrorCode("");
+                      setErrorKey("");
+                      setErrorText("");
                     }}
                   >
                     <option value="Canada">{t(lang, "countryCanada")}</option>
                     <option value="United States">{t(lang, "countryUS")}</option>
+                    <option value={GENERAL_COUNTRY}>{t(lang, "countryGeneral")}</option>
                   </select>
                 </div>
 
@@ -1767,8 +1843,18 @@ export default function SignWithClarity() {
                     {!error && explainReason && (
                       <p className="block-reason" role="status">
                         {explainReason}
-                        {atLimit && errorCode !== "fair_use" && (
+                        {needsPlan && !signedIn && (
+                          <> <a href="#sign-in-email" onClick={(event) => {
+                            event.preventDefault();
+                            document.querySelector(".account-bar")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            document.getElementById("sign-in-email")?.focus();
+                          }}>{t(lang, "generalSignInLink")}</a></>
+                        )}
+                        {(needsPlan || (atLimit && errorCode !== "fair_use")) && (
                           <> <a href="/#pricing" onClick={openPricing}>{t(lang, "pricingSeePlans")}</a></>
+                        )}
+                        {(needsPlan || atLimit) && (
+                          <> <a href="#example">{t(lang, "exampleLink")}</a></>
                         )}
                       </p>
                     )}
@@ -1819,7 +1905,7 @@ export default function SignWithClarity() {
             <div className="results">
               <div className="results-header">
                 <h2 className="results-title">{t(lang, "resultsTitle")}</h2>
-                <p className="results-sub">{t(lang, "resultsSub")}</p>
+                <p className="results-sub">{t(lang, general ? "resultsSubGeneral" : "resultsSub")}</p>
                 {partsRead > 1 && (
                   <p className="results-sub">{t(lang, "resultsWhole")}</p>
                 )}
@@ -1860,6 +1946,14 @@ export default function SignWithClarity() {
                 <div className="result-section-body">{results.terms}</div>
               </div>
 
+              {general && (
+                <div className="disclaimer disclaimer-general">
+                  <span className="disclaimer-icon">⚖️</span>
+                  <p className="disclaimer-text">
+                    <strong>{t(lang, "disclaimerStrongGeneral")}</strong> {t(lang, "disclaimerRestGeneral")}
+                  </p>
+                </div>
+              )}
               <div className="disclaimer">
                 <span className="disclaimer-icon">⚖️</span>
                 <p className="disclaimer-text">
@@ -1879,6 +1973,7 @@ export default function SignWithClarity() {
               comparison={comparison}
               parts={compareParts}
               usageMessage={usageMessage}
+              general={general}
               onAgain={() => {
                 setComparison(null);
                 setPolicies([emptyPolicy(), emptyPolicy()]);
@@ -1894,7 +1989,7 @@ export default function SignWithClarity() {
               <div className="how-steps">
                 {[
                   { n: "1", title: t(lang, "step1Title"), desc: t(lang, "step1Desc") },
-                  { n: "2", title: t(lang, "step2Title"), desc: t(lang, "step2Desc") },
+                  { n: "2", title: t(lang, general ? "step2TitleGeneral" : "step2Title"), desc: t(lang, general ? "step2DescGeneral" : "step2Desc") },
                   { n: "3", title: t(lang, "step3Title"), desc: t(lang, "step3Desc") },
                 ].map(s => (
                   <div className="how-step" key={s.n}>
@@ -1908,6 +2003,7 @@ export default function SignWithClarity() {
               </div>
             </div>
           )}
+          <ExampleSection lang={lang} />
           <Pricing lang={lang} country={country} />
         </main>
         </>
@@ -1917,7 +2013,7 @@ export default function SignWithClarity() {
 
         <footer className="footer">
           <p className="footer-name">Sign With Clarity</p>
-          <p className="footer-text">{t(lang, "footerText")}</p>
+          <p className="footer-text">{t(lang, general ? "footerTextGeneral" : "footerText")}</p>
           <nav className="footer-links" aria-label={t(lang, "footerNav")}>
             <a href="/#pricing" onClick={openPricing}>{t(lang, "pricingLink")}</a>
             <a href="/privacy" onClick={(event) => openPage(event, "/privacy")}>{t(lang, "privacyLink")}</a>

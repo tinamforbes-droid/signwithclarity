@@ -7,25 +7,13 @@ import { isComparisonRequest } from "./comparePolicy.js";
 import { asLanguage, t } from "./messages.js";
 import { bearerToken, isUserId } from "./session.js";
 import { verifySupabaseUser } from "./supabaseUser.js";
-import {
-  FREE_EXPLANATION_LIMIT,
-  MAX_CALLS_PER_EXPLANATION,
-  formatResetDate,
-  monthKey,
-  resetsOnIso,
-  usageSnapshot,
-} from "./usageCopy.js";
-
 /**
- * Fallback salt so the limit works before anyone sets USAGE_HASH_SALT.
- * A value in Netlify's environment variables replaces this. Changing the
- * salt later starts everyone's monthly count over, because the stored key
- * changes.
+ * Fallback salt for a stored key. A value in Netlify's environment
+ * variables replaces this. The explanation path does not write a free count.
  */
 export const BUILT_IN_USAGE_SALT = "signwithclarity-usage-v1";
 
 const EXPLANATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const COMMIT_ATTEMPTS = 6;
 
 export function usageSalt(env = process.env) {
   const configured = String(env?.USAGE_HASH_SALT || "").trim();
@@ -177,96 +165,6 @@ export async function resolveUsageStore(context, env = process.env, event) {
   };
 }
 
-function sanitizeExplanations(value) {
-  const out = {};
-  if (!value || typeof value !== "object" || Array.isArray(value)) return out;
-  for (const [id, calls] of Object.entries(value)) {
-    if (!EXPLANATION_ID.test(id)) continue;
-    if (!Number.isInteger(calls) || calls < 1) continue;
-    out[id] = Math.min(calls, MAX_CALLS_PER_EXPLANATION);
-  }
-  return out;
-}
-
-function currentRecord(raw, month) {
-  if (!raw || typeof raw !== "object" || raw.month !== month) {
-    return { month, used: 0, explanations: {} };
-  }
-  const explanations = sanitizeExplanations(raw.explanations);
-  return { month, used: Object.keys(explanations).length, explanations };
-}
-
-function decide(raw, month, explanationId) {
-  const record = currentRecord(raw, month);
-  const calls = record.explanations[explanationId];
-  if (Number.isInteger(calls)) {
-    if (calls >= MAX_CALLS_PER_EXPLANATION) {
-      return { write: false, allowed: false, reason: "closed", fresh: false, record };
-    }
-    return {
-      write: true,
-      allowed: true,
-      fresh: false,
-      record: {
-        month,
-        explanations: { ...record.explanations, [explanationId]: calls + 1 },
-        used: record.used,
-      },
-    };
-  }
-  if (record.used >= FREE_EXPLANATION_LIMIT) {
-    return { write: false, allowed: false, reason: "limit", fresh: false, record };
-  }
-  const explanations = { ...record.explanations, [explanationId]: 1 };
-  return {
-    write: true,
-    allowed: true,
-    fresh: true,
-    record: { month, explanations, used: Object.keys(explanations).length },
-  };
-}
-
-async function commit(store, key, update) {
-  for (let attempt = 0; attempt < COMMIT_ATTEMPTS; attempt++) {
-    const current = await store.get(key);
-    const result = update(current.value);
-    if (!result.write) return result;
-    const ok = await store.compareAndSet(key, result.record, current.etag);
-    if (ok) return result;
-  }
-  const error = new Error("usage store busy");
-  error.code = "usage_busy";
-  throw error;
-}
-
-async function releaseReservation(store, key, explanationId, month) {
-  try {
-    await commit(store, key, (raw) => {
-      const record = currentRecord(raw, month);
-      if (record.explanations[explanationId] !== 1) return { write: false, record };
-      const explanations = { ...record.explanations };
-      delete explanations[explanationId];
-      return {
-        write: true,
-        record: { month, explanations, used: Object.keys(explanations).length },
-      };
-    });
-  } catch {
-    console.error("usage release failed");
-  }
-}
-
-/**
- * Who the monthly count belongs to. A confirmed account id is hashed on
- * its own. Otherwise the count stays on the connection, exactly as before.
- * The email address is not part of the key.
- */
-export function usageSubject(user, headers) {
-  const id = String(user?.id ?? "").trim().toLowerCase();
-  if (isUserId(id)) return `user:${id}`;
-  return clientIp(headers);
-}
-
 function confirmedUser(user) {
   const id = String(user?.id ?? "").trim().toLowerCase();
   if (!isUserId(id)) return null;
@@ -292,14 +190,13 @@ async function resolveAccount(headers, env, verifySession) {
 }
 
 /**
- * Count one free explanation, or refuse it before the model is called.
- * The stored record is a hash key plus a month, a count, and random ids.
- * It never includes the document, the notes, the IP address, or the email.
+ * Allow a paid explanation, or refuse it before the model is called.
+ * There is no free explanation. This function does not write a free-use
+ * record, and it does not read the IP address to decide.
  */
 export async function enforceUsageLimit({
   headers,
   payload,
-  store,
   env = process.env,
   now = new Date(),
   hasUnlimitedAccess: accessOverride,
@@ -307,8 +204,10 @@ export async function enforceUsageLimit({
   accountStore,
   fetchImpl,
   language = "en",
+  country,
 }) {
   const lang = asLanguage(language) || "en";
+  const placeCountry = String(country ?? payload?.country ?? "Canada").trim() || "Canada";
   const user = await resolveAccount(headers, env, verifySession);
   if (payload?.mode === "release") {
     const explanationId = cleanExplanationId(payload?.comparisonId || payload?.explanationId);
@@ -358,51 +257,13 @@ export async function enforceUsageLimit({
     };
   }
 
-  if (!store) {
-    return { allowed: true, usage: null, release: null };
-  }
-
-  const key = usageStorageKey(usageSubject(user, headers), usageSalt(env));
-  const resetsOn = resetsOnIso(now);
-  const month = monthKey(now);
-
-  let outcome;
-  try {
-    outcome = await commit(store, key, (raw) => decide(raw, month, explanationId));
-  } catch (err) {
-    if (err?.code === "usage_busy" || err?.code === "usage_store") {
-      return {
-        allowed: false,
-        statusCode: 503,
-        body: { error: t(lang, "errorGeneric"), code: err.code },
-        release: null,
-      };
-    }
-    throw err;
-  }
-
-  const usage = usageSnapshot(outcome.record, resetsOn);
-  if (!outcome.allowed) {
-    const closed = outcome.reason === "closed";
-    return {
-      allowed: false,
-      statusCode: closed ? 400 : 402,
-      body: {
-        error: closed
-          ? t(lang, "errorExplanationClosed")
-          : t(lang, "freeLimitReached", { date: formatResetDate(resetsOn, lang) }),
-        code: closed ? "explanation_closed" : "monthly_limit",
-        usage,
-      },
-      release: null,
-    };
-  }
-
   return {
-    allowed: true,
-    usage,
-    release: outcome.fresh
-      ? () => releaseReservation(store, key, explanationId, month)
-      : null,
+    allowed: false,
+    statusCode: 402,
+    body: {
+      error: t(lang, placeCountry === "Canada" ? "needsPlanCad" : "needsPlanUsd"),
+      code: "needs_plan",
+    },
+    release: null,
   };
 }
