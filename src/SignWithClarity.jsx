@@ -706,8 +706,51 @@ const STYLES = `
   }
   .example-card p, .example-extra { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
   .example-extra { margin-top: 10px; color: var(--text); }
+  .example-shots { margin: 22px auto 0; max-width: 860px; }
+  .example-shots-caption, .example-shots-hint, .example-shots-note {
+    text-align: center;
+    margin: 0 auto 8px;
+    max-width: 640px;
+  }
+  .example-shots-caption { color: var(--navy); font-size: 15px; }
+  .example-shots-hint, .example-shots-note { color: var(--text-light); font-size: 13px; }
+  .example-shots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .example-shot {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 1px solid var(--cream-dark);
+    border-radius: 12px;
+    background: var(--white);
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .example-shot img { display: block; width: 100%; height: auto; }
+  .example-lightbox {
+    width: min(960px, 96vw);
+    max-width: 96vw;
+    max-height: 96vh;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: var(--white);
+  }
+  .example-lightbox::backdrop { background: rgba(20, 28, 46, 0.72); }
+  .example-lightbox img { display: block; width: 100%; height: auto; max-height: 80vh; object-fit: contain; }
+  .example-lightbox-close {
+    display: block;
+    margin: 0 0 8px auto;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 1px solid var(--cream-dark);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--navy);
+    font: inherit;
+    cursor: pointer;
+  }
   @media (max-width: 700px) {
-    .example-grid { grid-template-columns: 1fr; }
+    .example-grid, .example-shots-grid { grid-template-columns: 1fr; }
   }
 
   /* NEW DECODE BTN */

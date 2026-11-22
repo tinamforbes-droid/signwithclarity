@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { statSync } from "node:fs";
 import test from "node:test";
 
+import { t } from "../shared/messages.js";
 import { realExample } from "../src/realExample.js";
 
 const FORBIDDEN = [
@@ -42,6 +44,11 @@ test("the homepage example is the real tenants result, with personal details hid
 
   assert.match(realExample.en.summary, /Comprehensive/);
   assert.match(realExample.en.summary, /2 dogs/);
+  assert.equal(/5 residents|5 résidents|5 residentes/.test(
+    [realExample.en.summary, realExample.fr.summary, realExample.es.summary].join("\n"),
+  ), false);
+  assert.match(realExample.fr.summary, /2 chiens/);
+  assert.match(realExample.es.summary, /2 perros/);
   assert.match(realExample.en.flags, /\$350,000/);
   assert.match(realExample.en.questions, /\$525,000/);
   assert.match(realExample.en.terms, /VOID/);
@@ -49,4 +56,21 @@ test("the homepage example is the real tenants result, with personal details hid
   assert.match(realExample.fr.questions, /525 000/);
   assert.match(realExample.es.flags, /\$350,000/);
   assert.match(realExample.es.questions, /\$525,000/);
+});
+
+test("the real result screenshots stay the full redacted pictures", () => {
+  for (const name of ["summary.webp", "watch-out.webp", "questions.webp", "key-terms.webp"]) {
+    const file = statSync(new URL(`../public/example/${name}`, import.meta.url));
+    assert.equal(file.size > 20000, true, name);
+  }
+  assert.equal(t("en", "exampleShotsCaption"), "Real result, personal details hidden");
+  assert.match(t("fr", "exampleShotsCaption"), /Résultat réel/);
+  assert.match(t("es", "exampleShotsCaption"), /Resultado real/);
+  assert.match(t("fr", "exampleShotsEnglishNote"), /anglaise/);
+  assert.match(t("es", "exampleShotsEnglishNote"), /inglés/);
+  for (const key of ["exampleShotAltSummary", "exampleShotAltFlags", "exampleShotAltQuestions", "exampleShotAltTerms"]) {
+    assert.match(t("en", key), /Personal details are hidden/);
+    assert.match(t("fr", key), /cachés/);
+    assert.match(t("es", key), /ocultos/);
+  }
 });
