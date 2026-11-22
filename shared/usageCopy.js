@@ -1,7 +1,13 @@
 import { t } from "./messages.js";
 
-/** Free document explanations in one UTC calendar month. */
+/** Free document explanations in one UTC calendar month, in Canada and the United States. */
 export const FREE_EXPLANATION_LIMIT = 3;
+
+/**
+ * Free explanations for someone outside Canada and the United States.
+ * One try in total. It does not reset when the month changes.
+ */
+export const GENERAL_FREE_LIMIT = 1;
 
 /**
  * Most model calls one explanation may use, including parts and a retry.
@@ -46,15 +52,32 @@ export function formatResetDate(iso, lang) {
   }).format(date);
 }
 
-export function usageSnapshot(record, resetsOn) {
+export function usageSnapshot(record, resetsOn, options = {}) {
+  const limit = Number.isInteger(options.limit) ? options.limit : FREE_EXPLANATION_LIMIT;
   const used = Number.isInteger(record?.used) && record.used > 0 ? record.used : 0;
-  return {
+  const snapshot = {
     limited: true,
-    limit: FREE_EXPLANATION_LIMIT,
+    limit,
     used,
-    remaining: Math.max(0, FREE_EXPLANATION_LIMIT - used),
-    resetsOn,
+    remaining: Math.max(0, limit - used),
   };
+  if (options.once) {
+    snapshot.once = true;
+    return snapshot;
+  }
+  snapshot.resetsOn = resetsOn;
+  return snapshot;
+}
+
+/**
+ * A free General try and the Canada/US monthly count are separate.
+ * A paid plan still shows in either place.
+ */
+export function usageAppliesHere(usage, general) {
+  if (!usage?.limited) return false;
+  if (usage.plan === "yearly" || usage.plan === "household") return true;
+  if (general) return usage.once === true;
+  return usage.once !== true;
 }
 
 /** Calm line for the page. Empty when this visitor is not on a counted plan. */
@@ -69,6 +92,10 @@ export function usageStatusMessage(lang, usage) {
     }
     if (count === 1) return t(lang, "householdRemainingOne");
     return t(lang, "householdRemaining", { count });
+  }
+  if (usage.once) {
+    if ((usage.remaining ?? 0) <= 0) return t(lang, "generalFreeUsed");
+    return t(lang, "generalFreeRemaining");
   }
   const date = formatResetDate(usage.resetsOn, lang);
   if (!date) return "";

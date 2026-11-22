@@ -28,7 +28,7 @@ test("both pages name the operator, the contact email, and the effective date", 
   }
   assert.equal(OWNER_LEGAL_NAME, "Tina Forbes, operating as Quiet Clarity Within");
   assert.equal(CONTACT_EMAIL, "hello@quietclaritywithin.com");
-  assert.equal(EFFECTIVE_DATE, "November 2, 2026");
+  assert.equal(EFFECTIVE_DATE, "November 22, 2026");
 });
 
 test("the privacy policy describes only the collection the code performs", () => {
@@ -128,9 +128,9 @@ test("French and Spanish legal pages match the English shape and describe the la
   assert.match(documentPlainText(legalDocument("privacy", "es")), /no vuelve a poner la cuenta en cero/);
   assert.equal(documentPlainText(legalDocument("privacy", "fr")).includes("ne lit pas et ne sauvegarde pas votre adresse IP"), false);
   assert.equal(documentPlainText(legalDocument("privacy", "es")).includes("no lee ni guarda su dirección IP"), false);
-  assert.equal(effectiveDateLine("en"), "Effective date: November 2, 2026");
-  assert.match(effectiveDateLine("fr"), /2 novembre 2026/);
-  assert.match(effectiveDateLine("es"), /2 de noviembre de 2026/);
+  assert.equal(effectiveDateLine("en"), "Effective date: November 22, 2026");
+  assert.match(effectiveDateLine("fr"), /22 novembre 2026/);
+  assert.match(effectiveDateLine("es"), /22 de noviembre de 2026/);
   assert.match(storageNote("fr"), /ne sont pas conservés/);
   assert.match(storageNote("es"), /no se guardan/);
   assert.equal(storageNote("en"), STORAGE_NOTE);
@@ -148,6 +148,20 @@ test("the terms limit the site to education and say the model can be wrong", () 
   assert.match(terms, /Clarity Yearly/);
   assert.match(terms, /100 explanations/);
   assert.match(terms, /Stripe is the seller/);
+  assert.match(privacy, /Other country \/ General/);
+  assert.match(privacy, /one free explanation/i);
+  assert.match(privacy, /does not reset each month/);
+  assert.match(privacy, /Netlify, Anthropic, Supabase, and Stripe/);
+  assert.match(privacy, /not local legal, financial, or insurance advice/);
+  assert.match(privacy, /does not claim to follow every privacy law/);
+  assert.match(terms, /US\$9/);
+  assert.match(terms, /US\$39 a year/);
+  assert.match(terms, /not local legal, financial, or insurance advice/);
+  assert.match(terms, /People outside Canada and the United States/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /Autre pays \/ Général/);
+  assert.match(documentPlainText(legalDocument("privacy", "fr")), /explication générale/);
+  assert.match(documentPlainText(legalDocument("terms", "es")), /Otro país \/ General/);
+  assert.match(documentPlainText(legalDocument("terms", "es")), /explicación general/);
   assert.match(terms, /insurer or broker/);
   assert.match(terms, /Documents aren't stored/);
   assert.match(STORAGE_NOTE, /Documents aren't stored/);

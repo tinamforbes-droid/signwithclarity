@@ -11,7 +11,7 @@ function sessionEmail(session) {
   return typeof email === "string" ? email : "";
 }
 
-export default function AccountBar({ lang }) {
+export default function AccountBar({ lang, general = false }) {
   const [phase, setPhase] = useState(() => (authConfigured() ? "loading" : "unavailable"));
   const [email, setEmail] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
@@ -178,7 +178,7 @@ export default function AccountBar({ lang }) {
             <button className="account-btn" type="button" onClick={onSignOut}>
               {t(lang, "signOutButton")}
             </button>
-            <p className="account-hint">{phase === "signedIn" ? (planHint || t(lang, "signedInCount")) : ""}</p>
+            <p className="account-hint">{phase === "signedIn" ? (planHint || t(lang, general ? "signedInCountGeneral" : "signedInCount")) : ""}</p>
           </div>
         )}
 

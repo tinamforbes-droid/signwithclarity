@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { visibleChecks } from "../shared/entitlement.js";
 import { currencyForCountry } from "../shared/plans.js";
 import { t } from "../shared/messages.js";
+import { GENERAL_COUNTRY } from "../shared/regions.js";
 import { currentAccessToken } from "./authClient.js";
 import { loadOwnPlan } from "./accountRow.js";
 
@@ -36,7 +37,8 @@ async function postBilling(path, body) {
 
 export default function Pricing({ lang, country }) {
   const [currencyOverride, setCurrencyOverride] = useState("");
-  const currency = currencyOverride || currencyForCountry(country);
+  const general = country === GENERAL_COUNTRY;
+  const currency = general ? "usd" : (currencyOverride || currencyForCountry(country));
   const [viewer, setViewer] = useState(null);
   const [notice, setNotice] = useState(() => {
     try {
@@ -133,23 +135,25 @@ export default function Pricing({ lang, country }) {
   return (
     <section className="pricing" id="pricing" aria-labelledby="pricing-title">
       <h2 className="pricing-title" id="pricing-title">{t(lang, "pricingTitle")}</h2>
-      <p className="pricing-lead">{t(lang, "pricingLead")}</p>
-      <div className="currency-switch">
-        <div role="group" aria-label={t(lang, "pricingCurrency")}>
-          {["cad", "usd"].map((choice) => (
-            <button
-              key={choice}
-              type="button"
-              aria-pressed={currency === choice}
-              onClick={() => {
-                setCurrencyOverride(choice);
-              }}
-            >
-              {choice.toUpperCase()}
-            </button>
-          ))}
+      <p className="pricing-lead">{t(lang, general ? "pricingLeadGeneral" : "pricingLead")}</p>
+      {!general && (
+        <div className="currency-switch">
+          <div role="group" aria-label={t(lang, "pricingCurrency")}>
+            {["cad", "usd"].map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={currency === choice}
+                onClick={() => {
+                  setCurrencyOverride(choice);
+                }}
+              >
+                {choice.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {notice === "success" && <p className="pricing-note" role="status">{t(lang, "pricingCheckoutSuccess")}</p>}
       {notice === "cancel" && <p className="pricing-note" role="status">{t(lang, "pricingCheckoutCancel")}</p>}
@@ -159,7 +163,7 @@ export default function Pricing({ lang, country }) {
         <article className="plan-card">
           <h3 className="plan-name">{t(lang, "pricingFreeName")}</h3>
           <p className="plan-price">{money(0, currency, lang)}</p>
-          <p className="plan-detail">{t(lang, "pricingFreeDetail")}</p>
+          <p className="plan-detail">{t(lang, general ? "pricingFreeDetailGeneral" : "pricingFreeDetail")}</p>
           {!yearly && !(householdCredits > 0) && !(checks > 0) && signedIn && (
             <p className="plan-current">{t(lang, "pricingCurrent")}</p>
           )}

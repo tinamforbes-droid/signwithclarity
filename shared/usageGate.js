@@ -5,10 +5,12 @@ import { hasUnlimitedAccess, settlePaidUse } from "./access.js";
 import { decideRelease } from "./entitlement.js";
 import { isComparisonRequest } from "./comparePolicy.js";
 import { asLanguage, t } from "./messages.js";
+import { isGeneralCountry } from "./regions.js";
 import { bearerToken, isUserId } from "./session.js";
 import { verifySupabaseUser } from "./supabaseUser.js";
 import {
   FREE_EXPLANATION_LIMIT,
+  GENERAL_FREE_LIMIT,
   MAX_CALLS_PER_EXPLANATION,
   formatResetDate,
   monthKey,
@@ -239,6 +241,154 @@ async function commit(store, key, update) {
   throw error;
 }
 
+const ONCE_SCOPE = "once";
+
+function currentOnceRecord(raw) {
+  if (!raw || typeof raw !== "object" || raw.scope !== ONCE_SCOPE) {
+    return { scope: ONCE_SCOPE, used: 0, explanations: {} };
+  }
+  const explanations = sanitizeExplanations(raw.explanations);
+  return { scope: ONCE_SCOPE, used: Object.keys(explanations).length, explanations };
+}
+
+function decideOnce(raw, explanationId, continuing) {
+  const record = currentOnceRecord(raw);
+  const calls = record.explanations[explanationId];
+  if (Number.isInteger(calls)) {
+    if (calls >= MAX_CALLS_PER_EXPLANATION) {
+      return { write: false, allowed: false, reason: "closed", fresh: false, record };
+    }
+    return {
+      write: true,
+      allowed: true,
+      fresh: false,
+      record: {
+        scope: ONCE_SCOPE,
+        explanations: { ...record.explanations, [explanationId]: calls + 1 },
+        used: record.used,
+      },
+    };
+  }
+  if (continuing && record.used >= GENERAL_FREE_LIMIT) {
+    return { write: false, allowed: true, fresh: false, record };
+  }
+  if (record.used >= GENERAL_FREE_LIMIT) {
+    return { write: false, allowed: false, reason: "limit", fresh: false, record };
+  }
+  const explanations = { ...record.explanations, [explanationId]: 1 };
+  return {
+    write: true,
+    allowed: true,
+    fresh: true,
+    record: { scope: ONCE_SCOPE, explanations, used: Object.keys(explanations).length },
+  };
+}
+
+function onceSnapshot(records) {
+  const list = records?.length ? records : [{ used: 0 }];
+  const counts = list.map((record) => (
+    Number.isInteger(record?.used) && record.used > 0 ? record.used : 0
+  ));
+  const used = Math.max(...counts);
+  const atCap = list.some((record) => (record?.used || 0) >= GENERAL_FREE_LIMIT);
+  return usageSnapshot(
+    { used: atCap ? Math.max(used, GENERAL_FREE_LIMIT) : used },
+    "",
+    { once: true, limit: GENERAL_FREE_LIMIT },
+  );
+}
+
+async function releaseOnce(store, key, explanationId) {
+  try {
+    await commit(store, key, (raw) => {
+      const record = currentOnceRecord(raw);
+      if (record.explanations[explanationId] !== 1) return { write: false, record };
+      const explanations = { ...record.explanations };
+      delete explanations[explanationId];
+      return {
+        write: true,
+        record: { scope: ONCE_SCOPE, explanations, used: Object.keys(explanations).length },
+      };
+    });
+  } catch {
+    console.error("usage release failed");
+  }
+}
+
+async function rollbackOnce(store, keys, explanationId) {
+  for (const key of keys) await releaseOnce(store, key, explanationId);
+}
+
+/**
+ * One free General explanation, shared by the account and the connection.
+ * A later part of the same explanation still goes through. A new month does not.
+ */
+async function reserveOnce(store, keys, explanationId) {
+  const seen = [];
+  for (const key of keys) seen.push({ key, ...(await store.get(key)) });
+  const continuing = seen.some((item) => (
+    Number.isInteger(currentOnceRecord(item.value).explanations[explanationId])
+  ));
+  const fresh = [];
+  const records = [];
+  for (const item of seen) {
+    let outcome;
+    try {
+      outcome = await commit(store, item.key, (raw) => decideOnce(raw, explanationId, continuing));
+    } catch (err) {
+      await rollbackOnce(store, fresh, explanationId);
+      throw err;
+    }
+    if (!outcome.allowed) {
+      await rollbackOnce(store, fresh, explanationId);
+      return { allowed: false, reason: outcome.reason, records: [outcome.record] };
+    }
+    records.push(outcome.record);
+    if (outcome.fresh) fresh.push(item.key);
+  }
+  return {
+    allowed: true,
+    records,
+    release: fresh.length
+      ? () => rollbackOnce(store, fresh, explanationId)
+      : null,
+  };
+}
+
+async function enforceOnceLimit({ store, user, headers, env, explanationId, lang }) {
+  const subjects = generalUsageSubjects(user, headers);
+  const keys = subjects.map((subject) => usageStorageKey(subject, usageSalt(env)));
+  let outcome;
+  try {
+    outcome = await reserveOnce(store, keys, explanationId);
+  } catch (err) {
+    if (err?.code === "usage_busy" || err?.code === "usage_store") {
+      return {
+        allowed: false,
+        statusCode: 503,
+        body: { error: t(lang, "errorGeneric"), code: err.code },
+        release: null,
+      };
+    }
+    throw err;
+  }
+  const usage = onceSnapshot(outcome.records);
+  if (!outcome.allowed) {
+    const closed = outcome.reason === "closed";
+    return {
+      allowed: false,
+      statusCode: closed ? 400 : 402,
+      body: {
+        error: closed ? t(lang, "errorExplanationClosed") : t(lang, "generalFreeUsed"),
+        code: closed ? "explanation_closed" : "general_limit",
+        usage,
+      },
+      release: null,
+    };
+  }
+  return { allowed: true, usage, release: outcome.release };
+}
+
 async function releaseReservation(store, key, explanationId, month) {
   try {
     await commit(store, key, (raw) => {
@@ -265,6 +415,20 @@ export function usageSubject(user, headers) {
   const id = String(user?.id ?? "").trim().toLowerCase();
   if (isUserId(id)) return `user:${id}`;
   return clientIp(headers);
+}
+
+/**
+ * Who the one General free explanation belongs to.
+ * The connection is always included. A signed-in account is included as well.
+ * Using either one uses up the free try, so signing out or opening another
+ * account on the same connection does not start it over.
+ * The prefix keeps this record separate from the monthly Canada and US count.
+ */
+export function generalUsageSubjects(user, headers) {
+  const subjects = [`once:${clientIp(headers)}`];
+  const id = String(user?.id ?? "").trim().toLowerCase();
+  if (isUserId(id)) subjects.unshift(`once:user:${id}`);
+  return subjects;
 }
 
 function confirmedUser(user) {
@@ -307,8 +471,10 @@ export async function enforceUsageLimit({
   accountStore,
   fetchImpl,
   language = "en",
+  country,
 }) {
   const lang = asLanguage(language) || "en";
+  const placeCountry = String(country ?? payload?.country ?? "Canada").trim() || "Canada";
   const user = await resolveAccount(headers, env, verifySession);
   if (payload?.mode === "release") {
     const explanationId = cleanExplanationId(payload?.comparisonId || payload?.explanationId);
@@ -360,6 +526,17 @@ export async function enforceUsageLimit({
 
   if (!store) {
     return { allowed: true, usage: null, release: null };
+  }
+
+  if (isGeneralCountry(placeCountry)) {
+    return enforceOnceLimit({
+      store,
+      user,
+      headers,
+      env,
+      explanationId,
+      lang,
+    });
   }
 
   const key = usageStorageKey(usageSubject(user, headers), usageSalt(env));

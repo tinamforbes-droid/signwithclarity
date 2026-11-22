@@ -18,10 +18,14 @@
 // function time limit. This function does not cut a document down to the
 // first few thousand characters.
 //
-// A free connection may start three explanations per calendar month. The
-// count is kept in Netlify Blobs under a salted hash of the IP address.
-// If the request includes a Supabase session, this function checks that
-// session with the secret key and counts the three on that account instead.
+// In Canada and the United States, a free connection may start three
+// explanations per calendar month. The count is kept in Netlify Blobs under
+// a salted hash of the IP address. If the request includes a Supabase
+// session, this function checks that session with the secret key and counts
+// the three on that account instead.
+// Outside those countries, General mode allows one free explanation. That
+// try is counted on the connection and, when the person is signed in, on
+// the account as well. It does not reset each month.
 // The document itself is not stored. A paid account is read from Supabase
 // in shared/access.js. One Household Check pays for one comparison of up
 // to 4 policies. Clarity Yearly counts that comparison as one explanation.
@@ -37,6 +41,7 @@ import {
 } from "../../shared/limits.js";
 import { asLanguage, t } from "../../shared/messages.js";
 import { locationBlock, systemFor } from "../../shared/prompts.js";
+import { isGeneralCountry } from "../../shared/regions.js";
 import { enforceUsageLimit, resolveUsageStore } from "../../shared/usageGate.js";
 
 function serverEnv(context) {
@@ -262,6 +267,7 @@ export async function handler(event, context) {
   const mode = payload.mode || "single";
   const country = cleanLabel(payload.country, "Canada");
   const region = cleanLabel(payload.region || payload.province, "Not specified");
+  const place = isGeneralCountry(country) ? "general" : "local";
 
   if (!["single", "extract", "reduce", "synthesize", "compare", "release"].includes(mode)) {
     return reply(400, { error: t(language, "errorBadMode") });
@@ -279,6 +285,7 @@ export async function handler(event, context) {
       accountStore: context?.accountStore,
       fetchImpl: context?.fetchImpl,
       language,
+      country,
     });
     return reply(gate.allowed ? 200 : gate.statusCode, gate.allowed
       ? { released: Boolean(gate.released) }
@@ -302,14 +309,14 @@ export async function handler(event, context) {
       const where = locationBlock(country, region, language);
       if (mode === "reduce") {
         model = {
-          system: systemFor("reduce", language),
+          system: systemFor("reduce", language, place),
           maxTokens: 900,
           language,
           user: `${where}\n\nNotes from several parts of one document, in order:\n${notes}`,
         };
       } else {
         model = {
-          system: systemFor("synthesize", language),
+          system: systemFor("synthesize", language, place),
           maxTokens: 1200,
           language,
           user: `${where}\n\nThe notes below were taken from every part of one insurance document, in order from the first page through the last. Later parts were not skipped. Give exclusions, conditions, and endorsements from the end the same attention as the opening.\n\nUse all of the notes when you write the four-part explanation.\n\nNotes:\n${notes}`,
@@ -329,7 +336,7 @@ export async function handler(event, context) {
         `Policy ${index + 1} — ${policy.label}\n${policy.notes}`
       ));
       model = {
-        system: systemFor("compare", language),
+        system: systemFor("compare", language, place),
         maxTokens: 2200,
         language,
         user: `${locationBlock(country, region, language)}\n\nCompare these ${cleaned.policies.length} policies. Keep the labels unchanged and in this order. Use only the notes below. Later notes matter as much as earlier ones.\n\n${blocks.join("\n\n")}`,
@@ -352,7 +359,7 @@ export async function handler(event, context) {
         }
         const looking = mode === "extract" ? "extract" : "single";
         model = {
-          system: systemFor(looking, language),
+          system: systemFor(looking, language, place),
           maxTokens: looking === "extract" ? 450 : 700,
           language,
           images: [image],
@@ -368,14 +375,14 @@ export async function handler(event, context) {
         }
         if (mode === "extract") {
           model = {
-            system: systemFor("extract", language),
+            system: systemFor("extract", language, place),
             maxTokens: 800,
             language,
             user: `${where}\n\nThis is part ${chunkIndex} of ${chunkCount}, in order. Read this part carefully. Exclusions in this part matter even if they feel like fine print.\n\nInsurance Document:\n${docText}`,
           };
         } else {
           model = {
-            system: systemFor("single", language),
+            system: systemFor("single", language, place),
             maxTokens: 1000,
             language,
             user: `${where}\n\nInsurance Document:\n${docText}`,
@@ -395,6 +402,7 @@ export async function handler(event, context) {
       accountStore: context?.accountStore,
       fetchImpl: context?.fetchImpl,
       language,
+      country,
     });
     if (!gate.allowed) return reply(gate.statusCode, gate.body);
 

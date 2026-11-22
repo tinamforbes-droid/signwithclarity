@@ -32,6 +32,10 @@ export const privacyPolicy = {
         },
         {
           type: "p",
+          text: "People outside Canada and the United States can use the site by choosing Other country / General. One explanation is free. It does not reset each month. After that, the paid plans are in US dollars. A General explanation is a general explanation. It is not local legal, financial, or insurance advice.",
+        },
+        {
+          type: "p",
           text: "This policy describes what the site's code does with information. It is written for people in Canada under the Personal Information Protection and Electronic Documents Act (PIPEDA) and British Columbia's Personal Information Protection Act (PIPA). It also describes, in general terms, the same practices for people in the United States.",
         },
         {
@@ -54,6 +58,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "You also choose a country, Canada or the United States, and a province, territory, or state. You can choose the language of the page and of the explanation: English, French, or Spanish. The page sends the country, the province, territory, or state, and that language with the document text.",
+        },
+        {
+          type: "p",
+          text: "You can also choose Other country / General, and then the name of a country. The page sends that name with the document. The name does not turn on the insurance rules of that country. The explanation stays general.",
         },
         {
           type: "p",
@@ -90,6 +98,10 @@ export const privacyPolicy = {
         },
         {
           type: "p",
+          text: "If you chose Other country / General, the function tells the model to write a general explanation. It tells the model not to apply Canadian law, United States law, or the law of the country you named. The instructions say this is a general explanation, not local legal, financial, or insurance advice.",
+        },
+        {
+          type: "p",
           text: "The key that calls Anthropic is kept in a server setting named ANTHROPIC_API_KEY. It is not included in the page your browser loads.",
         },
       ],
@@ -116,6 +128,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "If you are signed in, those three free explanations are counted on the account instead of on the connection. The function checks the sign-in token with Supabase and reads the account id Supabase confirms. It stores a salted hash of that account id, the calendar month, how many explanations were started, the random id for each explanation, and how many times the explainer was called. It does not store the email address in that record. It does not store the document, the notes, the file name, the place you chose, or the explanation there. The same account has one count of three, including from another connection. A different signed-in person on the same connection has their own three. Clearing the browser does not start this count over.",
+        },
+        {
+          type: "p",
+          text: "If you choose Other country / General, there is one free explanation, not three each month. The function counts that one explanation on the connection and, if you are signed in, on the account as well. If either one has already been used, the free explanation is used up. It does not reset when a new month starts. Signing out, clearing the browser, or opening another account on the same connection does not start it over. That record is a separate salted hash. It stores that the free explanation was used, a random id, and how many times the explainer was called. It does not store the document, the notes, the file name, the country you named, or the explanation. It is not kept in the browser.",
         },
         {
           type: "p",
@@ -190,6 +206,10 @@ export const privacyPolicy = {
         },
         {
           type: "p",
+          text: "If you choose Other country / General, we use a separate salted hash for one purpose: to allow one free explanation, and to keep that free try from resetting each month or when you sign out. We do not use it to find your name, and we do not attach it to the document.",
+        },
+        {
+          type: "p",
           text: "If you sign in, we use the email address to send the sign-in link and to show which account is signed in on this device. We use the account id to give that account its own three free explanations each calendar month, instead of using the connection's count, and to attach a payment to that account. We keep the paid flag, the plan, the remaining Household Checks, any single explanations left from an earlier Household Check, the Clarity Yearly count, and the Stripe customer id so the server can allow the explanations that were paid for and open the customer portal. The paid flag stays false until Stripe confirms a payment. We do not use the email address for marketing, and we do not sell it. We do not store the card number.",
         },
         {
@@ -225,6 +245,10 @@ export const privacyPolicy = {
           type: "p",
           text: "Stripe receives the account id, the email address when Checkout needs it, and the card details you type on Stripe's page, so it can take payment and calculate tax. Stripe is the seller of record. The document is not part of that request. Stripe may process that information outside your province and outside Canada. Stripe's privacy policy is at https://stripe.com/privacy",
         },
+        {
+          type: "p",
+          text: "For a person outside Canada and the United States, the same is true in a more general way. Netlify, Anthropic, Supabase, and Stripe may process information in the regions where those providers operate. That can be outside the country of the person using the site. The document is sent only to Anthropic, as this policy describes. The email address and the payment details go only to the providers named for sign-in and payment.",
+        },
       ],
     },
     {
@@ -237,6 +261,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "We keep the usage record for the current calendar month, using Coordinated Universal Time (UTC). When you start an explanation in a new month, we replace the record with that new month. We do not keep the earlier months. If you do not come back, the last month's hash and count can stay in Netlify Blobs until a later visit replaces them. A record from a past month does not change the count for the new month.",
+        },
+        {
+          type: "p",
+          text: "The General-mode record does not reset each month. We keep that salted hash, and the note that the free explanation was used, until a later change replaces it. A new calendar month does not clear it. Canada and the United States still use the monthly record described above. Choosing General does not change that monthly record, and a monthly record does not give a second General free explanation.",
         },
         {
           type: "p",
@@ -271,6 +299,19 @@ export const privacyPolicy = {
         {
           type: "p",
           text: `State privacy laws differ. This page does not try to list them. If a law where you live gives you a right to ask about personal information, you can email ${email}. We will respond in line with that law, to the extent it applies. Nothing here waives a right you have where you live.`,
+        },
+      ],
+    },
+    {
+      heading: "People outside Canada and the United States",
+      blocks: [
+        {
+          type: "p",
+          text: "If you use the site from somewhere other than Canada or the United States, we handle information the same way this policy describes. Other country / General is the choice for that. The companies that provide the site may process the information in the regions where they operate. Those companies are Netlify, which hosts the site, Anthropic, which writes the explanation, Supabase, which handles sign-in, and Stripe, which takes payment and calculates tax. We do not promise that the information stays in your country.",
+        },
+        {
+          type: "p",
+          text: `A General explanation is a general explanation of the wording. It is not local legal, financial, or insurance advice. It does not apply the insurance law, the usual terms, or the regulators of your country. This policy says what the code does. It does not claim to follow every privacy law where you live. If a law where you live lets you ask about personal information, you can write to ${email}. Nothing here gives up a right you have where you live.`,
         },
       ],
     },
@@ -316,6 +357,10 @@ export const termsOfUse = {
         },
         {
           type: "p",
+          text: "If you choose Other country / General, you can ask for one explanation without paying. That free explanation does not reset each month. After that, Household Check is US$9 and Clarity Yearly is US$39 a year. Those are the same plans offered in Canada and the United States, charged in US dollars. Stripe is the seller and adds tax.",
+        },
+        {
+          type: "p",
           text: "The privacy policy describes what happens to a document you submit. It is part of these terms.",
         },
       ],
@@ -326,6 +371,10 @@ export const termsOfUse = {
         {
           type: "p",
           text: "Sign With Clarity explains insurance documents in plain language so you can understand the wording more easily. It is for education and general information. It is offered to people in Canada and the United States.",
+        },
+        {
+          type: "p",
+          text: "If you choose Other country / General, the explanation is in plain, neutral language. It does not assume the insurance law, the usual terms, or the regulators of Canada, the United States, or the country you name. It points out words that can mean different things in different countries. It suggests questions to ask a local insurer or broker. It is a general explanation, not local legal, financial, or insurance advice.",
         },
         {
           type: "p",
@@ -378,6 +427,10 @@ export const termsOfUse = {
           type: "p",
           text: "Three explanations each calendar month are free. Household Check is a one-time purchase of one comparison of up to four policies, including a short explanation of each, at the price shown for Canada or the United States. The comparison notes gaps and overlaps. It does not expire. Clarity Yearly is a yearly subscription at the price shown. It includes up to 100 explanations in that year. A comparison counts as one of those explanations. Stripe is the seller and adds tax at checkout. A yearly plan renews each year until you cancel it in Stripe's customer portal. After you cancel, you can keep using it until the year you already paid for ends. Household Check is not a subscription. Paying does not change what an explanation is: it is still not insurance, legal, or financial advice.",
         },
+        {
+          type: "p",
+          text: "Outside Canada and the United States, Other country / General includes one free explanation, not three a month. Household Check is then a one-time purchase at US$9. Clarity Yearly is US$39 a year and includes up to 100 explanations in that year. A comparison counts as one explanation and is not part of the free explanation. Stripe is the seller and adds tax. Paying does not make the explanation local advice.",
+        },
       ],
     },
     {
@@ -409,6 +462,10 @@ export const termsOfUse = {
           type: "p",
           text: "Some laws do not allow certain limits on liability. That includes consumer protections in Canadian provinces and territories and in US states. Those protections still apply to you.",
         },
+        {
+          type: "p",
+          text: "Some laws outside Canada and the United States also do not allow certain limits on liability. Where that is so, those protections still apply.",
+        },
       ],
     },
     {
@@ -417,6 +474,10 @@ export const termsOfUse = {
         {
           type: "p",
           text: "These terms are for a free educational site used in Canada and the United States. They do not choose a court for you. Rights you have under the law of your province, territory, or state stay in place.",
+        },
+        {
+          type: "p",
+          text: "People outside Canada and the United States can use Other country / General. These terms do not choose a court for them. Rights they have under the law where they live stay in place. General mode does not provide local legal, financial, or insurance advice.",
         },
       ],
     },
@@ -479,7 +540,7 @@ export function legalDocument(kind, lang) {
 }
 
 export function effectiveDateLine(lang) {
-  if (lang === "fr") return "Date d'entrée en vigueur : 2 novembre 2026";
-  if (lang === "es") return "Fecha de entrada en vigor: 2 de noviembre de 2026";
+  if (lang === "fr") return "Date d'entrée en vigueur : 22 novembre 2026";
+  if (lang === "es") return "Fecha de entrada en vigor: 22 de noviembre de 2026";
   return `Effective date: ${EFFECTIVE_DATE}`;
 }

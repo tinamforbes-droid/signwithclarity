@@ -19,6 +19,10 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
+          text: "Las personas fuera de Canadá y Estados Unidos pueden usar el sitio eligiendo Otro país / General. Una explicación es gratuita. No se renueva cada mes. Después, los planes de pago están en dólares de Estados Unidos. Una explicación general es una explicación general. No es asesoría legal, financiera ni de seguros para su país.",
+        },
+        {
+          type: "p",
           text: "Esta política describe lo que el código del sitio hace con la información. Está escrita para personas en Canadá, conforme a la ley de protección de la información personal y los documentos electrónicos, la Personal Information Protection and Electronic Documents Act (PIPEDA), y a la Personal Information Protection Act (PIPA) de Columbia Británica. También describe, en términos generales, las mismas prácticas para personas en Estados Unidos.",
         },
         {
@@ -41,6 +45,10 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: "También elige un país, Canadá o Estados Unidos, y una provincia, un territorio o un estado. Puede elegir el idioma de la página y de la explicación: inglés, francés o español. La página envía el país, la provincia, el territorio o el estado, y ese idioma junto con el texto del documento.",
+        },
+        {
+          type: "p",
+          text: "También puede elegir Otro país / General, y después el nombre de un país. La página envía ese nombre con el documento. El nombre no activa las reglas de seguros de ese país. La explicación sigue siendo general.",
         },
         {
           type: "p",
@@ -77,6 +85,10 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
+          text: "Si eligió Otro país / General, la función le pide al modelo que escriba una explicación general. Le pide que no aplique la ley de Canadá, la ley de Estados Unidos ni la ley del país que usted nombró. Las instrucciones dicen que esta es una explicación general, no asesoría legal, financiera ni de seguros para su país.",
+        },
+        {
+          type: "p",
           text: "La clave que llama a Anthropic se guarda en un ajuste del servidor llamado ANTHROPIC_API_KEY. No está incluida en la página que carga su navegador.",
         },
       ],
@@ -103,6 +115,10 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: "Si inició sesión, esas tres explicaciones gratuitas se cuentan en la cuenta, y no en la conexión. La función comprueba el token de acceso con Supabase y lee el identificador de cuenta que Supabase confirma. Guarda un hash con sal de ese identificador, el mes calendario, cuántas explicaciones se empezaron, el identificador al azar de cada explicación y cuántas veces se llamó al servicio. No guarda el correo electrónico en ese registro. No guarda allí el documento, las notas, el nombre del archivo, el lugar que usted eligió ni la explicación. La misma cuenta tiene un solo grupo de tres, incluso desde otra conexión. Otra persona que inició sesión en la misma conexión tiene sus propias tres. Borrar los datos del navegador no vuelve a poner este conteo en cero.",
+        },
+        {
+          type: "p",
+          text: "Si elige Otro país / General, hay una sola explicación gratuita, no tres cada mes. La función cuenta esa explicación en la conexión y, si inició sesión, también en la cuenta. Si alguna de las dos ya se usó, la explicación gratuita está agotada. No se renueva cuando empieza un mes nuevo. Cerrar sesión, borrar el navegador o abrir otra cuenta en la misma conexión no la vuelve a empezar. Ese registro es un hash con sal aparte. Guarda que la explicación gratuita se usó, un identificador al azar y cuántas veces se llamó al servicio. No guarda el documento, las notas, el nombre del archivo, el país que usted nombró ni la explicación. No se guarda en el navegador.",
         },
         {
           type: "p",
@@ -177,6 +193,10 @@ export const privacyPolicyEs = {
         },
         {
           type: "p",
+          text: "Si elige Otro país / General, usamos un hash con sal aparte para un solo fin: permitir una explicación gratuita, y evitar que esa prueba se renueve cada mes o cuando cierra la sesión. No lo usamos para encontrar su nombre, y no lo unimos al documento.",
+        },
+        {
+          type: "p",
           text: "Si inicia sesión, usamos el correo electrónico para enviar el enlace de acceso y para mostrar qué cuenta está conectada en este dispositivo. Usamos el identificador de cuenta para dar a esa cuenta sus propias tres explicaciones gratuitas en cada mes calendario, en lugar de usar el conteo de la conexión, y para unir un pago a esa cuenta. Guardamos el indicador de pago, el plan, los Household Checks que quedan, las explicaciones individuales que quedan de un Household Check anterior, el conteo de Clarity Yearly y el identificador de cliente de Stripe para que el servidor pueda permitir las explicaciones que se pagaron y abrir el portal del cliente. El indicador de pago se queda en falso hasta que Stripe confirma un pago. No usamos el correo electrónico para publicidad, y no lo vendemos. No guardamos el número de tarjeta.",
         },
         {
@@ -212,6 +232,10 @@ export const privacyPolicyEs = {
           type: "p",
           text: "Stripe recibe el identificador de cuenta, el correo electrónico cuando Checkout lo necesita, y los datos de la tarjeta que usted escribe en la página de Stripe, para cobrar el pago y calcular el impuesto. Stripe es el vendedor oficial. El documento no forma parte de esa solicitud. Stripe puede procesar esa información fuera de su provincia y fuera de Canadá. La política de privacidad de Stripe está en https://stripe.com/privacy",
         },
+        {
+          type: "p",
+          text: "Para una persona fuera de Canadá y Estados Unidos, ocurre lo mismo de una forma más general. Netlify, Anthropic, Supabase y Stripe pueden procesar información en las regiones donde operan esos proveedores. Eso puede ser fuera del país de la persona que usa el sitio. El documento se envía solo a Anthropic, como describe esta política. El correo electrónico y los datos del pago van solo a los proveedores nombrados para el acceso y el pago.",
+        },
       ],
     },
     {
@@ -224,6 +248,10 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: "Guardamos ese registro de uso durante el mes calendario en curso, según el Tiempo Universal Coordinado (UTC). Cuando usted empieza una explicación en un mes nuevo, reemplazamos el registro con ese mes nuevo. No guardamos los meses anteriores. Si usted no vuelve, el hash y la cuenta del último mes pueden quedar en Netlify Blobs hasta que una visita posterior los reemplace. Un registro de un mes pasado no cambia la cuenta del mes nuevo.",
+        },
+        {
+          type: "p",
+          text: "El registro del modo General no se renueva cada mes. Guardamos ese hash con sal, y la nota de que la explicación gratuita se usó, hasta que un cambio posterior lo reemplace. Un mes calendario nuevo no lo borra. Canadá y Estados Unidos siguen usando el registro mensual descrito arriba. Elegir General no cambia ese registro mensual, y un registro mensual no da una segunda explicación gratuita en el modo General.",
         },
         {
           type: "p",
@@ -258,6 +286,19 @@ export const privacyPolicyEs = {
         {
           type: "p",
           text: `Las leyes estatales de privacidad difieren. Esta página no intenta enumerarlas. Si una ley del lugar donde usted vive le da el derecho de preguntar por información personal, puede escribir a ${email}. Responderemos conforme a esa ley, en la medida en que se aplique. Nada aquí renuncia a un derecho que usted tiene donde vive.`,
+        },
+      ],
+    },
+    {
+      heading: "Personas fuera de Canadá y Estados Unidos",
+      blocks: [
+        {
+          type: "p",
+          text: "Si usa el sitio desde un lugar que no es Canadá ni Estados Unidos, tratamos la información de la misma manera que describe esta política. Otro país / General es la opción para eso. Las empresas que prestan el sitio pueden procesar la información en las regiones donde operan. Esas empresas son Netlify, que aloja el sitio, Anthropic, que escribe la explicación, Supabase, que maneja el inicio de sesión, y Stripe, que cobra el pago y calcula el impuesto. No prometemos que la información se quede en su país.",
+        },
+        {
+          type: "p",
+          text: `Una explicación general es una explicación general del texto. No es asesoría legal, financiera ni de seguros para su país. No aplica la ley de seguros, los términos habituales ni los reguladores de su país. Esta política dice lo que hace el código. No afirma cumplir todas las leyes de privacidad del lugar donde usted vive. Si una ley de donde usted vive le permite preguntar por información personal, puede escribir a ${email}. Nada aquí quita un derecho que usted tiene donde vive.`,
         },
       ],
     },
@@ -303,6 +344,10 @@ export const termsOfUseEs = {
         },
         {
           type: "p",
+          text: "Si elige Otro país / General, puede pedir una explicación sin pagar. Esa explicación gratuita no se renueva cada mes. Después, Household Check cuesta US$9 y Clarity Yearly cuesta US$39 al año. Son los mismos planes que en Canadá y Estados Unidos, cobrados en dólares de Estados Unidos. Stripe es el vendedor y agrega el impuesto.",
+        },
+        {
+          type: "p",
           text: "La política de privacidad describe lo que ocurre con un documento que usted envía. Forma parte de estas condiciones.",
         },
       ],
@@ -313,6 +358,10 @@ export const termsOfUseEs = {
         {
           type: "p",
           text: "Sign With Clarity explica documentos de seguro en lenguaje claro para que usted pueda entender el texto con más facilidad. Es para educación e información general. Se ofrece a personas en Canadá y Estados Unidos.",
+        },
+        {
+          type: "p",
+          text: "Si elige Otro país / General, la explicación está en un lenguaje claro y neutro. No supone la ley de seguros, los términos habituales ni los reguladores de Canadá, de Estados Unidos ni del país que usted nombre. Señala palabras que pueden significar otra cosa según el país. Sugiere preguntas para hacerle a una aseguradora o a un corredor de su lugar. Es una explicación general, no asesoría legal, financiera ni de seguros para su país.",
         },
         {
           type: "p",
@@ -365,6 +414,10 @@ export const termsOfUseEs = {
           type: "p",
           text: "Tres explicaciones cada mes calendario son gratuitas. Household Check es una compra única de una comparación de hasta cuatro pólizas, con una explicación breve de cada una, al precio que se muestra para Canadá o Estados Unidos. La comparación señala lagunas y duplicaciones. No vence. Clarity Yearly es una suscripción anual al precio que se muestra. Incluye hasta 100 explicaciones en ese año. Una comparación cuenta como una de esas explicaciones. Stripe es el vendedor y agrega el impuesto al pagar. Un plan anual se renueva cada año hasta que usted lo cancele en el portal de clientes de Stripe. Después de cancelar, puede seguir usándolo hasta que termine el año que ya pagó. Household Check no es una suscripción. Pagar no cambia lo que es una explicación: sigue sin ser asesoría de seguros, asesoría legal ni asesoría financiera.",
         },
+        {
+          type: "p",
+          text: "Fuera de Canadá y Estados Unidos, Otro país / General incluye una explicación gratuita, no tres al mes. Household Check es entonces una compra única de US$9. Clarity Yearly cuesta US$39 al año e incluye hasta 100 explicaciones en ese año. Una comparación cuenta como una explicación y no forma parte de la explicación gratuita. Stripe es el vendedor y agrega el impuesto. Pagar no convierte la explicación en asesoría local.",
+        },
       ],
     },
     {
@@ -396,6 +449,10 @@ export const termsOfUseEs = {
           type: "p",
           text: "Algunas leyes no permiten ciertos límites de responsabilidad. Eso incluye las protecciones al consumidor en las provincias y los territorios de Canadá y en los estados de Estados Unidos. Esas protecciones siguen aplicándose a usted.",
         },
+        {
+          type: "p",
+          text: "Algunas leyes fuera de Canadá y Estados Unidos tampoco permiten ciertos límites de responsabilidad. Cuando es así, esas protecciones siguen aplicándose.",
+        },
       ],
     },
     {
@@ -404,6 +461,10 @@ export const termsOfUseEs = {
         {
           type: "p",
           text: "Estas condiciones son para un sitio educativo gratuito usado en Canadá y Estados Unidos. No eligen un tribunal para usted. Los derechos que usted tiene según la ley de su provincia, territorio o estado siguen en pie.",
+        },
+        {
+          type: "p",
+          text: "Las personas fuera de Canadá y Estados Unidos pueden usar Otro país / General. Estas condiciones no eligen un tribunal para ellas. Los derechos que tienen según la ley del lugar donde viven siguen en pie. El modo General no da asesoría legal, financiera ni de seguros para su país.",
         },
       ],
     },

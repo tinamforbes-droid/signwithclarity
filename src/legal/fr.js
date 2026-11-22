@@ -19,6 +19,10 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
+          text: "Les personnes à l'extérieur du Canada et des États-Unis peuvent utiliser le site en choisissant Autre pays / Général. Une explication est gratuite. Elle ne recommence pas chaque mois. Ensuite, les forfaits payants sont en dollars américains. Une explication générale est une explication générale. Ce n'est pas un avis juridique, financier ou en assurance pour votre pays.",
+        },
+        {
+          type: "p",
           text: "Cette politique décrit ce que le code du site fait avec les renseignements. Elle est écrite pour les personnes au Canada, selon la Loi sur la protection des renseignements personnels et les documents électroniques (PIPEDA, aussi appelée LPRPDE) et la Personal Information Protection Act (PIPA) de la Colombie-Britannique. Elle décrit aussi, en termes généraux, les mêmes pratiques pour les personnes aux États-Unis.",
         },
         {
@@ -41,6 +45,10 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: "Vous choisissez aussi un pays, le Canada ou les États-Unis, et une province, un territoire ou un État. Vous pouvez choisir la langue de la page et de l'explication : anglais, français ou espagnol. La page envoie le pays, la province, le territoire ou l'État, et cette langue avec le texte du document.",
+        },
+        {
+          type: "p",
+          text: "Vous pouvez aussi choisir Autre pays / Général, puis le nom d'un pays. La page envoie ce nom avec le document. Ce nom n'active pas les règles d'assurance de ce pays. L'explication reste générale.",
         },
         {
           type: "p",
@@ -77,6 +85,10 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
+          text: "Si vous avez choisi Autre pays / Général, la fonction demande au modèle d'écrire une explication générale. Elle lui demande de ne pas appliquer le droit canadien, le droit des États-Unis, ni le droit du pays que vous avez nommé. Les instructions disent que c'est une explication générale, pas un avis juridique, financier ou en assurance pour votre pays.",
+        },
+        {
+          type: "p",
           text: "La clé qui appelle Anthropic est gardée dans un réglage du serveur nommé ANTHROPIC_API_KEY. Elle n'est pas incluse dans la page que votre navigateur charge.",
         },
       ],
@@ -103,6 +115,10 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: "Si vous êtes connecté, ces trois explications gratuites sont comptées sur le compte, et non sur la connexion. La fonction vérifie le jeton de connexion auprès de Supabase et lit l'identifiant de compte que Supabase confirme. Elle conserve un hachage salé de cet identifiant, le mois civil, le nombre d'explications commencées, l'identifiant aléatoire de chaque explication, et le nombre de fois que le service a été appelé. Elle ne conserve pas l'adresse courriel dans ce dossier. Elle n'y conserve pas le document, les notes, le nom du fichier, le lieu choisi ni l'explication. Le même compte a droit à trois explications, même depuis une autre connexion. Une autre personne connectée sur la même connexion a ses propres trois. Vider le navigateur ne remet pas ce compte à zéro.",
+        },
+        {
+          type: "p",
+          text: "Si vous choisissez Autre pays / Général, il y a une seule explication gratuite, et non trois par mois. La fonction compte cette explication sur la connexion et, si vous êtes connecté, sur le compte aussi. Si l'une des deux a déjà été utilisée, l'explication gratuite est épuisée. Elle ne recommence pas au début d'un nouveau mois. Se déconnecter, vider le navigateur ou ouvrir un autre compte sur la même connexion ne la remet pas à zéro. Ce dossier est un hachage salé distinct. Il conserve le fait que l'explication gratuite a été utilisée, un identifiant aléatoire, et le nombre de fois que le service a été appelé. Il ne conserve pas le document, les notes, le nom du fichier, le pays que vous avez nommé, ni l'explication. Il n'est pas gardé dans le navigateur.",
         },
         {
           type: "p",
@@ -177,6 +193,10 @@ export const privacyPolicyFr = {
         },
         {
           type: "p",
+          text: "Si vous choisissez Autre pays / Général, nous utilisons un hachage salé distinct pour une seule fin : permettre une explication gratuite, et empêcher que cet essai recommence chaque mois ou quand vous vous déconnectez. Nous ne l'utilisons pas pour trouver votre nom, et nous ne le rattachons pas au document.",
+        },
+        {
+          type: "p",
           text: "Si vous vous connectez, nous utilisons l'adresse courriel pour envoyer le lien de connexion et pour montrer quel compte est connecté sur cet appareil. Nous utilisons l'identifiant de compte pour donner à ce compte ses trois explications gratuites à chaque mois civil, au lieu de les compter sur la connexion, et pour rattacher un paiement à ce compte. Nous gardons l'indicateur payé, le forfait, les Household Checks restants, les explications individuelles restantes d'un Household Check plus ancien, le compte Clarity Yearly et l'identifiant client Stripe pour que le serveur puisse permettre les explications qui ont été payées et ouvrir le portail client. L'indicateur payé reste faux jusqu'à ce que Stripe confirme un paiement. Nous n'utilisons pas l'adresse courriel pour des messages publicitaires, et nous ne la vendons pas. Nous ne conservons pas le numéro de carte.",
         },
         {
@@ -212,6 +232,10 @@ export const privacyPolicyFr = {
           type: "p",
           text: "Stripe reçoit l'identifiant de compte, l'adresse courriel quand Checkout en a besoin, et les renseignements de carte que vous saisissez sur la page de Stripe, pour encaisser le paiement et calculer la taxe. Stripe est le vendeur officiel. Le document ne fait pas partie de cette demande. Stripe peut traiter ces renseignements à l'extérieur de votre province et à l'extérieur du Canada. La politique de confidentialité de Stripe est à https://stripe.com/privacy",
         },
+        {
+          type: "p",
+          text: "Pour une personne à l'extérieur du Canada et des États-Unis, c'est la même chose, de façon plus générale. Netlify, Anthropic, Supabase et Stripe peuvent traiter des renseignements dans les régions où ces fournisseurs travaillent. Cela peut être à l'extérieur du pays de la personne qui utilise le site. Le document est envoyé seulement à Anthropic, comme cette politique le décrit. L'adresse courriel et les renseignements de paiement vont seulement aux fournisseurs nommés pour la connexion et le paiement.",
+        },
       ],
     },
     {
@@ -224,6 +248,10 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: "Nous gardons ce dossier d'utilisation pour le mois civil en cours, selon le temps universel coordonné (UTC). Quand vous commencez une explication dans un nouveau mois, nous remplaçons le dossier par ce nouveau mois. Nous ne gardons pas les mois précédents. Si vous ne revenez pas, le hachage et le compte du dernier mois peuvent rester dans Netlify Blobs jusqu'à ce qu'une visite plus tard les remplace. Un dossier d'un mois passé ne change pas le compte du nouveau mois.",
+        },
+        {
+          type: "p",
+          text: "Le dossier du mode Général ne recommence pas chaque mois. Nous gardons ce hachage salé, et la note que l'explication gratuite a été utilisée, jusqu'à ce qu'un changement plus tard le remplace. Un nouveau mois civil ne l'efface pas. Le Canada et les États-Unis utilisent encore le dossier mensuel décrit plus haut. Choisir Général ne change pas ce dossier mensuel, et un dossier mensuel ne donne pas une deuxième explication gratuite en mode Général.",
         },
         {
           type: "p",
@@ -258,6 +286,19 @@ export const privacyPolicyFr = {
         {
           type: "p",
           text: `Les lois des États sur la vie privée diffèrent. Cette page n'essaie pas de les énumérer. Si une loi de l'endroit où vous vivez vous donne le droit de poser des questions sur des renseignements personnels, vous pouvez écrire à ${email}. Nous répondrons conformément à cette loi, dans la mesure où elle s'applique. Rien ici ne renonce à un droit que vous avez là où vous vivez.`,
+        },
+      ],
+    },
+    {
+      heading: "Personnes à l'extérieur du Canada et des États-Unis",
+      blocks: [
+        {
+          type: "p",
+          text: "Si vous utilisez le site depuis un endroit autre que le Canada ou les États-Unis, nous traitons les renseignements de la même façon que cette politique le décrit. Autre pays / Général est le choix pour cela. Les entreprises qui fournissent le site peuvent traiter les renseignements dans les régions où elles travaillent. Ces entreprises sont Netlify, qui héberge le site, Anthropic, qui écrit l'explication, Supabase, qui gère la connexion, et Stripe, qui encaisse le paiement et calcule la taxe. Nous ne promettons pas que les renseignements restent dans votre pays.",
+        },
+        {
+          type: "p",
+          text: `Une explication générale est une explication générale du texte. Ce n'est pas un avis juridique, financier ou en assurance pour votre pays. Elle n'applique pas le droit des assurances, les termes usuels ni les organismes de réglementation de votre pays. Cette politique dit ce que le code fait. Elle ne prétend pas suivre toutes les lois sur la vie privée de l'endroit où vous vivez. Si une loi de chez vous vous permet de poser des questions sur des renseignements personnels, vous pouvez écrire à ${email}. Rien ici ne retire un droit que vous avez là où vous vivez.`,
         },
       ],
     },
@@ -303,6 +344,10 @@ export const termsOfUseFr = {
         },
         {
           type: "p",
+          text: "Si vous choisissez Autre pays / Général, vous pouvez demander une explication sans payer. Cette explication gratuite ne recommence pas chaque mois. Ensuite, Household Check coûte 9 $ US et Clarity Yearly coûte 39 $ US par année. Ce sont les mêmes forfaits qu'au Canada et aux États-Unis, facturés en dollars américains. Stripe est le vendeur et ajoute la taxe.",
+        },
+        {
+          type: "p",
           text: "La politique de confidentialité décrit ce qui arrive à un document que vous envoyez. Elle fait partie de ces conditions.",
         },
       ],
@@ -313,6 +358,10 @@ export const termsOfUseFr = {
         {
           type: "p",
           text: "Sign With Clarity explique des documents d'assurance en langage clair pour que vous puissiez comprendre le texte plus facilement. C'est pour l'éducation et l'information générale. Le site est offert aux personnes au Canada et aux États-Unis.",
+        },
+        {
+          type: "p",
+          text: "Si vous choisissez Autre pays / Général, l'explication est en langage clair et neutre. Elle ne suppose pas le droit des assurances, les termes usuels ni les organismes de réglementation du Canada, des États-Unis ou du pays que vous nommez. Elle signale les mots qui peuvent vouloir dire autre chose selon le pays. Elle propose des questions à poser à un assureur ou à un courtier de chez vous. C'est une explication générale, pas un avis juridique, financier ou en assurance pour votre pays.",
         },
         {
           type: "p",
@@ -365,6 +414,10 @@ export const termsOfUseFr = {
           type: "p",
           text: "Trois explications par mois civil sont gratuites. Household Check est un achat unique d'une comparaison d'au plus quatre polices, avec une courte explication de chacune, au prix affiché pour le Canada ou les États-Unis. La comparaison note les lacunes et les chevauchements. Elle n'expire pas. Clarity Yearly est un abonnement annuel au prix affiché. Il comprend jusqu'à 100 explications dans cette année. Une comparaison compte pour une de ces explications. Stripe est le vendeur et ajoute la taxe au paiement. Un forfait annuel se renouvelle chaque année jusqu'à ce que vous l'annuliez dans le portail client de Stripe. Après l'annulation, vous pouvez continuer à l'utiliser jusqu'à la fin de l'année déjà payée. Household Check n'est pas un abonnement. Payer ne change pas ce qu'est une explication : ce n'est toujours pas un conseil en assurance, un avis juridique ni un conseil financier.",
         },
+        {
+          type: "p",
+          text: "À l'extérieur du Canada et des États-Unis, Autre pays / Général comprend une explication gratuite, et non trois par mois. Household Check est alors un achat unique à 9 $ US. Clarity Yearly coûte 39 $ US par année et comprend jusqu'à 100 explications dans cette année. Une comparaison compte pour une explication et ne fait pas partie de l'explication gratuite. Stripe est le vendeur et ajoute la taxe. Payer ne fait pas de l'explication un conseil local.",
+        },
       ],
     },
     {
@@ -396,6 +449,10 @@ export const termsOfUseFr = {
           type: "p",
           text: "Certaines lois ne permettent pas certaines limites de responsabilité. Cela comprend les protections des consommateurs dans les provinces et les territoires du Canada et dans les États américains. Ces protections s'appliquent encore à vous.",
         },
+        {
+          type: "p",
+          text: "Certaines lois à l'extérieur du Canada et des États-Unis ne permettent pas non plus certaines limites de responsabilité. Quand c'est le cas, ces protections s'appliquent encore.",
+        },
       ],
     },
     {
@@ -404,6 +461,10 @@ export const termsOfUseFr = {
         {
           type: "p",
           text: "Ces conditions visent un site éducatif gratuit utilisé au Canada et aux États-Unis. Elles ne choisissent pas un tribunal pour vous. Les droits que vous avez selon la loi de votre province, de votre territoire ou de votre État restent en place.",
+        },
+        {
+          type: "p",
+          text: "Les personnes à l'extérieur du Canada et des États-Unis peuvent utiliser Autre pays / Général. Ces conditions ne choisissent pas un tribunal pour elles. Les droits qu'elles ont selon la loi de l'endroit où elles vivent restent en place. Le mode Général ne donne pas un avis juridique, financier ou en assurance pour leur pays.",
         },
       ],
     },
